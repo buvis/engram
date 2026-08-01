@@ -270,3 +270,26 @@ def test_status_counts_dead_row_when_source_file_no_longer_exists(tmp_path):
     report = store.status(Scope("portfolio", None))
 
     assert report.per_corpus["docs"].dead_rows == 1
+
+
+# --- search_bm25 multi-word query recall ---
+
+
+def test_search_bm25_matches_reordered_non_adjacent_query_tokens(tmp_path):
+    store = open_store(tmp_path / "engram.db")
+    chunk = _chunk(body="alpha beta gamma", content_hash="h1")
+    vector = Vector([0.1, 0.2, 0.3, 0.4], "m1", 4)
+    store.upsert_chunks([ChunkWithVector(chunk=chunk, vector=vector)])
+
+    hits = store.search_bm25("gamma alpha", Scope("portfolio", None), corpus=None, k=10)
+
+    assert len(hits) == 1
+    assert hits[0].chunk == chunk
+
+
+# --- Scope invariant ---
+
+
+def test_scope_repo_kind_requires_repo():
+    with pytest.raises(ValueError):
+        Scope(kind="repo", repo=None)

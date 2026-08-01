@@ -38,6 +38,10 @@ class Scope:
     kind: Literal["repo", "portfolio"]
     repo: str | None
 
+    def __post_init__(self) -> None:
+        if self.kind == "repo" and self.repo is None:
+            raise ValueError("Scope(kind='repo') requires repo to be set")
+
 
 @dataclass(frozen=True)
 class SearchHit:
@@ -277,7 +281,10 @@ class Store:
             f"WHERE chunks_fts MATCH ? AND {where} "
             "ORDER BY score LIMIT ?"
         )
-        match_query = '"' + query.replace('"', '""') + '"'
+        tokens = query.split()
+        if not tokens:
+            return []
+        match_query = " ".join('"' + token.replace('"', '""') + '"' for token in tokens)
         rows = self.conn.execute(sql, [match_query, *params, k]).fetchall()
         return [self._row_to_hit(row) for row in rows]
 
