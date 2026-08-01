@@ -45,6 +45,13 @@ class EmbeddingEntry:
     id: str
     endpoint: str
 
+    def __post_init__(self):
+        host = urllib.parse.urlsplit(self.endpoint).hostname
+        if host not in _LOOPBACK_HOSTS:
+            raise ValueError(
+                f"embedding entry {self.id!r} has non-loopback endpoint {self.endpoint!r}"
+            )
+
 
 @dataclass(frozen=True)
 class Vector:
@@ -94,12 +101,6 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> EngramConfig:
 
     embeddings = []
     for entry in raw.get("embedding", []):
-        host = urllib.parse.urlsplit(entry["endpoint"]).hostname
-        if host not in _LOOPBACK_HOSTS:
-            raise ValueError(
-                f"embedding entry {entry['id']!r} has non-loopback endpoint "
-                f"{entry['endpoint']!r}"
-            )
         embeddings.append(EmbeddingEntry(id=entry["id"], endpoint=entry["endpoint"]))
 
     pinned_id = raw.get("pinned", {}).get("id") or None

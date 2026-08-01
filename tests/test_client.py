@@ -278,6 +278,13 @@ def test_load_config_rejects_non_loopback_endpoint(tmp_path):
     assert "remote-model" in str(excinfo.value)
 
 
+def test_embedding_entry_rejects_non_loopback_endpoint():
+    with pytest.raises(ValueError) as excinfo:
+        EmbeddingEntry(id="remote-model", endpoint="http://93.184.216.34:8081/v1")
+
+    assert "remote-model" in str(excinfo.value)
+
+
 # --- preflight ---
 
 
