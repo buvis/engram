@@ -257,3 +257,48 @@ def test_hash_source_matches_git_hash_object_for_non_ascii_content(tmp_path):
     expected_hash = result.stdout.strip()
 
     assert hash_source(source) == expected_hash
+
+
+# --- robustness: malformed repos.csv rows ---
+
+
+def test_blank_line_in_repos_csv_is_skipped_without_raising(tmp_path):
+    repo_root = tmp_path / "repos" / "widget"
+    (repo_root / "dev" / "local" / "prds").mkdir(parents=True)
+    decisions_file = repo_root / "dev" / "local" / "decisions.md"
+    decisions_file.write_text("decisions")
+    (repo_root / "dev" / "local" / "discovery").mkdir()
+
+    repos_csv = tmp_path / "repos.csv"
+    # stray blank lines are plausible in a hand-edited gita csv; they must be
+    # skipped, not crash enumeration
+    repos_csv.write_text(f"\n{repo_root},widget,,\n\n")
+    projects_dir = tmp_path / "projects"
+    projects_dir.mkdir()
+
+    results = {
+        (cf.corpus, cf.repo, cf.path)
+        for cf in enumerate_corpora(repos_csv=repos_csv, projects_dir=projects_dir)
+    }
+
+    assert ("decision", "widget", decisions_file) in results
+
+
+# --- missing_dirs identity: a direct name-import must see updates ---
+
+
+def test_missing_dirs_updates_are_visible_through_a_direct_name_import(tmp_path):
+    from engram.corpora import missing_dirs as bound
+
+    repo_root = tmp_path / "repos" / "acme"
+    repo_root.mkdir(parents=True)  # no dev/local -> all three sources missing
+
+    repos_csv = tmp_path / "repos.csv"
+    _write_repos_csv(repos_csv, [(str(repo_root), "acme")])
+    projects_dir = tmp_path / "projects"
+    projects_dir.mkdir()
+
+    list(enumerate_corpora(repos_csv=repos_csv, projects_dir=projects_dir))
+
+    assert bound is corpora.missing_dirs
+    assert "prd:acme" in bound

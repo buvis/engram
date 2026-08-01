@@ -23,8 +23,7 @@ def enumerate_corpora(
     repos_csv: Path = GITA_REPOS_CSV,
     projects_dir: Path = CLAUDE_PROJECTS_DIR,
 ) -> Iterator[CorpusFile]:
-    global missing_dirs
-    missing_dirs = []
+    missing_dirs.clear()
 
     # Build slug -> name mapping from repos.csv
     slug_to_name: dict[str, str] = {}
@@ -33,6 +32,8 @@ def enumerate_corpora(
     if text.strip():
         reader = csv.reader(text.splitlines())
         for row in reader:
+            if len(row) < 2:
+                continue
             repo_path, name = row[0], row[1]
             slug = repo_path.replace("/", "-")
             slug_to_name[slug] = name
