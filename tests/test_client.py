@@ -183,6 +183,54 @@ def _write_stub_llama_server(bin_dir: Path) -> Path:
     return stub_path
 
 
+_STUB_LLAMA_SERVER_NEVER_READY = '''#!/usr/bin/env python3
+import http.server
+import sys
+
+args = sys.argv[1:]
+
+
+def _flag(name, default=None):
+    if name in args:
+        return args[args.index(name) + 1]
+    return default
+
+
+port = int(_flag("--port"))
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+    def _send_404(self):
+        body = b"{}"
+        self.send_response(404)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        self._send_404()
+
+    def do_POST(self):
+        n = int(self.headers.get("Content-Length") or 0)
+        self.rfile.read(n)
+        self._send_404()
+
+
+http.server.HTTPServer(("127.0.0.1", port), Handler).serve_forever()
+'''
+
+
+def _write_never_ready_stub_llama_server(bin_dir: Path) -> Path:
+    stub_path = bin_dir / "llama-server"
+    stub_path.write_text(_STUB_LLAMA_SERVER_NEVER_READY)
+    stub_path.chmod(0o755)
+    return stub_path
+
+
 # --- load_config ---
 
 
@@ -462,3 +510,71 @@ def test_embed_truncates_long_text_only_in_outgoing_request(mock_server):
     assert len(sent[0]) == EMBED_MAX_CHARS
     assert sent[0] == long_text[:EMBED_MAX_CHARS]
     assert sent[1] == "short"
+
+
+# --- regression: embed() rejects empty/non-finite embedding vectors ---
+
+
+def test_embed_raises_on_empty_embedding_vector_in_response(mock_server):
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+    mock_server.responder = _responder_with_broken_batch(
+        mock_server.model_id,
+        [
+            {"index": 0, "embedding": [], "object": "embedding"},
+            {"index": 1, "embedding": [0.5, 0.6, 0.7, 0.8], "object": "embedding"},
+        ],
+    )
+
+    with pytest.raises(EmbeddingPreflightError):
+        embed(["alpha", "beta"], entry)
+
+
+def test_embed_raises_on_non_finite_value_in_embedding_vector(mock_server):
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+    mock_server.responder = _responder_with_broken_batch(
+        mock_server.model_id,
+        [
+            {"index": 0, "embedding": [0.1, float("nan"), 0.3, 0.4], "object": "embedding"},
+            {"index": 1, "embedding": [0.5, float("inf"), 0.7, 0.8], "object": "embedding"},
+        ],
+    )
+
+    with pytest.raises(EmbeddingPreflightError):
+        embed(["alpha", "beta"], entry)
+
+
+# --- regression: ensure_served() reaps the spawned process on readiness timeout ---
+
+
+def test_ensure_served_terminates_orphaned_process_on_readiness_timeout(tmp_path, monkeypatch):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    _write_never_ready_stub_llama_server(bin_dir)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+    monkeypatch.setattr(client, "EMBED_REQUEST_TIMEOUT_S", 0.5)
+
+    port = _free_port()
+    entry = EmbeddingEntry(id="never-ready-model", endpoint=f"http://127.0.0.1:{port}/v1")
+
+    captured = {}
+
+    def watch():
+        deadline = time.time() + 2
+        while time.time() < deadline:
+            if client._spawned_processes:
+                captured["pid"] = next(iter(client._spawned_processes))
+                return
+            time.sleep(0.01)
+
+    watcher = threading.Thread(target=watch, daemon=True)
+    watcher.start()
+
+    with pytest.raises(EmbeddingServerError):
+        ensure_served(entry)
+
+    watcher.join(timeout=2)
+
+    assert client._spawned_processes == {}
+    assert "pid" in captured
+    with pytest.raises(ProcessLookupError):
+        os.kill(captured["pid"], 0)

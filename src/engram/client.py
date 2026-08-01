@@ -1,6 +1,7 @@
 """Embedding Access: llama-server client, preflight, and server lifecycle."""
 
 import json
+import math
 import os
 import shutil
 import signal
@@ -165,6 +166,13 @@ def ensure_served(entry: EmbeddingEntry) -> ServerLease:
             last_error = e
             time.sleep(0.2)
 
+    _spawned_processes.pop(process.pid, None)
+    process.kill()
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        pass
+
     raise EmbeddingServerError(
         f"llama-server for {entry.id} did not become ready at {entry.endpoint}: {last_error}"
     )
@@ -214,6 +222,15 @@ def embed(texts: list[str], entry: EmbeddingEntry) -> list[Vector]:
                 )
             seen_idx.add(idx)
             values = item.get("embedding")
+            if (
+                not isinstance(values, list)
+                or not values
+                or not all(isinstance(v, (int, float)) and math.isfinite(v) for v in values)
+            ):
+                raise EmbeddingPreflightError(
+                    f"invalid embedding vector at index {idx} in response from "
+                    f"{entry.endpoint} for {entry.id}"
+                )
             if dim is None:
                 dim = len(values)
             elif len(values) != dim:
