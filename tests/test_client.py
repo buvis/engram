@@ -231,6 +231,67 @@ def _write_never_ready_stub_llama_server(bin_dir: Path) -> Path:
     return stub_path
 
 
+_STUB_LLAMA_SERVER_IGNORES_SIGTERM = '''#!/usr/bin/env python3
+import http.server
+import json
+import signal
+import sys
+
+signal.signal(signal.SIGTERM, signal.SIG_IGN)
+
+args = sys.argv[1:]
+
+
+def _flag(name, default=None):
+    if name in args:
+        return args[args.index(name) + 1]
+    return default
+
+
+alias = _flag("--alias", "stub-model")
+port = int(_flag("--port"))
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+    def _send(self, code, body):
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        self._send(404, b"{}")
+
+    def do_POST(self):
+        n = int(self.headers.get("Content-Length") or 0)
+        raw = self.rfile.read(n)
+        payload = json.loads(raw) if raw else {}
+        inputs = payload.get("input", [])
+        if isinstance(inputs, str):
+            inputs = [inputs]
+        data = [
+            {"index": i, "embedding": [0.1, 0.2, 0.3, 0.4], "object": "embedding"}
+            for i in range(len(inputs))
+        ]
+        body = json.dumps({"object": "list", "model": alias, "data": data}).encode()
+        self._send(200, body)
+
+
+http.server.HTTPServer(("127.0.0.1", port), Handler).serve_forever()
+'''
+
+
+def _write_stub_llama_server_ignoring_sigterm(bin_dir: Path) -> Path:
+    stub_path = bin_dir / "llama-server"
+    stub_path.write_text(_STUB_LLAMA_SERVER_IGNORES_SIGTERM)
+    stub_path.chmod(0o755)
+    return stub_path
+
+
 # --- load_config ---
 
 
@@ -585,3 +646,81 @@ def test_ensure_served_terminates_orphaned_process_on_readiness_timeout(tmp_path
     assert "pid" in captured
     with pytest.raises(ProcessLookupError):
         os.kill(captured["pid"], 0)
+
+
+# --- regression: stop_served() escalates to SIGKILL when SIGTERM is ignored ---
+
+
+def test_stop_served_escalates_to_sigkill_when_process_ignores_sigterm(tmp_path, monkeypatch):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    _write_stub_llama_server_ignoring_sigterm(bin_dir)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+    monkeypatch.setattr(client, "STOP_WAIT_TIMEOUT_S", 0.5)
+
+    port = _free_port()
+    entry = EmbeddingEntry(
+        id="stub-model-ignores-sigterm", endpoint=f"http://127.0.0.1:{port}/v1"
+    )
+    lease = ensure_served(entry)
+    assert lease.spawned is True
+
+    stop_served(lease)
+
+    deadline = time.time() + 5
+    alive = True
+    while time.time() < deadline:
+        try:
+            os.kill(lease.pid, 0)
+        except ProcessLookupError:
+            alive = False
+            break
+        time.sleep(0.05)
+    assert not alive
+
+
+# --- regression: embed() names the failed batch's index range ---
+
+
+def test_embed_names_batch_index_range_on_post_failure(mock_server):
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+
+    def responder(payload):
+        inputs = _input_list(payload)
+        if len(inputs) == 1:
+            data = [{"index": 0, "embedding": [0.1, 0.2, 0.3, 0.4], "object": "embedding"}]
+            body = json.dumps(
+                {"object": "list", "model": mock_server.model_id, "data": data}
+            ).encode()
+            return 200, body
+        return 500, b'{"error": "boom"}'
+
+    mock_server.responder = responder
+
+    with pytest.raises(EmbeddingPreflightError) as excinfo:
+        embed(["alpha", "beta"], entry)
+
+    message = str(excinfo.value)
+    assert "0" in message
+    assert "1" in message
+
+
+# --- regression: preflight() rejects a non-object JSON response ---
+
+
+def test_preflight_raises_preflight_error_for_non_object_json_response(mock_server):
+    mock_server.responder = lambda payload: (200, b"[]")
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+
+    with pytest.raises(EmbeddingPreflightError):
+        preflight(entry)
+
+
+# --- regression: EmbeddingEntry requires an explicit port ---
+
+
+def test_embedding_entry_rejects_endpoint_without_explicit_port():
+    with pytest.raises(ValueError) as excinfo:
+        EmbeddingEntry(id="x", endpoint="http://127.0.0.1/v1")
+
+    assert "x" in str(excinfo.value)

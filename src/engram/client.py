@@ -1,5 +1,6 @@
 """Embedding Access: llama-server client, preflight, and server lifecycle."""
 
+import http.client
 import json
 import math
 import os
@@ -17,6 +18,7 @@ from pathlib import Path
 EMBED_MAX_CHARS = 8000
 EMBED_BATCH_SIZE = 64
 EMBED_REQUEST_TIMEOUT_S = 120
+STOP_WAIT_TIMEOUT_S = 5
 
 DEFAULT_CONFIG_PATH = Path.home() / ".local" / "share" / "engram" / "config.toml"
 
@@ -46,10 +48,15 @@ class EmbeddingEntry:
     endpoint: str
 
     def __post_init__(self):
-        host = urllib.parse.urlsplit(self.endpoint).hostname
-        if host not in _LOOPBACK_HOSTS:
+        split = urllib.parse.urlsplit(self.endpoint)
+        if split.hostname not in _LOOPBACK_HOSTS:
             raise ValueError(
                 f"embedding entry {self.id!r} has non-loopback endpoint {self.endpoint!r}"
+            )
+        if split.port is None:
+            raise ValueError(
+                f"embedding entry {self.id!r} has endpoint {self.endpoint!r} "
+                "without an explicit port"
             )
 
 
@@ -117,11 +124,22 @@ def _post_embeddings(entry: EmbeddingEntry, inputs) -> dict:
     try:
         with urllib.request.urlopen(request, timeout=EMBED_REQUEST_TIMEOUT_S) as response:
             raw = response.read()
-        return json.loads(raw)
-    except (urllib.error.URLError, OSError, json.JSONDecodeError) as e:
+        payload = json.loads(raw)
+    except (
+        urllib.error.URLError,
+        OSError,
+        json.JSONDecodeError,
+        http.client.HTTPException,
+    ) as e:
         raise EmbeddingPreflightError(
             f"embedding request to {entry.endpoint} for model {entry.id} failed: {e}"
         ) from e
+
+    if not isinstance(payload, dict):
+        raise EmbeddingPreflightError(
+            f"embedding response from {entry.endpoint} for {entry.id} was not a JSON object"
+        )
+    return payload
 
 
 def preflight(entry: EmbeddingEntry) -> None:
@@ -191,9 +209,16 @@ def stop_served(lease: ServerLease) -> None:
 
     if process is not None:
         try:
-            process.wait(timeout=5)
+            process.wait(timeout=STOP_WAIT_TIMEOUT_S)
         except subprocess.TimeoutExpired:
-            pass
+            try:
+                os.kill(lease.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            try:
+                process.wait(timeout=STOP_WAIT_TIMEOUT_S)
+            except subprocess.TimeoutExpired:
+                pass
 
 
 def embed(texts: list[str], entry: EmbeddingEntry) -> list[Vector]:
@@ -203,7 +228,12 @@ def embed(texts: list[str], entry: EmbeddingEntry) -> list[Vector]:
     for start in range(0, len(texts), EMBED_BATCH_SIZE):
         batch = texts[start : start + EMBED_BATCH_SIZE]
         truncated = [t[:EMBED_MAX_CHARS] for t in batch]
-        payload = _post_embeddings(entry, truncated)
+        try:
+            payload = _post_embeddings(entry, truncated)
+        except EmbeddingPreflightError as e:
+            raise EmbeddingPreflightError(
+                f"{e} (batch indices {start}..{start + len(batch) - 1})"
+            ) from e
         data = payload.get("data", [])
 
         batch_vectors: list[Vector | None] = [None] * len(batch)
