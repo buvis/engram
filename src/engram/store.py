@@ -63,7 +63,6 @@ class StoreModelMismatchError(RuntimeError):
 
 
 def open_store(db_path: Path = DEFAULT_DB_PATH) -> "Store":
-    db_path = Path(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(db_path, isolation_level=None)
     conn.enable_load_extension(True)
