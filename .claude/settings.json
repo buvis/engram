@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "additionalDirectories": [
+      "/Users/bob/git/src/github.com/buvis/claude-git-ferry",
+      "/Users/bob/.claude"
+    ]
+  }
+}
