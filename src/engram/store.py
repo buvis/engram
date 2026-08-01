@@ -189,7 +189,7 @@ class Store:
                 conn.execute(
                     "CREATE VIRTUAL TABLE chunks_vec USING vec0("
                     "chunk_id INTEGER PRIMARY KEY, "
-                    f"embedding FLOAT[{baseline_dim}], "
+                    f"embedding FLOAT[{int(baseline_dim)}], "
                     "repo TEXT PARTITION KEY, corpus TEXT PARTITION KEY)"
                 )
                 conn.execute(

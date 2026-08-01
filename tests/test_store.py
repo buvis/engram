@@ -293,3 +293,32 @@ def test_search_bm25_matches_reordered_non_adjacent_query_tokens(tmp_path):
 def test_scope_repo_kind_requires_repo():
     with pytest.raises(ValueError):
         Scope(kind="repo", repo=None)
+
+
+# --- multi-chunk-per-file ---
+
+
+def test_upsert_multiple_chunks_from_same_file_land_without_unique_violation(tmp_path):
+    store = open_store(tmp_path / "engram.db")
+    chunk0 = _chunk(
+        content_hash="same-hash",
+        chunk_ordinal=0,
+        heading="First Heading",
+        body="alpha-chunk-token",
+    )
+    chunk1 = _chunk(
+        content_hash="same-hash",
+        chunk_ordinal=1,
+        heading="Second Heading",
+        body="beta-chunk-token",
+    )
+    vector = Vector([0.1, 0.2, 0.3, 0.4], "m1", 4)
+
+    store.upsert_chunks(
+        [
+            ChunkWithVector(chunk=chunk0, vector=vector),
+            ChunkWithVector(chunk=chunk1, vector=vector),
+        ]
+    )
+
+    assert store.status(Scope("portfolio", None)).per_corpus["docs"].row_count == 2
