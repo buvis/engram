@@ -77,7 +77,7 @@ def _run_query(args: argparse.Namespace) -> int:
 
     if args.k <= 0:
         print("-k must be positive", file=sys.stderr)
-        sys.exit(1)
+        return 1
 
     config = load_config()
     store = open_store()
@@ -92,9 +92,11 @@ def _run_query(args: argparse.Namespace) -> int:
     return 0
 
 
-def _print_missing(missing: list[str], scope: Scope) -> None:
+def _print_missing(missing: list[str], scope: Scope, corpus: str | None = None) -> None:
     if scope.kind == "repo":
         missing = [m for m in missing if m.endswith(f":{scope.repo}")]
+    if corpus is not None:
+        missing = [m for m in missing if m.startswith(f"{corpus}:")]
     for m in missing:
         print(m)
 
@@ -114,6 +116,7 @@ def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
             print(f"rebuild failed: {e}", file=sys.stderr)
             return 1
 
+        tmp_store.conn.close()
         os.replace(tmp_path, DEFAULT_DB_PATH)
         _print_missing(report.corpora_missing, Scope("portfolio", None))
         return 0
@@ -130,8 +133,11 @@ def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
     except StoreModelMismatchError as e:
         print(f"{e}; run `engram index --rebuild` to rebuild the store", file=sys.stderr)
         return 1
+    except FileNotFoundError:
+        print(f"{GITA_REPOS_CSV} not found; register repos with gita first", file=sys.stderr)
+        return 1
 
-    _print_missing(report.corpora_missing, scope)
+    _print_missing(report.corpora_missing, scope, args.corpus)
     return 0
 
 
@@ -152,7 +158,8 @@ def _run_status(args: argparse.Namespace) -> int:
     try:
         list(enumerate_corpora())
     except FileNotFoundError:
-        pass
+        print(f"{GITA_REPOS_CSV} not found; register repos with gita first", file=sys.stderr)
+        return 1
     _print_missing(corpora.missing_dirs, scope)
 
     return exit_code
