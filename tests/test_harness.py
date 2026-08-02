@@ -277,7 +277,7 @@ def test_run_harness_dedup_counts_hit_when_expected_file_present_lower_in_domina
         # chunks, with the expected file present lower down, followed by a
         # few more distinct filler paths.
         paths = (
-            ["dominant.md"] * 20
+            ["dominant.md"] * 21
             + [str(expected_file), "filler-c.md", "filler-d.md", "filler-e.md"]
         )
         assert len(paths) == RRF_DEDUP_POOL
