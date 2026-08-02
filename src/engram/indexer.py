@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import engram.corpora as corpora
 from engram.chunker import chunk_markdown
-from engram.client import EmbeddingEntry, EngramConfig, embed
+from engram.client import EngramConfig, embed
 from engram.corpora import enumerate_corpora, hash_source
 from engram.store import ChunkWithVector, Scope, Store
 
@@ -52,7 +52,6 @@ def index(
         if not chunks:
             continue
 
-        entry: EmbeddingEntry
         if config.pinned_id is not None:
             entry = next(e for e in config.embeddings if e.id == config.pinned_id)
         else:
