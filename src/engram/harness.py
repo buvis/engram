@@ -75,30 +75,33 @@ def _score_candidate(entry: EmbeddingEntry, config_path: Path, goldset, work_dir
     if db.exists():
         db.unlink()
     store = open_store(db)
-    for corpus in sorted({g.corpus for g in goldset}):
-        index(store, cand_cfg, Scope("portfolio", None), corpus=corpus)
-    hits = 0
-    per_corpus_hits: dict[str, int] = {}
-    per_corpus_totals: dict[str, int] = {}
-    for g in goldset:
-        pointers = query(
-            store, cand_cfg, g.query, Scope("portfolio", None), k=RRF_DEDUP_POOL
-        )
-        seen: list[str] = []
-        for p in pointers:
-            if p.path not in seen:
-                seen.append(p.path)
-            if len(seen) == 5:
-                break
-        hit = 1 if g.expected_path in seen else 0
-        hits += hit
-        per_corpus_hits[g.corpus] = per_corpus_hits.get(g.corpus, 0) + hit
-        per_corpus_totals[g.corpus] = per_corpus_totals.get(g.corpus, 0) + 1
-    hit_rate = hits / len(goldset)
-    per_corpus_hit_rate = {
-        c: per_corpus_hits[c] / per_corpus_totals[c] for c in per_corpus_totals
-    }
-    return ModelScore(hit_rate, per_corpus_hit_rate)
+    try:
+        for corpus in sorted({g.corpus for g in goldset}):
+            index(store, cand_cfg, Scope("portfolio", None), corpus=corpus)
+        hits = 0
+        per_corpus_hits: dict[str, int] = {}
+        per_corpus_totals: dict[str, int] = {}
+        for g in goldset:
+            pointers = query(
+                store, cand_cfg, g.query, Scope("portfolio", None), k=RRF_DEDUP_POOL
+            )
+            seen: list[str] = []
+            for p in pointers:
+                if p.path not in seen:
+                    seen.append(p.path)
+                if len(seen) == 5:
+                    break
+            hit = 1 if g.expected_path in seen else 0
+            hits += hit
+            per_corpus_hits[g.corpus] = per_corpus_hits.get(g.corpus, 0) + hit
+            per_corpus_totals[g.corpus] = per_corpus_totals.get(g.corpus, 0) + 1
+        hit_rate = hits / len(goldset)
+        per_corpus_hit_rate = {
+            c: per_corpus_hits[c] / per_corpus_totals[c] for c in per_corpus_totals
+        }
+        return ModelScore(hit_rate, per_corpus_hit_rate)
+    finally:
+        store.conn.close()
 
 
 def _baseline_hit_rate(goldset) -> float:
@@ -115,14 +118,16 @@ def _baseline_hit_rate(goldset) -> float:
             for t in re.split(r"[^a-zA-Z0-9]+", g.query.lower())
             if t and t not in STOPWORDS
         }
-        if not tokens:
-            continue
         match_counts: dict[str, int] = {}
         for term in tokens:
             result = subprocess.run(
                 ["rg", "-il", term, *corpus_files], capture_output=True, text=True
             )
-            if result.returncode in (0, 1) and result.stdout.strip():
+            if result.returncode not in (0, 1):
+                raise RuntimeError(
+                    f"rg failed (exit {result.returncode}) for term {term!r}: {result.stderr.strip()}"
+                )
+            if result.stdout.strip():
                 for line in result.stdout.strip().split("\n"):
                     fp = line.strip()
                     if fp:
@@ -137,10 +142,12 @@ def _baseline_hit_rate(goldset) -> float:
 def _write_pinned(config_path: Path, winner_id: str) -> None:
     new_lines = []
     in_pinned = False
+    seen_pinned = False
     for line in config_path.read_text().split("\n"):
         stripped = line.strip()
         if stripped == "[pinned]":
             in_pinned = True
+            seen_pinned = True
             new_lines.append(line)
         elif stripped.startswith("[") and not stripped.startswith("[["):
             in_pinned = False
@@ -149,6 +156,8 @@ def _write_pinned(config_path: Path, winner_id: str) -> None:
             new_lines.append(f'id = "{winner_id}"')
         else:
             new_lines.append(line)
+    if not seen_pinned:
+        raise ValueError(f"config {config_path} has no [pinned] section to write the winner into")
     config_path.write_text("\n".join(new_lines))
 
 
@@ -180,3 +189,15 @@ def run_harness(config: EngramConfig, goldset_path: Path, work_dir: Path) -> Har
         for lease in leases:
             if lease.entry.id != winner_id:
                 stop_served(lease)
+
+
+def format_report(report: HarnessReport) -> list[str]:
+    lines: list[str] = []
+    for model_id, score in report.per_model.items():
+        lines.append(f"{model_id}\t{score.hit_rate:.3f}")
+        for corpus in sorted(score.per_corpus_hit_rate):
+            lines.append(f"{model_id}\t{corpus}\t{score.per_corpus_hit_rate[corpus]:.3f}")
+    lines.append(f"winner\t{report.winner_id}")
+    lines.append(f"baseline\t{report.baseline_hit_rate:.3f}")
+    lines.append(f"gate_passed\t{report.gate_passed}")
+    return lines

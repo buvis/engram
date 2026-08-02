@@ -9,7 +9,7 @@ import tempfile
 from pathlib import Path
 
 from engram.client import load_config
-from engram.harness import run_harness
+from engram.harness import format_report, run_harness
 
 GOLDSET_PATH = Path(__file__).resolve().parent / "goldset.yaml"
 
@@ -18,11 +18,8 @@ def main() -> int:
     config = load_config()
     with tempfile.TemporaryDirectory() as work_dir:
         report = run_harness(config, GOLDSET_PATH, Path(work_dir))
-    for model_id, score in report.per_model.items():
-        print(f"{model_id}\t{score.hit_rate:.3f}")
-    print(f"winner\t{report.winner_id}")
-    print(f"baseline\t{report.baseline_hit_rate:.3f}")
-    print(f"gate_passed\t{report.gate_passed}")
+    for line in format_report(report):
+        print(line)
     return 0 if report.gate_passed else 1
 
 
