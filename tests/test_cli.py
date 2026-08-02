@@ -2,6 +2,7 @@ import pytest
 
 from engram import corpora
 from engram.cli import main
+from engram.findings import FINDINGS_CORPUS
 from engram.indexer import IndexReport
 from engram.query import Pointer
 from engram.store import CorpusStatus, StatusReport, StoreModelMismatchError
@@ -132,6 +133,110 @@ def test_query_prints_pointer_score_at_fixed_precision(monkeypatch, capsys):
 
     captured = capsys.readouterr()
     assert captured.out.splitlines() == ["1\t0.5000\tnotes/file.md:10-14\tSection One"]
+    assert exit_code == 0
+
+
+# --- findings corpus hits print body line after summary line ---
+
+
+def test_findings_hit_prints_body_line_after_summary_line(monkeypatch, capsys):
+    pointer = Pointer(
+        rank=1,
+        score=0.987,
+        path="findings/finding-1.md",
+        line_start=1,
+        line_end=5,
+        heading="Finding Heading",
+        corpus=FINDINGS_CORPUS,
+        repo="repoA",
+        body="stored finding record text",
+    )
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.query", lambda *a, **k: [pointer])
+
+    exit_code = main(["query", "--scope", "portfolio", "some text"])
+
+    captured = capsys.readouterr()
+    expected_summary = (
+        f"{pointer.rank}\t{pointer.score:.4f}\t"
+        f"{pointer.path}:{pointer.line_start}-{pointer.line_end}\t{pointer.heading}"
+    )
+    assert captured.out.splitlines() == [expected_summary, pointer.body]
+    assert exit_code == 0
+
+
+def test_non_findings_hit_prints_only_summary_line(monkeypatch, capsys):
+    pointer = Pointer(
+        rank=1,
+        score=0.5,
+        path="docs.md",
+        line_start=1,
+        line_end=3,
+        heading="Docs Heading",
+        corpus="docs",
+        repo="repoA",
+    )
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.query", lambda *a, **k: [pointer])
+
+    exit_code = main(["query", "--scope", "portfolio", "some text"])
+
+    captured = capsys.readouterr()
+    expected_summary = (
+        f"{pointer.rank}\t{pointer.score:.4f}\t"
+        f"{pointer.path}:{pointer.line_start}-{pointer.line_end}\t{pointer.heading}"
+    )
+    assert captured.out.splitlines() == [expected_summary]
+    assert exit_code == 0
+
+
+def test_mixed_results_interleave_body_lines_only_for_findings_hits(monkeypatch, capsys):
+    findings_pointer = Pointer(
+        rank=1,
+        score=0.9,
+        path="findings/finding-2.md",
+        line_start=1,
+        line_end=2,
+        heading="Finding Two",
+        corpus=FINDINGS_CORPUS,
+        repo="repoA",
+        body="second stored finding text",
+    )
+    docs_pointer = Pointer(
+        rank=2,
+        score=0.4,
+        path="other.md",
+        line_start=1,
+        line_end=3,
+        heading="Section Two",
+        corpus="docs",
+        repo="repoB",
+    )
+    pointers = [findings_pointer, docs_pointer]
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.query", lambda *a, **k: pointers)
+
+    exit_code = main(["query", "--scope", "portfolio", "some text"])
+
+    captured = capsys.readouterr()
+    findings_summary = (
+        f"{findings_pointer.rank}\t{findings_pointer.score:.4f}\t"
+        f"{findings_pointer.path}:{findings_pointer.line_start}-{findings_pointer.line_end}"
+        f"\t{findings_pointer.heading}"
+    )
+    docs_summary = (
+        f"{docs_pointer.rank}\t{docs_pointer.score:.4f}\t"
+        f"{docs_pointer.path}:{docs_pointer.line_start}-{docs_pointer.line_end}"
+        f"\t{docs_pointer.heading}"
+    )
+    assert captured.out.splitlines() == [
+        findings_summary,
+        findings_pointer.body,
+        docs_summary,
+    ]
     assert exit_code == 0
 
 

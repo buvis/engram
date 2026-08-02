@@ -1,6 +1,7 @@
 import pytest
 
 from engram.client import EmbeddingEntry, EngramConfig, Vector
+from engram.findings import FINDINGS_CORPUS
 from engram.query import Pointer, query
 from engram.store import Chunk, ChunkWithVector, Scope, StoreModelMismatchError, open_store
 
@@ -328,3 +329,56 @@ def test_query_raises_clear_error_on_empty_embeddings(tmp_path):
 
     with pytest.raises(ValueError):
         query(_RaisingStore(), config, "some text", Scope("portfolio", None))
+
+
+# --- body field: findings corpus only ---
+
+
+def test_findings_corpus_hit_populates_body_with_stored_record_text(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+    findings_chunk = _chunk(
+        corpus=FINDINGS_CORPUS,
+        path="findings/finding-1.md",
+        heading="Finding One",
+        body="body-marker stored record text for finding one",
+        content_hash="h-finding-body",
+    )
+    store.upsert_chunks(
+        [ChunkWithVector(chunk=findings_chunk, vector=Vector([1.0, 0.0, 0.0, 0.0], "m1", 4))]
+    )
+    config = _config(tmp_path, _entry())
+
+    monkeypatch.setattr(
+        "engram.query.embed",
+        lambda texts, entry: [Vector([1.0, 0.0, 0.0, 0.0], "m1", 4)],
+    )
+
+    results = query(store, config, "body-marker", Scope("portfolio", None))
+
+    assert results[0].corpus == FINDINGS_CORPUS
+    assert results[0].body == "body-marker stored record text for finding one"
+
+
+def test_non_findings_corpus_hit_leaves_body_none(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+    docs_chunk = _chunk(
+        corpus="docs",
+        path="docs.md",
+        heading="Docs Heading",
+        body="body-none-marker stored docs text",
+        content_hash="h-docs-body",
+    )
+    store.upsert_chunks(
+        [ChunkWithVector(chunk=docs_chunk, vector=Vector([1.0, 0.0, 0.0, 0.0], "m1", 4))]
+    )
+    config = _config(tmp_path, _entry())
+
+    monkeypatch.setattr(
+        "engram.query.embed",
+        lambda texts, entry: [Vector([1.0, 0.0, 0.0, 0.0], "m1", 4)],
+    )
+
+    results = query(store, config, "body-none-marker", Scope("portfolio", None))
+
+    assert results[0].corpus == "docs"
+    assert results[0].body is None
