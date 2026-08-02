@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 
 from engram.client import EngramConfig, Vector, embed, resolve_pinned_entry
+from engram.findings import FINDINGS_CORPUS
 from engram.store import Scope, SearchHit, Store
 
 RRF_POOL = 20
@@ -19,6 +20,7 @@ class Pointer:
     heading: str
     corpus: str
     repo: str
+    body: str | None = None
 
 
 def query(
@@ -61,6 +63,9 @@ def query(
             heading=hit_map[cid].chunk.heading,
             corpus=hit_map[cid].chunk.corpus,
             repo=hit_map[cid].chunk.repo,
+            body=hit_map[cid].chunk.body
+            if hit_map[cid].chunk.corpus == FINDINGS_CORPUS
+            else None,
         )
         for i, cid in enumerate(sorted_ids)
     ]

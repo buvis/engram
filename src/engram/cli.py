@@ -108,6 +108,8 @@ def _run_query(args: argparse.Namespace) -> int:
         print(
             f"{p.rank}\t{p.score:.4f}\t{p.path}:{p.line_start}-{p.line_end}\t{p.heading}",
         )
+        if p.body is not None:
+            print(p.body)
     return 0
 
 

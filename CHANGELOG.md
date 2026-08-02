@@ -24,6 +24,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **findings**: durable record store - findings persist as extracted records (`corpus=findings`) that survive their source file, via an atomic `replace_chunks_for_source` keyed on (corpus, path) so a re-harvest replaces a path's records in one transaction, embedding before deleting so a failed embed leaves the prior records intact; findings rows are exempt from reindex pruning and are carried forward (freshly re-embedded from their stored text) across `engram index --rebuild`, which would otherwise destroy them permanently
 
+- **query**: findings hits carry their record text - a `Pointer` for a `findings` hit now exposes the stored record body (`engram query` prints it on its own line after the hit's summary line), so a harvested finding stays readable after its source review file is trashed; every other corpus keeps the pointer-only contract with `body` unset and byte-identical output
+
 ### Fixed
 
 - **cli**: `status` exits nonzero on staleness (stale files or dead rows) and lists missing corpus dirs; `index` reports missing corpora instead of discarding them; query scores print at fixed precision; `-k` rejects non-positive values; `index --rebuild` clears a leftover temp DB before building; `query`, `status`, and `index` fail loud with a clear "repos.csv not found" message on a missing gita repos.csv under every scope, including the default/repo scope (which previously showed a misleading "not inside a registered repo" hint); `index --corpus` scopes missing-dir warnings to that corpus
