@@ -48,6 +48,12 @@ def _resolve_scope(kind: str) -> Scope | None:
     return Scope("repo", repo_name)
 
 
+def _repo_scope_error_msg() -> str:
+    if not GITA_REPOS_CSV.exists():
+        return f"{GITA_REPOS_CSV} not found; register repos with gita first"
+    return _NOT_IN_REPO_MSG
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="engram")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -123,7 +129,7 @@ def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
 
     scope = _resolve_scope(args.scope or "repo")
     if scope is None:
-        print(_NOT_IN_REPO_MSG, file=sys.stderr)
+        print(_repo_scope_error_msg(), file=sys.stderr)
         return 1
 
     config = load_config()
@@ -144,7 +150,7 @@ def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
 def _run_status(args: argparse.Namespace) -> int:
     scope = _resolve_scope(args.scope or "repo")
     if scope is None:
-        print(_NOT_IN_REPO_MSG, file=sys.stderr)
+        print(_repo_scope_error_msg(), file=sys.stderr)
         return 1
 
     store = open_store()
