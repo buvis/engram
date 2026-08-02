@@ -34,10 +34,7 @@ def parse(path: Path) -> list[Record]:
         if not lines or lines[0] != "---":
             raise ValueError("missing frontmatter")
 
-        try:
-            frontmatter_end = lines.index("---", 1)
-        except ValueError as exc:
-            raise ValueError("missing frontmatter") from exc
+        frontmatter_end = lines.index("---", 1)
 
         metadata = yaml.safe_load("\n".join(lines[1:frontmatter_end]))
         if not isinstance(metadata, Mapping) or not metadata.get("reviewers"):
@@ -61,7 +58,7 @@ def parse(path: Path) -> list[Record]:
 
             if line.startswith("|") and line.endswith("|"):
                 cells = line[1:-1].split("|")
-                is_separator = bool(cells) and all(
+                is_separator = all(
                     TABLE_SEPARATOR_CELL_RE.fullmatch(cell) for cell in cells
                 )
                 next_is_separator = index + 1 < len(body_lines) and (
