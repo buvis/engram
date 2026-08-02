@@ -11,6 +11,7 @@ from engram import corpora, symbols
 from engram.client import embed, load_config, resolve_pinned_entry
 from engram.corpora import GITA_REPOS_CSV, enumerate_corpora
 from engram.findings import FINDINGS_CORPUS
+from engram.harvest import harvest
 from engram.indexer import index
 from engram.query import query
 from engram.store import (
@@ -80,6 +81,9 @@ def _build_parser() -> argparse.ArgumentParser:
     status_parser = subparsers.add_parser("status")
     status_parser.add_argument("--scope", choices=["repo", "portfolio"], default=None)
 
+    harvest_parser = subparsers.add_parser("harvest")
+    harvest_parser.add_argument("paths", nargs="+", type=Path)
+
     return parser
 
 
@@ -111,6 +115,18 @@ def _run_query(args: argparse.Namespace) -> int:
         if p.body is not None:
             print(p.body)
     return 0
+
+
+def _run_harvest(args: argparse.Namespace) -> int:
+    config = load_config()
+    store = open_store()
+    report = harvest(store, config, args.paths)
+    for r in report.results:
+        line = f"{r.path}\t{r.outcome}\t{r.records_count}"
+        if r.error is not None:
+            line += f"\t{r.error}"
+        print(line)
+    return 1 if report.any_failed else 0
 
 
 def _print_missing(missing: list[str], scope: Scope, corpus: str | None = None) -> None:
@@ -225,4 +241,6 @@ def main(argv: list[str] | None = None) -> int:
         return _run_query(args)
     if args.command == "index":
         return _run_index(args, parser)
+    if args.command == "harvest":
+        return _run_harvest(args)
     return _run_status(args)

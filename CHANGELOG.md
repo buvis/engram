@@ -26,6 +26,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **query**: findings hits carry their record text - a `Pointer` for a `findings` hit now exposes the stored record body (`engram query` prints it on its own line after the hit's summary line), so a harvested finding stays readable after its source review file is trashed; every other corpus keeps the pointer-only contract with `body` unset and byte-identical output
 
+- **harvest**: `engram harvest <review-file>...` - a fifth CLI verb that ingests review-contract files into the findings corpus, per-file isolated so one path's failure never aborts the batch and never replaces that path's existing records; each path is canonicalized first (relative, absolute and symlinked spellings of one file share one record set), its repo resolved from the git toplevel via the gita registry (with a `claude-home` sentinel for `~/.claude`, which is not a normal working tree); prints one `path/outcome/count` line per file and exits nonzero if any failed
+
 ### Fixed
 
 - **cli**: `status` exits nonzero on staleness (stale files or dead rows) and lists missing corpus dirs; `index` reports missing corpora instead of discarding them; query scores print at fixed precision; `-k` rejects non-positive values; `index --rebuild` clears a leftover temp DB before building; `query`, `status`, and `index` fail loud with a clear "repos.csv not found" message on a missing gita repos.csv under every scope, including the default/repo scope (which previously showed a misleading "not inside a registered repo" hint); `index --corpus` scopes missing-dir warnings to that corpus
