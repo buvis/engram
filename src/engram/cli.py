@@ -78,7 +78,7 @@ def _build_parser() -> argparse.ArgumentParser:
 def _run_query(args: argparse.Namespace) -> int:
     scope = _resolve_scope(args.scope)
     if scope is None:
-        print(_NOT_IN_REPO_MSG, file=sys.stderr)
+        print(_repo_scope_error_msg(), file=sys.stderr)
         return 1
 
     if args.k <= 0:
