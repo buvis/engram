@@ -2,10 +2,19 @@ import json
 
 import pytest
 
-from engram.client import EmbeddingEntry, EmbeddingPreflightError, Vector, embed
+from engram.client import (
+    EMBED_BATCH_MAX_CHARS,
+    EMBED_BATCH_SIZE,
+    EMBED_MAX_CHARS,
+    EmbeddingEntry,
+    EmbeddingPreflightError,
+    Vector,
+    embed,
+)
 
 from _embedding_server import (
     _MockEmbeddingServer,
+    _embed_payloads,
     _free_port,
     _input_list,
     _responder_with_broken_batch,
@@ -177,3 +186,63 @@ def test_embed_raises_on_scalar_data_element(mock_server):
 
     with pytest.raises(EmbeddingPreflightError):
         embed(["alpha"], entry)
+
+
+# --- regression: embed() budgets a request's total size, not just its count ---
+# Batching by a fixed text count let long, token-dense chunks (transcript error
+# turns, minified code) build a request far past what llama-server can hold; it
+# closed the connection mid-batch and the whole index run died.
+
+
+def test_embed_keeps_every_request_within_the_char_budget(mock_server):
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+    dense = ["x" * EMBED_MAX_CHARS] * 5
+
+    vectors = embed(dense, entry)
+
+    assert len(vectors) == 5
+    payloads = _embed_payloads(mock_server)
+    assert len(payloads) > 1
+    for payload in payloads:
+        assert sum(len(t) for t in _input_list(payload)) <= EMBED_BATCH_MAX_CHARS
+
+
+def test_embed_sends_a_max_length_text_alone_rather_than_dropping_it(mock_server):
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+
+    vectors = embed(["short", "y" * EMBED_MAX_CHARS, "also short"], entry)
+
+    assert len(vectors) == 3
+    sent = [_input_list(payload) for payload in _embed_payloads(mock_server)]
+    assert [len(batch) for batch in sent] == [1, 1, 1]
+
+
+def test_embed_still_packs_short_texts_into_one_request(mock_server):
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+    short = ["alpha"] * EMBED_BATCH_SIZE
+
+    vectors = embed(short, entry)
+
+    assert len(vectors) == EMBED_BATCH_SIZE
+    assert len(_embed_payloads(mock_server)) == 1
+
+
+def test_embed_names_the_batch_index_range_of_a_later_budgeted_request(mock_server):
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+
+    def fail_after_first(payload):
+        if len(_embed_payloads(mock_server)) > 1:
+            return 500, b'{"error": "boom"}'
+        data = [
+            {"index": i, "embedding": [float(i)] * 4, "object": "embedding"}
+            for i in range(len(_input_list(payload)))
+        ]
+        body = json.dumps({"object": "list", "model": mock_server.model_id, "data": data})
+        return 200, body.encode()
+
+    mock_server.responder = fail_after_first
+
+    with pytest.raises(EmbeddingPreflightError) as excinfo:
+        embed(["z" * EMBED_MAX_CHARS] * 3, entry)
+
+    assert "batch indices 1..1" in str(excinfo.value)

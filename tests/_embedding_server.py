@@ -82,6 +82,16 @@ class _MockEmbeddingServer:
         self._thread.join(timeout=5)
 
 
+def _embed_payloads(server: "_MockEmbeddingServer") -> list[dict]:
+    """Recorded requests minus preflight's single-string `ping` probe.
+
+    `embed()` calls `ensure_served` -> `preflight` on every invocation, so the
+    server records a probe ahead of the real batches; assertions about how
+    `embed()` batched its input must not count it.
+    """
+    return [payload for payload in server.requests if payload.get("input") != "ping"]
+
+
 def _responder_with_broken_batch(model_id: str, broken_data: list):
     def responder(payload):
         inputs = _input_list(payload)

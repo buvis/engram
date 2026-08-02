@@ -27,7 +27,12 @@ from engram.client import (
     stop_served,
 )
 
-from _embedding_server import _MockEmbeddingServer, _free_port, _input_list
+from _embedding_server import (
+    _MockEmbeddingServer,
+    _embed_payloads,
+    _free_port,
+    _input_list,
+)
 
 
 def _free_port_v6() -> int:
@@ -411,6 +416,56 @@ def test_ensure_served_spawns_stub_server_when_endpoint_is_dead(tmp_path, monkey
         stop_served(lease)
 
 
+def test_ensure_served_sizes_the_spawned_server_to_hold_a_full_request(
+    tmp_path, monkeypatch
+):
+    """Without explicit -c/-b/--ubatch-size the server runs on llama.cpp
+    defaults smaller than one budgeted request, and closes the connection
+    mid-batch. The sizing must also cover the request budget outright.
+    """
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    _write_stub_llama_server(bin_dir)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+    monkeypatch.setattr(client, "EMBED_REQUEST_TIMEOUT_S", 0.1)
+
+    spawned: list[list[str]] = []
+
+    class _RecordingPopen:
+        def __init__(self, argv, **kwargs):
+            spawned.append(argv)
+            self.pid = -1
+
+        def poll(self):
+            return None
+
+        def terminate(self):
+            """No-op: nothing was really spawned, so there is nothing to signal."""
+
+        def wait(self, timeout=None):
+            return 0
+
+        def kill(self):
+            """No-op: see terminate."""
+
+    monkeypatch.setattr(client.subprocess, "Popen", _RecordingPopen)
+
+    port = _free_port()
+    entry = EmbeddingEntry(id="stub-model", endpoint=f"http://127.0.0.1:{port}/v1")
+
+    with pytest.raises(EmbeddingServerError):
+        ensure_served(entry)
+
+    argv = spawned[0]
+    sizing = str(client.EMBED_SERVER_CTX_TOKENS)
+    assert argv[argv.index("-c") + 1] == sizing
+    assert argv[argv.index("-b") + 1] == sizing
+    assert argv[argv.index("--ubatch-size") + 1] == sizing
+    # Worst case is one token per character, so the server must be at least as
+    # large as the per-request character budget.
+    assert client.EMBED_SERVER_CTX_TOKENS >= client.EMBED_BATCH_MAX_CHARS
+
+
 def test_ensure_served_raises_when_llama_server_missing_from_path(tmp_path, monkeypatch):
     empty_bin = tmp_path / "empty-bin"
     empty_bin.mkdir()
@@ -484,15 +539,12 @@ def test_embed_truncates_long_text_only_in_outgoing_request(mock_server):
     vectors = embed(texts, entry)
 
     assert len(vectors) == 2
-    assert vectors[0].values == [0.0] * 4
-    assert vectors[1].values == [1.0] * 4
-
-    batch_payloads = [r for r in mock_server.requests if len(_input_list(r)) == 2]
-    assert len(batch_payloads) == 1
-    sent = _input_list(batch_payloads[0])
+    # Asserted across requests, not within one: a text at the truncation cap
+    # fills the per-request char budget, so "short" rides a second request.
+    sent = [t for p in _embed_payloads(mock_server) for t in _input_list(p)]
     assert len(sent[0]) == EMBED_MAX_CHARS
-    assert sent[0] == long_text[:EMBED_MAX_CHARS]
-    assert sent[1] == "short"
+    assert sent == [long_text[:EMBED_MAX_CHARS], "short"]
+    assert texts[0] == long_text  # the caller's own text is left intact
 
 
 # --- regression: ensure_served() reaps the spawned process on readiness timeout ---

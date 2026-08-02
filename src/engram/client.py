@@ -12,11 +12,19 @@ import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
 EMBED_MAX_CHARS = 8000
 EMBED_BATCH_SIZE = 64
+# A request's total size, not just its text count, has to fit the server's
+# batch — llama-server closes the connection when one overruns it. Kept equal
+# to EMBED_MAX_CHARS so a single max-length text always fits in a batch by
+# itself, and under EMBED_SERVER_CTX_TOKENS at the worst case of one token per
+# character (token-dense chunks: stack traces, JSON dumps, minified code).
+EMBED_BATCH_MAX_CHARS = EMBED_MAX_CHARS
+EMBED_SERVER_CTX_TOKENS = 8192
 EMBED_REQUEST_TIMEOUT_S = 120
 STOP_WAIT_TIMEOUT_S = 5
 
@@ -207,7 +215,24 @@ def ensure_served(entry: EmbeddingEntry) -> ServerLease:
 
     port = urllib.parse.urlsplit(entry.endpoint).port
     process = subprocess.Popen(
-        [binary, "--embedding", "-hf", entry.id, "--alias", entry.id, "--port", str(port)],
+        [
+            binary,
+            "--embedding",
+            "-hf",
+            entry.id,
+            "--alias",
+            entry.id,
+            "--port",
+            str(port),
+            # Without explicit sizing llama.cpp's defaults are smaller than a
+            # full request, and the server closes the connection mid-batch.
+            "-c",
+            str(EMBED_SERVER_CTX_TOKENS),
+            "-b",
+            str(EMBED_SERVER_CTX_TOKENS),
+            "--ubatch-size",
+            str(EMBED_SERVER_CTX_TOKENS),
+        ],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         stdin=subprocess.DEVNULL,
@@ -323,19 +348,41 @@ def _parse_batch_vectors(
     return [v for v in batch_vectors if v is not None]
 
 
+def _budgeted_batches(texts: list[str]) -> Iterator[tuple[int, list[str]]]:
+    """Yield `(start_index, truncated_texts)` requests within both budgets.
+
+    A batch closes when adding the next text would exceed EMBED_BATCH_SIZE
+    texts or EMBED_BATCH_MAX_CHARS characters. Batching by count alone let a
+    run of long, token-dense chunks build a request far past what the server
+    can hold; a text at the truncation cap is sent alone rather than dropped.
+    """
+    start = 0
+    batch: list[str] = []
+    total = 0
+    for index, text in enumerate(texts):
+        piece = text[:EMBED_MAX_CHARS]
+        if batch and (
+            len(batch) >= EMBED_BATCH_SIZE or total + len(piece) > EMBED_BATCH_MAX_CHARS
+        ):
+            yield start, batch
+            start, batch, total = index, [], 0
+        batch.append(piece)
+        total += len(piece)
+    if batch:
+        yield start, batch
+
+
 def embed(texts: list[str], entry: EmbeddingEntry) -> list[Vector]:
     ensure_served(entry)
 
     vectors: list[Vector] = []
-    for start in range(0, len(texts), EMBED_BATCH_SIZE):
-        batch = texts[start : start + EMBED_BATCH_SIZE]
-        truncated = [t[:EMBED_MAX_CHARS] for t in batch]
+    for start, truncated in _budgeted_batches(texts):
         try:
             payload = _post_embeddings(entry, truncated)
         except EmbeddingPreflightError as e:
             raise EmbeddingPreflightError(
-                f"{e} (batch indices {start}..{start + len(batch) - 1})"
+                f"{e} (batch indices {start}..{start + len(truncated) - 1})"
             ) from e
-        vectors.extend(_parse_batch_vectors(payload, batch, entry))
+        vectors.extend(_parse_batch_vectors(payload, truncated, entry))
 
     return vectors
