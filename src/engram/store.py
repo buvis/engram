@@ -250,6 +250,15 @@ class Store:
         else:
             conn.commit()
 
+    def known_sources(
+        self, scope: Scope, corpus: str | None
+    ) -> set[tuple[str, str, str]]:
+        where, params = self._scope_conditions(scope, corpus, "chunks")
+        rows = self.conn.execute(
+            f"SELECT repo, path, content_hash FROM chunks WHERE {where}", params
+        ).fetchall()
+        return {(r[0], r[1], r[2]) for r in rows}
+
     def prune(
         self, scope: Scope, corpus: str | None, active_sources: set[tuple[str, str, str]]
     ) -> int:
