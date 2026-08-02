@@ -1,4 +1,7 @@
+from pathlib import Path
+
 import pytest
+from engram.harvest import FileHarvestResult, HarvestReport
 
 from engram import corpora
 from engram.cli import main
@@ -18,7 +21,9 @@ def _stub_symbols_count_skipped(monkeypatch):
     # symbols.count_skipped(); default it to 0 (no line printed) so existing
     # tests (written before this producer existed) are unaffected.
     monkeypatch.setattr(
-        "engram.cli.symbols.count_skipped", lambda *a, **k: 0, raising=False
+        "engram.cli.symbols.count_skipped",
+        lambda *a, **k: 0,
+        raising=False,
     )
 
 
@@ -192,7 +197,9 @@ def test_non_findings_hit_prints_only_summary_line(monkeypatch, capsys):
     assert exit_code == 0
 
 
-def test_mixed_results_interleave_body_lines_only_for_findings_hits(monkeypatch, capsys):
+def test_mixed_results_interleave_body_lines_only_for_findings_hits(
+    monkeypatch, capsys
+):
     findings_pointer = Pointer(
         rank=1,
         score=0.9,
@@ -247,17 +254,22 @@ def test_status_scope_portfolio_prints_tab_separated_corpus_lines(monkeypatch, c
     report = StatusReport(
         per_corpus={
             "docs": CorpusStatus(
-                row_count=42, stale_files=["a.md", "b.md"], dead_rows=3
+                row_count=42,
+                stale_files=["a.md", "b.md"],
+                dead_rows=3,
             ),
             "adr": CorpusStatus(row_count=7, stale_files=[], dead_rows=0),
         },
     )
     monkeypatch.setattr(corpora, "missing_dirs", [])
     monkeypatch.setattr(
-        "engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False
+        "engram.cli.enumerate_corpora",
+        lambda *a, **k: iter([]),
+        raising=False,
     )
     monkeypatch.setattr(
-        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+        "engram.cli.open_store",
+        lambda *a, **k: _FakeStoreForStatus(report),
     )
 
     exit_code = main(["status", "--scope", "portfolio"])
@@ -275,7 +287,8 @@ def test_status_scope_portfolio_prints_tab_separated_corpus_lines(monkeypatch, c
 
 
 def test_status_prints_skipped_line_when_symbols_have_skipped_files(
-    monkeypatch, capsys
+    monkeypatch,
+    capsys,
 ):
     report = StatusReport(
         per_corpus={
@@ -284,13 +297,18 @@ def test_status_prints_skipped_line_when_symbols_have_skipped_files(
     )
     monkeypatch.setattr(corpora, "missing_dirs", [])
     monkeypatch.setattr(
-        "engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False
+        "engram.cli.enumerate_corpora",
+        lambda *a, **k: iter([]),
+        raising=False,
     )
     monkeypatch.setattr(
-        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+        "engram.cli.open_store",
+        lambda *a, **k: _FakeStoreForStatus(report),
     )
     monkeypatch.setattr(
-        "engram.cli.symbols.count_skipped", lambda *a, **k: 3, raising=False
+        "engram.cli.symbols.count_skipped",
+        lambda *a, **k: 3,
+        raising=False,
     )
 
     exit_code = main(["status", "--scope", "portfolio"])
@@ -308,10 +326,13 @@ def test_status_prints_no_skipped_line_when_no_files_were_skipped(monkeypatch, c
     )
     monkeypatch.setattr(corpora, "missing_dirs", [])
     monkeypatch.setattr(
-        "engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False
+        "engram.cli.enumerate_corpora",
+        lambda *a, **k: iter([]),
+        raising=False,
     )
     monkeypatch.setattr(
-        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+        "engram.cli.open_store",
+        lambda *a, **k: _FakeStoreForStatus(report),
     )
 
     exit_code = main(["status", "--scope", "portfolio"])
@@ -332,10 +353,13 @@ def test_status_exits_nonzero_when_a_corpus_has_stale_files(monkeypatch):
     )
     monkeypatch.setattr(corpora, "missing_dirs", [])
     monkeypatch.setattr(
-        "engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False
+        "engram.cli.enumerate_corpora",
+        lambda *a, **k: iter([]),
+        raising=False,
     )
     monkeypatch.setattr(
-        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+        "engram.cli.open_store",
+        lambda *a, **k: _FakeStoreForStatus(report),
     )
 
     exit_code = main(["status", "--scope", "portfolio"])
@@ -351,10 +375,13 @@ def test_status_exits_nonzero_when_a_corpus_has_dead_rows(monkeypatch):
     )
     monkeypatch.setattr(corpora, "missing_dirs", [])
     monkeypatch.setattr(
-        "engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False
+        "engram.cli.enumerate_corpora",
+        lambda *a, **k: iter([]),
+        raising=False,
     )
     monkeypatch.setattr(
-        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+        "engram.cli.open_store",
+        lambda *a, **k: _FakeStoreForStatus(report),
     )
 
     exit_code = main(["status", "--scope", "portfolio"])
@@ -371,10 +398,13 @@ def test_status_exits_zero_when_no_corpus_has_staleness_or_dead_rows(monkeypatch
     )
     monkeypatch.setattr(corpora, "missing_dirs", [])
     monkeypatch.setattr(
-        "engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False
+        "engram.cli.enumerate_corpora",
+        lambda *a, **k: iter([]),
+        raising=False,
     )
     monkeypatch.setattr(
-        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+        "engram.cli.open_store",
+        lambda *a, **k: _FakeStoreForStatus(report),
     )
 
     exit_code = main(["status", "--scope", "portfolio"])
@@ -386,7 +416,8 @@ def test_status_exits_zero_when_no_corpus_has_staleness_or_dead_rows(monkeypatch
 
 
 def test_status_reports_missing_corpus_dirs_without_forcing_nonzero_exit(
-    monkeypatch, capsys
+    monkeypatch,
+    capsys,
 ):
     report = StatusReport(
         per_corpus={
@@ -400,10 +431,13 @@ def test_status_reports_missing_corpus_dirs_without_forcing_nonzero_exit(
         return iter([])
 
     monkeypatch.setattr(
-        "engram.cli.enumerate_corpora", fake_enumerate_corpora, raising=False
+        "engram.cli.enumerate_corpora",
+        fake_enumerate_corpora,
+        raising=False,
     )
     monkeypatch.setattr(
-        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+        "engram.cli.open_store",
+        lambda *a, **k: _FakeStoreForStatus(report),
     )
 
     exit_code = main(["status", "--scope", "portfolio"])
@@ -429,10 +463,13 @@ def test_status_fails_loud_when_repos_csv_missing(monkeypatch, capsys):
         raise FileNotFoundError("repos.csv not found")
 
     monkeypatch.setattr(
-        "engram.cli.enumerate_corpora", fake_enumerate_corpora, raising=False
+        "engram.cli.enumerate_corpora",
+        fake_enumerate_corpora,
+        raising=False,
     )
     monkeypatch.setattr(
-        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+        "engram.cli.open_store",
+        lambda *a, **k: _FakeStoreForStatus(report),
     )
 
     exit_code = main(["status", "--scope", "portfolio"])
@@ -540,7 +577,8 @@ def test_index_fails_loud_when_repos_csv_missing(monkeypatch, capsys):
 
 
 def test_index_file_not_found_error_prints_the_producer_supplied_message(
-    monkeypatch, capsys
+    monkeypatch,
+    capsys,
 ):
     def fake_index(*args, **kwargs):
         raise FileNotFoundError("custom-cellar-marker not found")
@@ -557,7 +595,8 @@ def test_index_file_not_found_error_prints_the_producer_supplied_message(
 
 
 def test_status_file_not_found_error_prints_the_producer_supplied_message(
-    monkeypatch, capsys
+    monkeypatch,
+    capsys,
 ):
     report = StatusReport(
         per_corpus={
@@ -569,10 +608,13 @@ def test_status_file_not_found_error_prints_the_producer_supplied_message(
         raise FileNotFoundError("custom-cellar-marker not found")
 
     monkeypatch.setattr(
-        "engram.cli.enumerate_corpora", fake_enumerate_corpora, raising=False
+        "engram.cli.enumerate_corpora",
+        fake_enumerate_corpora,
+        raising=False,
     )
     monkeypatch.setattr(
-        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+        "engram.cli.open_store",
+        lambda *a, **k: _FakeStoreForStatus(report),
     )
 
     exit_code = main(["status", "--scope", "portfolio"])
@@ -609,7 +651,8 @@ def test_index_rebuild_with_corpus_is_rejected(monkeypatch):
 
 
 def test_query_store_model_mismatch_returns_nonzero_and_mentions_rebuild(
-    monkeypatch, capsys
+    monkeypatch,
+    capsys,
 ):
     def fake_query(*args, **kwargs):
         raise StoreModelMismatchError("embedding model mismatch")
@@ -657,7 +700,8 @@ def test_index_rebuild_swaps_live_db_only_after_successful_build(monkeypatch, tm
 
 
 def test_index_rebuild_closes_temp_store_connection_before_os_replace(
-    monkeypatch, tmp_path
+    monkeypatch,
+    tmp_path,
 ):
     events = []
 
@@ -668,7 +712,8 @@ def test_index_rebuild_closes_temp_store_connection_before_os_replace(
     monkeypatch.setattr("engram.cli.os.replace", fake_replace)
     monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
     monkeypatch.setattr(
-        "engram.cli.open_store", lambda *a, **k: _FakeRebuildStore(events)
+        "engram.cli.open_store",
+        lambda *a, **k: _FakeRebuildStore(events),
     )
     monkeypatch.setattr(
         "engram.cli.index",
@@ -855,3 +900,110 @@ def test_query_repo_scope_reports_not_in_registered_repo_when_repos_csv_present_
     assert exit_code != 0
     assert "not inside a registered repo" in captured.err
     assert "not found" not in captured.err
+
+
+# --- harvest: CLI dispatch and output ---
+
+
+def test_harvest_dispatches_through_main_and_calls_harvest_entry_point_with_paths(
+    monkeypatch,
+):
+    calls = []
+    sentinel_config = object()
+    sentinel_store = object()
+
+    def fake_harvest(store, config, paths):
+        calls.append((store, config, paths))
+        return HarvestReport(results=[])
+
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: sentinel_config)
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: sentinel_store)
+    monkeypatch.setattr("engram.cli.harvest", fake_harvest)
+
+    exit_code = main(["harvest", "a.md", "b.md"])
+
+    assert len(calls) == 1
+    store_arg, config_arg, paths_arg = calls[0]
+    assert store_arg is sentinel_store
+    assert config_arg is sentinel_config
+    assert paths_arg == [Path("a.md"), Path("b.md")]
+    assert exit_code == 0
+
+
+def test_harvest_prints_tab_separated_line_per_result(monkeypatch, capsys):
+    results = [
+        FileHarvestResult(path=Path("a.md"), outcome="upserted", records_count=3),
+        FileHarvestResult(path=Path("b.md"), outcome="no_repo", records_count=0),
+    ]
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+    monkeypatch.setattr(
+        "engram.cli.harvest",
+        lambda *a, **k: HarvestReport(results=results),
+    )
+
+    exit_code = main(["harvest", "a.md", "b.md"])
+
+    captured = capsys.readouterr()
+    assert captured.out.splitlines() == [
+        "a.md\tupserted\t3",
+        "b.md\tno_repo\t0",
+    ]
+    assert exit_code != 0
+
+
+def test_harvest_appends_error_suffix_when_result_has_error(monkeypatch, capsys):
+    results = [
+        FileHarvestResult(
+            path=Path("broken.md"),
+            outcome="parse_failed",
+            records_count=0,
+            error="missing Tests: line",
+        ),
+    ]
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+    monkeypatch.setattr(
+        "engram.cli.harvest",
+        lambda *a, **k: HarvestReport(results=results),
+    )
+
+    exit_code = main(["harvest", "broken.md"])
+
+    captured = capsys.readouterr()
+    assert captured.out.splitlines() == [
+        "broken.md\tparse_failed\t0\tmissing Tests: line"
+    ]
+    assert exit_code != 0
+
+
+@pytest.mark.parametrize(
+    "outcome,expected_exit_code",
+    [("upserted", 0), ("parse_failed", 1)],
+)
+def test_harvest_exit_code_reflects_report_any_failed(
+    monkeypatch,
+    outcome,
+    expected_exit_code,
+):
+    results = [FileHarvestResult(path=Path("a.md"), outcome=outcome, records_count=0)]
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+    monkeypatch.setattr(
+        "engram.cli.harvest",
+        lambda *a, **k: HarvestReport(results=results),
+    )
+
+    exit_code = main(["harvest", "a.md"])
+
+    assert exit_code == expected_exit_code
+
+
+def test_harvest_without_any_path_argument_exits_with_usage_error(monkeypatch):
+    monkeypatch.setattr("engram.cli.open_store", _refuse)
+    monkeypatch.setattr("engram.cli.harvest", _refuse)
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["harvest"])
+
+    assert exc_info.value.code == 2
