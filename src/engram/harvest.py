@@ -34,7 +34,7 @@ class HarvestReport:
 
 
 def _resolve_repo_for_path(path: Path, repos_csv: Path = GITA_REPOS_CSV) -> str | None:
-    cwd = path.parent if path.is_file() else path
+    cwd = path.parent
     try:
         result = subprocess.run(
             ["git", "rev-parse", "--show-toplevel"],
@@ -66,7 +66,7 @@ def harvest(store, config, paths: list[Path]) -> HarvestReport:
     for path in paths:
         try:
             resolved_path = path.resolve()
-        except (OSError, RuntimeError) as e:
+        except OSError as e:
             results.append(
                 FileHarvestResult(
                     path=path,
