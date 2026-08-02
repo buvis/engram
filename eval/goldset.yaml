@@ -7,7 +7,7 @@
 # if any path is missing, any corpus is unknown, or there are fewer than 30
 # entries.
 #
-# Corpora present: memory, prd, discovery. The "decision" corpus
+# Corpora present: memory, prd, discovery, transcripts, code. The "decision" corpus
 # (<repo>/dev/local/decisions.md) currently has no files anywhere in the
 # portfolio, so it is unrepresented here — add decision entries once a real
 # decisions.md exists.
@@ -75,11 +75,8 @@
   corpus: memory
 
 # --- prd corpus ---
-- query: "engram PRD for indexing heavy corpora like transcripts"
-  expected_path: "/Users/bob/git/src/github.com/buvis/engram/dev/local/prds/backlog/00002-engram-heavy-corpora-v1.md"
-  corpus: prd
-- query: "engram findings corpus PRD"
-  expected_path: "/Users/bob/git/src/github.com/buvis/engram/dev/local/prds/backlog/00003-engram-findings-corpus-v1.md"
+- query: "engram PRD for the core local retrieval pipeline and eval gate"
+  expected_path: "/Users/bob/git/src/github.com/buvis/engram/dev/local/prds/done/00001-engram-core-v1.md"
   corpus: prd
 - query: "make the ddb git merge tree construction three-way"
   expected_path: "/Users/bob/git/src/github.com/doogat/ddb/dev/local/prds/done/00200-make-merge-tree-three-way-v1.md"
@@ -125,3 +122,34 @@
 - query: "convert between circuit schematic, breadboard, and wokwi diagram formats"
   expected_path: "/Users/bob/git/src/github.com/tbouska/playground/dev/local/discovery/00006-format-interop-netlist-hub.md"
   corpus: discovery
+
+# --- transcripts corpus (past-incident paraphrases) ---
+- query: "neovim mason plugin update hung and timed out after 600 seconds during sysup"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/aaf89ba6-ad81-4b40-9377-12985ab8d2a5.jsonl"
+  corpus: transcripts
+- query: "sysup mac failed scanning the mise node global path for npm package updates"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/a6adbf1e-8538-430f-99c8-8848bfe7e762.jsonl"
+  corpus: transcripts
+- query: "generated standalone phaser html kids games came out broken and unplayable"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-tbouska-bobiste/b9c99c47-daa6-4390-9c84-513b2cb60361.jsonl"
+  corpus: transcripts
+- query: "architecture assessment of the exchanger rss feed service scheduler timezone and api auth"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-container-images/a7921781-c409-46c2-8ef5-fac1d0bbece6.jsonl"
+  corpus: transcripts
+
+# --- code corpus (cross-repo reuse seeds) ---
+- query: "have I built a notification dispatcher that posts to Slack, Discord, a generic webhook, and email"
+  expected_path: "/Users/bob/git/src/github.com/buvis/container-images/apps/mkdocs-git-sync/container-files/syncer/linkcheck/notifiers.py"
+  corpus: code
+- query: "have I built a cross-process write lock guard that blocks with a timeout"
+  expected_path: "/Users/bob/git/src/github.com/doogat/ddb/ddb-core/src/git_ops/write_lock.rs"
+  corpus: code
+- query: "have I built a parser that splits YAML frontmatter from a markdown body"
+  expected_path: "/Users/bob/git/src/github.com/buvis/mkdocs-zettelkasten/mkdocs_zettelkasten/plugin/utils/frontmatter.py"
+  corpus: code
+- query: "have I built a recurring reminder job that notifies people to stay in touch"
+  expected_path: "/Users/bob/git/src/github.com/buvis/container-images/apps/clara/backend/src/clara/jobs/reminders.py"
+  corpus: code
+- query: "have I built a console adapter that renders styled text and markdown to the terminal"
+  expected_path: "/Users/bob/git/src/github.com/buvis/gems/src/lib/buvis/pybase/adapters/console/console.py"
+  corpus: code
