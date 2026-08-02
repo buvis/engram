@@ -4,7 +4,7 @@ import pytest
 from engram.client import EmbeddingEntry, EngramConfig, Vector
 from engram.corpora import CorpusFile
 from engram.indexer import IndexReport, index
-from engram.store import Chunk, ChunkWithVector, Scope, open_store
+from engram.store import Chunk, ChunkWithVector, Scope, StoreModelMismatchError, open_store
 
 
 @pytest.fixture(autouse=True)
@@ -230,3 +230,100 @@ def test_empty_enumeration_yields_all_zero_report(tmp_path, monkeypatch):
         chunks_pruned=0,
         corpora_missing=[],
     )
+
+
+# --- mismatched configured model fails loud even when unchanged (PRD success metric) ---
+
+
+def test_reindex_unchanged_with_mismatched_model_fails_loud(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+
+    repo_dir = tmp_path / "repoA"
+    repo_dir.mkdir()
+    file_path = repo_dir / "doc.md"
+    file_path.write_text("# Heading\nstable content\n")
+
+    def fake_enum(*a, **k):
+        yield CorpusFile("notes", "repoA", file_path)
+
+    def counting_embed(texts, entry):
+        return [Vector([1.0, 0.0, 0.0, 0.0], entry.id, 4) for _ in texts]
+
+    monkeypatch.setattr("engram.indexer.enumerate_corpora", fake_enum)
+    monkeypatch.setattr("engram.indexer.embed", counting_embed)
+
+    first_report = index(store, _config(tmp_path, model_id="model-A"), Scope("portfolio", None))
+    assert first_report.chunks_added > 0
+
+    with pytest.raises(StoreModelMismatchError):
+        index(store, _config(tmp_path, model_id="model-B"), Scope("portfolio", None))
+
+
+# --- heading text is embedded together with the body ---
+
+
+def test_index_embeds_heading_with_body(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+
+    repo_dir = tmp_path / "repoA"
+    repo_dir.mkdir()
+    file_path = repo_dir / "doc.md"
+    file_path.write_text("# MyUniqueHeading\nsome body text\n")
+
+    def fake_enum(*a, **k):
+        yield CorpusFile("notes", "repoA", file_path)
+
+    embed_calls = []
+
+    def counting_embed(texts, entry):
+        embed_calls.append(texts)
+        return [Vector([1.0, 0.0, 0.0, 0.0], entry.id, 4) for _ in texts]
+
+    monkeypatch.setattr("engram.indexer.enumerate_corpora", fake_enum)
+    monkeypatch.setattr("engram.indexer.embed", counting_embed)
+
+    report = index(store, config, Scope("portfolio", None))
+
+    assert report.chunks_added > 0
+    all_texts = [text for call in embed_calls for text in call]
+    assert any("MyUniqueHeading" in text for text in all_texts)
+
+
+# --- re-indexing a changed file prunes stale chunks and adds fresh ones ---
+
+
+def test_reindexing_a_changed_file_prunes_old_and_adds_new(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+
+    repo_dir = tmp_path / "repoA"
+    repo_dir.mkdir()
+    file_path = repo_dir / "doc.md"
+    file_path.write_text("# Heading\nold-marker-xyz\n")
+
+    def fake_enum(*a, **k):
+        yield CorpusFile("notes", "repoA", file_path)
+
+    monkeypatch.setattr("engram.indexer.enumerate_corpora", fake_enum)
+    monkeypatch.setattr("engram.indexer.embed", fake_embed)
+
+    first_report = index(store, config, Scope("portfolio", None))
+    assert first_report.chunks_added > 0
+
+    file_path.write_text("# Heading\nnew-marker-xyz\n")
+
+    second_report = index(store, config, Scope("portfolio", None))
+
+    assert second_report.chunks_added > 0
+    assert second_report.chunks_pruned > 0
+
+    hits_new = store.search_bm25(
+        "new-marker-xyz", Scope("portfolio", None), corpus=None, k=10
+    )
+    assert len(hits_new) == 1
+
+    hits_old = store.search_bm25(
+        "old-marker-xyz", Scope("portfolio", None), corpus=None, k=10
+    )
+    assert hits_old == []
