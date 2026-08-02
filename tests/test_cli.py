@@ -483,3 +483,76 @@ def test_index_rebuild_removes_leftover_tmp_db_before_building(monkeypatch, tmp_
 
     assert not leftover_tmp.exists()
     assert exit_code == 0
+
+
+# --- default scope (no --scope flag) distinguishes missing repos.csv from unregistered repo ---
+
+
+def test_index_default_scope_fails_loud_with_repos_csv_message_when_registry_missing(
+    monkeypatch, tmp_path, capsys
+):
+    monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", tmp_path / "nonexistent-repos.csv")
+    monkeypatch.setattr("engram.cli.load_config", _refuse)
+    monkeypatch.setattr("engram.cli.open_store", _refuse)
+    monkeypatch.setattr("engram.cli.index", _refuse)
+
+    exit_code = main(["index"])
+
+    captured = capsys.readouterr()
+    assert exit_code != 0
+    assert "not found" in captured.err
+    assert "repos.csv" in captured.err
+    assert "not inside a registered repo" not in captured.err
+
+
+def test_status_default_scope_fails_loud_with_repos_csv_message_when_registry_missing(
+    monkeypatch, tmp_path, capsys
+):
+    monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", tmp_path / "nonexistent-repos.csv")
+    monkeypatch.setattr("engram.cli.open_store", _refuse)
+    monkeypatch.setattr("engram.cli.enumerate_corpora", _refuse, raising=False)
+
+    exit_code = main(["status"])
+
+    captured = capsys.readouterr()
+    assert exit_code != 0
+    assert "not found" in captured.err
+    assert "repos.csv" in captured.err
+    assert "not inside a registered repo" not in captured.err
+
+
+def test_index_default_scope_reports_not_in_registered_repo_when_repos_csv_present_but_repo_unregistered(
+    monkeypatch, tmp_path, capsys
+):
+    repos_csv = tmp_path / "repos.csv"
+    repos_csv.write_text("/some/other/repo,other-repo\n")
+    monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", repos_csv)
+    monkeypatch.setattr("engram.cli._resolve_repo_name", lambda: None)
+    monkeypatch.setattr("engram.cli.load_config", _refuse)
+    monkeypatch.setattr("engram.cli.open_store", _refuse)
+    monkeypatch.setattr("engram.cli.index", _refuse)
+
+    exit_code = main(["index"])
+
+    captured = capsys.readouterr()
+    assert exit_code != 0
+    assert "not inside a registered repo" in captured.err
+    assert "not found" not in captured.err
+
+
+def test_status_default_scope_reports_not_in_registered_repo_when_repos_csv_present_but_repo_unregistered(
+    monkeypatch, tmp_path, capsys
+):
+    repos_csv = tmp_path / "repos.csv"
+    repos_csv.write_text("/some/other/repo,other-repo\n")
+    monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", repos_csv)
+    monkeypatch.setattr("engram.cli._resolve_repo_name", lambda: None)
+    monkeypatch.setattr("engram.cli.open_store", _refuse)
+    monkeypatch.setattr("engram.cli.enumerate_corpora", _refuse, raising=False)
+
+    exit_code = main(["status"])
+
+    captured = capsys.readouterr()
+    assert exit_code != 0
+    assert "not inside a registered repo" in captured.err
+    assert "not found" not in captured.err
