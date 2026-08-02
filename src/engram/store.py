@@ -166,39 +166,37 @@ class Store:
         return SearchHit(chunk_id=chunk_id, score=score, chunk=chunk)
 
     def _create_vec_schema(self, baseline_model_id: str, baseline_dim: int) -> None:
-        conn = self.conn
-        conn.execute(
+        self.conn.execute(
             "CREATE VIRTUAL TABLE chunks_vec USING vec0("
             "chunk_id INTEGER PRIMARY KEY, "
             f"embedding FLOAT[{int(baseline_dim)}], "
             "repo TEXT PARTITION KEY, corpus TEXT PARTITION KEY)"
         )
-        conn.execute(
+        self.conn.execute(
             "CREATE TRIGGER chunks_ai AFTER INSERT ON chunks BEGIN "
             "INSERT INTO chunks_fts(rowid, heading, body) "
             "VALUES (new.id, new.heading, new.body); "
             "END"
         )
-        conn.execute(
+        self.conn.execute(
             "CREATE TRIGGER chunks_ad AFTER DELETE ON chunks BEGIN "
             "INSERT INTO chunks_fts(chunks_fts, rowid, heading, body) "
             "VALUES ('delete', old.id, old.heading, old.body); "
             "DELETE FROM chunks_vec WHERE chunk_id = old.id; "
             "END"
         )
-        conn.execute(
+        self.conn.execute(
             "INSERT INTO meta (key, value) VALUES ('embedding_model_id', ?)",
             (baseline_model_id,),
         )
-        conn.execute(
+        self.conn.execute(
             "INSERT INTO meta (key, value) VALUES ('embedding_dim', ?)",
             (str(baseline_dim),),
         )
 
     def _insert_chunk(self, item: ChunkWithVector) -> None:
-        conn = self.conn
         chunk = item.chunk
-        cursor = conn.execute(
+        cursor = self.conn.execute(
             "INSERT INTO chunks (corpus, repo, doc_type, path, heading, body, "
             "line_start, line_end, content_hash, chunk_ordinal) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -216,7 +214,7 @@ class Store:
             ),
         )
         chunk_id = cursor.lastrowid
-        conn.execute(
+        self.conn.execute(
             "INSERT INTO chunks_vec (chunk_id, embedding, repo, corpus) "
             "VALUES (?, ?, ?, ?)",
             (
