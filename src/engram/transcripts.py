@@ -13,7 +13,14 @@ from engram.corpora import CorpusFile
 from engram.store import Chunk
 
 CELLAR_PROJECTS_DIR: Path = (
-    Path.home() / "git" / "src" / "github.com" / "buvis" / "cellar" / ".claude" / "projects"
+    Path.home()
+    / "git"
+    / "src"
+    / "github.com"
+    / "buvis"
+    / "cellar"
+    / ".claude"
+    / "projects"
 )
 
 DEFAULT_ERROR_PATTERNS: list[str] = [
@@ -28,11 +35,9 @@ DEFAULT_ERROR_PATTERNS: list[str] = [
 def enumerate(projects_dir: Path = CELLAR_PROJECTS_DIR) -> Iterator[CorpusFile]:
     if not projects_dir.is_dir():
         raise FileNotFoundError(
-            f"{projects_dir} not found; cellar transcripts corpus requires this path"
+            f"{projects_dir} not found; cellar transcripts corpus requires this path",
         )
     for session_dir in sorted(projects_dir.iterdir()):
-        if not session_dir.is_dir():
-            continue
         for jsonl_file in sorted(session_dir.glob("*.jsonl")):
             if jsonl_file.is_file():
                 yield CorpusFile(corpus="transcripts", repo="cellar", path=jsonl_file)
@@ -106,7 +111,7 @@ def chunk(
                 line_end=line_number,
                 content_hash=content_hash,
                 chunk_ordinal=line_number,
-            )
+            ),
         )
 
     return chunks
