@@ -2,8 +2,8 @@
 
 from dataclasses import dataclass
 
-from engram.client import EngramConfig, Vector, embed
-from engram.store import Scope, Store
+from engram.client import EngramConfig, Vector, embed, resolve_pinned_entry
+from engram.store import Scope, SearchHit, Store
 
 RRF_POOL = 20
 RRF_K = 60
@@ -29,17 +29,14 @@ def query(
     corpus: str | None = None,
     k: int = 5,
 ) -> list[Pointer]:
-    if config.pinned_id is not None:
-        entry = next(e for e in config.embeddings if e.id == config.pinned_id)
-    else:
-        entry = config.embeddings[0]
+    entry = resolve_pinned_entry(config)
 
     bm25_hits = store.search_bm25(text, scope, corpus, RRF_POOL)
     query_vector: Vector = embed([text], entry)[0]
     knn_hits = store.search_knn(query_vector, scope, corpus, RRF_POOL)
 
     # Build lookup: chunk_id -> SearchHit (prefer BM25 if present in both)
-    hit_map: dict[int, object] = {}
+    hit_map: dict[int, SearchHit] = {}
     for hit in knn_hits:
         hit_map[hit.chunk_id] = hit
     for hit in bm25_hits:

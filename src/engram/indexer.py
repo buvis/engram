@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import engram.corpora as corpora
 from engram.chunker import chunk_markdown
-from engram.client import EmbeddingEntry, EngramConfig, embed
+from engram.client import EmbeddingEntry, EngramConfig, embed, resolve_pinned_entry
 from engram.corpora import CorpusFile, enumerate_corpora, hash_source
 from engram.store import ChunkWithVector, Scope, Store
 
@@ -33,10 +33,7 @@ def index(
 
     corpora_missing = list(corpora.missing_dirs)
 
-    if config.pinned_id is not None:
-        entry = next(e for e in config.embeddings if e.id == config.pinned_id)
-    else:
-        entry = config.embeddings[0]
+    entry = resolve_pinned_entry(config)
 
     store.assert_configured_model(entry.id)
 

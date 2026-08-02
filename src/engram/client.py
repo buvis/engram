@@ -135,6 +135,17 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> EngramConfig:
     return EngramConfig(embeddings=embeddings, pinned_id=pinned_id, config_path=path)
 
 
+def resolve_pinned_entry(config: EngramConfig) -> EmbeddingEntry:
+    if not config.embeddings:
+        raise ValueError("config has no embedding entries")
+    if config.pinned_id is not None:
+        entry = next((e for e in config.embeddings if e.id == config.pinned_id), None)
+        if entry is None:
+            raise ValueError(f"pinned id {config.pinned_id!r} is not in the embedding shortlist")
+        return entry
+    return config.embeddings[0]
+
+
 def _post_embeddings(entry: EmbeddingEntry, inputs) -> dict:
     url = f"{entry.endpoint}/embeddings"
     body = json.dumps({"model": entry.id, "input": inputs}).encode()
