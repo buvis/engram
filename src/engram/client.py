@@ -259,6 +259,46 @@ def stop_served(lease: ServerLease) -> None:
                 pass
 
 
+def _parse_vector_item(
+    item, batch: list[str], entry: EmbeddingEntry, seen_idx: set[int], dim: int | None
+) -> tuple[int, Vector, int]:
+    if not isinstance(item, dict):
+        raise EmbeddingPreflightError(
+            f"invalid data element in embedding response from {entry.endpoint} "
+            f"for {entry.id}"
+        )
+    idx = item.get("index")
+    if not isinstance(idx, int) or idx < 0 or idx >= len(batch):
+        raise EmbeddingPreflightError(
+            f"invalid index in embedding response from {entry.endpoint} "
+            f"for {entry.id}"
+        )
+    if idx in seen_idx:
+        raise EmbeddingPreflightError(
+            f"duplicate index {idx} in embedding response from "
+            f"{entry.endpoint} for {entry.id}"
+        )
+    seen_idx.add(idx)
+    values = item.get("embedding")
+    if (
+        not isinstance(values, list)
+        or not values
+        or not all(isinstance(v, (int, float)) and math.isfinite(v) for v in values)
+    ):
+        raise EmbeddingPreflightError(
+            f"invalid embedding vector at index {idx} in response from "
+            f"{entry.endpoint} for {entry.id}"
+        )
+    if dim is None:
+        dim = len(values)
+    elif len(values) != dim:
+        raise EmbeddingPreflightError(
+            f"inconsistent embedding dimension in response from "
+            f"{entry.endpoint} for {entry.id}"
+        )
+    return idx, Vector(values=values, model_id=entry.id, dim=len(values)), dim
+
+
 def _parse_batch_vectors(
     payload: dict, batch: list[str], entry: EmbeddingEntry
 ) -> list[Vector]:
@@ -272,43 +312,15 @@ def _parse_batch_vectors(
     seen_idx: set[int] = set()
     dim: int | None = None
     for item in data:
-        idx = item.get("index")
-        if not isinstance(idx, int) or idx < 0 or idx >= len(batch):
-            raise EmbeddingPreflightError(
-                f"invalid index in embedding response from {entry.endpoint} "
-                f"for {entry.id}"
-            )
-        if idx in seen_idx:
-            raise EmbeddingPreflightError(
-                f"duplicate index {idx} in embedding response from "
-                f"{entry.endpoint} for {entry.id}"
-            )
-        seen_idx.add(idx)
-        values = item.get("embedding")
-        if (
-            not isinstance(values, list)
-            or not values
-            or not all(isinstance(v, (int, float)) and math.isfinite(v) for v in values)
-        ):
-            raise EmbeddingPreflightError(
-                f"invalid embedding vector at index {idx} in response from "
-                f"{entry.endpoint} for {entry.id}"
-            )
-        if dim is None:
-            dim = len(values)
-        elif len(values) != dim:
-            raise EmbeddingPreflightError(
-                f"inconsistent embedding dimension in response from "
-                f"{entry.endpoint} for {entry.id}"
-            )
-        batch_vectors[idx] = Vector(values=values, model_id=entry.id, dim=len(values))
+        idx, vector, dim = _parse_vector_item(item, batch, entry, seen_idx, dim)
+        batch_vectors[idx] = vector
 
     if any(v is None for v in batch_vectors):
         raise EmbeddingPreflightError(
             f"missing index in embedding response from {entry.endpoint} for {entry.id}"
         )
 
-    return batch_vectors
+    return [v for v in batch_vectors if v is not None]
 
 
 def embed(texts: list[str], entry: EmbeddingEntry) -> list[Vector]:
