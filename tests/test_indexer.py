@@ -462,21 +462,21 @@ def test_index_enumerates_transcripts_producer_and_indexes_its_chunks(tmp_path, 
     def fake_transcripts_enum(*a, **k):
         yield CorpusFile("transcripts", "cellar", transcript_path)
 
-    transcript_chunk = Chunk(
-        corpus="transcripts",
-        repo="cellar",
-        doc_type="turn",
-        path=str(transcript_path),
-        heading="user turn",
-        body="freshly-added-transcript-marker",
-        line_start=1,
-        line_end=1,
-        content_hash="whatever",
-        chunk_ordinal=1,
-    )
-
     def fake_transcripts_chunk(path, repo, content_hash):
-        return [transcript_chunk]
+        return [
+            Chunk(
+                corpus="transcripts",
+                repo="cellar",
+                doc_type="turn",
+                path=str(transcript_path),
+                heading="user turn",
+                body="freshly-added-transcript-marker",
+                line_start=1,
+                line_end=1,
+                content_hash=content_hash,
+                chunk_ordinal=1,
+            )
+        ]
 
     monkeypatch.setattr("engram.indexer.enumerate_corpora", fake_enum_corpora)
     monkeypatch.setattr("engram.indexer.transcripts.enumerate", fake_transcripts_enum)
