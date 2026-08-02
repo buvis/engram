@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from engram.client import EmbeddingEntry, EngramConfig, Vector, embed
+from engram.client import EngramConfig, Vector, embed
 from engram.store import Scope, Store
 
 RRF_POOL = 20
@@ -29,14 +29,11 @@ def query(
     corpus: str | None = None,
     k: int = 5,
 ) -> list[Pointer]:
-    # Select embedding entry
-    entry: EmbeddingEntry
     if config.pinned_id is not None:
         entry = next(e for e in config.embeddings if e.id == config.pinned_id)
     else:
         entry = config.embeddings[0]
 
-    # Run both retrieval legs
     bm25_hits = store.search_bm25(text, scope, corpus, RRF_POOL)
     query_vector: Vector = embed([text], entry)[0]
     knn_hits = store.search_knn(query_vector, scope, corpus, RRF_POOL)
@@ -55,7 +52,6 @@ def query(
     for i, hit in enumerate(knn_hits):
         fused[hit.chunk_id] = fused.get(hit.chunk_id, 0.0) + 1.0 / (RRF_K + i + 1)
 
-    # Sort by fused score descending, take top k
     sorted_ids = sorted(fused, key=lambda cid: fused[cid], reverse=True)[:k]
 
     return [
