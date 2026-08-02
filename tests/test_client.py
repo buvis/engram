@@ -818,6 +818,28 @@ def test_embed_raises_on_null_data_field(mock_server):
         embed(["alpha"], entry)
 
 
+def test_embed_raises_on_null_data_element(mock_server):
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+    mock_server.responder = lambda payload: (
+        200,
+        json.dumps({"object": "list", "model": mock_server.model_id, "data": [None]}).encode(),
+    )
+
+    with pytest.raises(EmbeddingPreflightError):
+        embed(["alpha"], entry)
+
+
+def test_embed_raises_on_scalar_data_element(mock_server):
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+    mock_server.responder = lambda payload: (
+        200,
+        json.dumps({"object": "list", "model": mock_server.model_id, "data": [1]}).encode(),
+    )
+
+    with pytest.raises(EmbeddingPreflightError):
+        embed(["alpha"], entry)
+
+
 # --- regression: ensure_served() reaps the spawned process on model identity mismatch ---
 
 
