@@ -1,0 +1,127 @@
+# Gold set for engram retrieval eval (PRD 00001).
+#
+# Each entry pairs a natural-language query with the single file that should
+# surface in engram's top-5 for it, plus the corpus that file belongs to.
+# All expected_path values are absolute and were verified to exist on disk at
+# authoring time; load_goldset() re-checks existence and rejects the whole set
+# if any path is missing, any corpus is unknown, or there are fewer than 30
+# entries.
+#
+# Corpora present: memory, prd, discovery. The "decision" corpus
+# (<repo>/dev/local/decisions.md) currently has no files anywhere in the
+# portfolio, so it is unrepresented here — add decision entries once a real
+# decisions.md exists.
+
+# --- memory corpus ---
+- query: "does engram serve embeddings with llama-server or LlamaBarn"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-engram/memory/embedding-serving-is-llama-server.md"
+  corpus: memory
+- query: "is engram a standalone CLI or a Claude plugin"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-engram/memory/engram-is-cli-not-plugin.md"
+  corpus: memory
+- query: "autopilot locked out when cargo ran the machine out of memory"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob--claude/memory/project_autopilot_cargo_oom_lockout.md"
+  corpus: memory
+- query: "git HEAD moves during autopilot review because the worktree is live"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob--claude/memory/project_autopilot_head_moves_midreview.md"
+  corpus: memory
+- query: "why never use git add -A in the buvis home dotfiles repo"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob--claude/memory/feedback_buvis_never_commit_dash_a.md"
+  corpus: memory
+- query: "do not route Claude models through the copilot backend"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob--claude/memory/feedback_no_copilot_for_claude_models.md"
+  corpus: memory
+- query: "local qwen model stack with llama.cpp and the pi agent"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob--claude/memory/project_qwen_local_stack.md"
+  corpus: memory
+- query: "native Grep and Glob tools are unavailable in this build"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob--claude/memory/reference_grep_glob_missing.md"
+  corpus: memory
+- query: "warden deadlocks an unattended autopilot session, how was it fixed"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob--claude/memory/project_warden_unattended_deadlock_fix.md"
+  corpus: memory
+- query: "subagents editing files in a live worktree so never git add dash A"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob--claude/memory/feedback_subagents_vs_live_worktree.md"
+  corpus: memory
+- query: "caldav save hijacks the recurrence rule on event writes"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-calcard-mcp/memory/caldav-save-recurrence-hijack.md"
+  corpus: memory
+- query: "data-loss risk in the ddb write path"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-doogat-ddb/memory/project_data_loss_write_path.md"
+  corpus: memory
+- query: "concurrency race when rebuilding the ddb index"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-doogat-ddb/memory/project_index_rebuild_concurrency_race.md"
+  corpus: memory
+- query: "two separate error mapping paths in the ddb server"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-doogat-ddb/memory/project_two_error_mapping_paths.md"
+  corpus: memory
+- query: "circular dependency in the cluster DNS bootstrap"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-clusters/memory/project_dns_circular_dep.md"
+  corpus: memory
+- query: "git ls-files trap in the buvis bare home repo"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/memory/project_buvis-ls-files-trap.md"
+  corpus: memory
+- query: "warden npm v3 release version was burned and cannot be reused"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-claude-warden/memory/project_npm_v3_burned.md"
+  corpus: memory
+- query: "xterm v6 addon version mismatch in the webui image"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-container-images/memory/project_xterm_v6_addon_mismatch.md"
+  corpus: memory
+- query: "cen is an interpreter, not a compiler"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob-bim/memory/cen-interpreter-not-compiler.md"
+  corpus: memory
+- query: "reviewer CLI quality degrades when running the local model"
+  expected_path: "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-tbouska-playground/memory/reviewer-cli-degradation.md"
+  corpus: memory
+
+# --- prd corpus ---
+- query: "engram PRD for indexing heavy corpora like transcripts"
+  expected_path: "/Users/bob/git/src/github.com/buvis/engram/dev/local/prds/backlog/00002-engram-heavy-corpora-v1.md"
+  corpus: prd
+- query: "engram findings corpus PRD"
+  expected_path: "/Users/bob/git/src/github.com/buvis/engram/dev/local/prds/backlog/00003-engram-findings-corpus-v1.md"
+  corpus: prd
+- query: "make the ddb git merge tree construction three-way"
+  expected_path: "/Users/bob/git/src/github.com/doogat/ddb/dev/local/prds/done/00200-make-merge-tree-three-way-v1.md"
+  corpus: prd
+- query: "cross-process write lock for ddb"
+  expected_path: "/Users/bob/git/src/github.com/doogat/ddb/dev/local/prds/done/00162-cross-process-write-lock-v1.md"
+  corpus: prd
+- query: "deterministic CRDT conflict resolution in ddb"
+  expected_path: "/Users/bob/git/src/github.com/doogat/ddb/dev/local/prds/done/00165-deterministic-crdt-resolution-v1.md"
+  corpus: prd
+- query: "SQL identifier escaping in the ddb materializer"
+  expected_path: "/Users/bob/git/src/github.com/doogat/ddb/dev/local/prds/backlog/00179-sql-identifier-escaping-materializer-v1.md"
+  corpus: prd
+- query: "add If-Match preconditions to calendar event writes"
+  expected_path: "/Users/bob/git/src/github.com/buvis/calcard-mcp/dev/local/prds/backlog/00032-add-if-match-preconditions-to-event-writes.md"
+  corpus: prd
+- query: "fix find-free-time naive datetime anchoring bug"
+  expected_path: "/Users/bob/git/src/github.com/buvis/calcard-mcp/dev/local/prds/backlog/00036-fix-find-free-time-naive-datetime-anchoring.md"
+  corpus: prd
+- query: "warden should scan heredoc script bodies for dangerous commands"
+  expected_path: "/Users/bob/git/src/github.com/buvis/claude-warden/dev/local/prds/done/00016-scan-heredoc-script-bodies-v1.md"
+  corpus: prd
+- query: "operator retain PVC data loss risk in container-images"
+  expected_path: "/Users/bob/git/src/github.com/buvis/container-images/dev/local/prds/backlog/00029-operator-retain-pvc-data-loss-v1.md"
+  corpus: prd
+- query: "retire the pidash TUI"
+  expected_path: "/Users/bob/git/src/github.com/buvis/gems/dev/local/prds/backlog/00071-retire-pidash-v1.md"
+  corpus: prd
+- query: "add an rm safety guard to the dot command"
+  expected_path: "/Users/bob/git/src/github.com/buvis/gems/dev/local/prds/backlog/00045-dot-rm-safety-v1.md"
+  corpus: prd
+- query: "harden the jink favicon fetch pipeline"
+  expected_path: "/Users/bob/git/src/github.com/doogat/jink/dev/local/prds/backlog/00029-harden-favicon-fetch-pipeline-v1.md"
+  corpus: prd
+- query: "block invisible unicode characters in aegis"
+  expected_path: "/Users/bob/git/src/github.com/buvis/claude-aegis/dev/local/prds/backlog/00008-block-invisible-unicode-v1.md"
+  corpus: prd
+
+# --- discovery corpus ---
+- query: "portfolio standup gem that runs without an LLM and absorbs pidash"
+  expected_path: "/Users/bob/git/src/github.com/buvis/gems/dev/local/discovery/00062-postup-gem.md"
+  corpus: discovery
+- query: "convert between circuit schematic, breadboard, and wokwi diagram formats"
+  expected_path: "/Users/bob/git/src/github.com/tbouska/playground/dev/local/discovery/00006-format-interop-netlist-hub.md"
+  corpus: discovery
