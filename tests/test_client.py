@@ -38,6 +38,12 @@ def _free_port() -> int:
         return s.getsockname()[1]
 
 
+def _free_port_v6() -> int:
+    with socket.socket(socket.AF_INET6, socket.SOCK_STREAM) as s:
+        s.bind(("::1", 0))
+        return s.getsockname()[1]
+
+
 def _input_list(payload: dict) -> list:
     inputs = payload.get("input", [])
     return [inputs] if isinstance(inputs, str) else inputs
@@ -802,6 +808,91 @@ def test_loopback_redirect_handler_refuses_off_machine_target():
 
     with pytest.raises(Exception):
         handler.redirect_request(req, fp, 302, "Found", headers, "http://127.0.0.2:9/x")
+
+
+def test_post_embeddings_refuses_redirect_to_reachable_off_machine_loopback_host():
+    """End-to-end: drives _post_embeddings's real HTTP call through _OPENER
+    against a real 302 redirect, rather than calling the redirect handler
+    directly.
+
+    The redirect target (IPv6 loopback ::1, not in _LOOPBACK_HOSTS) is a
+    genuinely reachable, listening server that would answer with a valid
+    embedding if followed. This makes the assertion below bind to _OPENER
+    being wired in: with _OPENER, _LoopbackRedirectHandler refuses the
+    redirect and this raises EmbeddingPreflightError. If _post_embeddings
+    ever stopped routing through _OPENER (e.g. plain urllib.request.urlopen),
+    the default redirect handler would follow the redirect to the reachable
+    stub below and the call would SUCCEED instead of raising, so this test
+    would fail.
+    """
+    reachable_port = _free_port_v6()
+
+    class ReachableHandler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def _respond(self):
+            body = json.dumps(
+                {
+                    "object": "list",
+                    "model": "off-machine",
+                    "data": [
+                        {"index": 0, "embedding": [9.0, 9.0, 9.0, 9.0], "object": "embedding"}
+                    ],
+                }
+            ).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def do_GET(self):
+            self._respond()
+
+        def do_POST(self):
+            n = int(self.headers.get("Content-Length") or 0)
+            self.rfile.read(n)
+            self._respond()
+
+    class _V6HTTPServer(http.server.HTTPServer):
+        address_family = socket.AF_INET6
+
+    reachable_server = _V6HTTPServer(("::1", reachable_port), ReachableHandler)
+    reachable_thread = threading.Thread(target=reachable_server.serve_forever, daemon=True)
+    reachable_thread.start()
+
+    redirect_target = f"http://[::1]:{reachable_port}/v1/embeddings"
+
+    class RedirectHandler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def do_POST(self):
+            n = int(self.headers.get("Content-Length") or 0)
+            self.rfile.read(n)
+            self.send_response(302, "Found")
+            self.send_header("Location", redirect_target)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+
+    redirect_port = _free_port()
+    redirect_server = http.server.HTTPServer(("127.0.0.1", redirect_port), RedirectHandler)
+    redirect_thread = threading.Thread(target=redirect_server.serve_forever, daemon=True)
+    redirect_thread.start()
+
+    try:
+        entry = EmbeddingEntry(id="x", endpoint=f"http://127.0.0.1:{redirect_port}/v1")
+
+        with pytest.raises(EmbeddingPreflightError):
+            client._post_embeddings(entry, ["hello"])
+    finally:
+        redirect_server.shutdown()
+        redirect_server.server_close()
+        redirect_thread.join(timeout=5)
+        reachable_server.shutdown()
+        reachable_server.server_close()
+        reachable_thread.join(timeout=5)
 
 
 # --- regression: embed() fails loud on a null data field instead of raising TypeError ---

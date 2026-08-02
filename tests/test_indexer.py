@@ -287,7 +287,8 @@ def test_index_embeds_heading_with_body(tmp_path, monkeypatch):
 
     assert report.chunks_added > 0
     all_texts = [text for call in embed_calls for text in call]
-    assert any("MyUniqueHeading" in text for text in all_texts)
+    assert any("MyUniqueHeading" in t and "some body text" in t for t in all_texts)
+    assert len(all_texts) == report.chunks_added
 
 
 # --- re-indexing a changed file prunes stale chunks and adds fresh ones ---
