@@ -3,7 +3,7 @@ import pytest
 
 from engram.client import EmbeddingEntry, EngramConfig, Vector
 from engram.corpora import CorpusFile
-from engram.indexer import IndexReport, index
+from engram.indexer import IndexReport, _chunk_file, index
 from engram.store import Chunk, ChunkWithVector, Scope, StoreModelMismatchError, open_store
 
 
@@ -14,6 +14,15 @@ def _reset_missing_dirs():
     corpora_module.missing_dirs.clear()
     yield
     corpora_module.missing_dirs.clear()
+
+
+@pytest.fixture(autouse=True)
+def _stub_new_producers(monkeypatch):
+    # index() now chains in the transcripts and symbols producers alongside
+    # enumerate_corpora; default them to no-ops so existing tests (which only
+    # stub enumerate_corpora) don't hit the real filesystem or spawn git.
+    monkeypatch.setattr("engram.indexer.transcripts.enumerate", lambda *a, **k: iter(()))
+    monkeypatch.setattr("engram.indexer.symbols.enumerate", lambda *a, **k: iter(()))
 
 
 def _entry(model_id="test-model"):
@@ -328,3 +337,156 @@ def test_reindexing_a_changed_file_prunes_old_and_adds_new(tmp_path, monkeypatch
         "old-marker-xyz", Scope("portfolio", None), corpus=None, k=10
     )
     assert hits_old == []
+
+
+# --- _chunk_file: dispatches by corpus ---
+
+
+def test_chunk_file_routes_transcripts_corpus_to_transcripts_chunk(tmp_path, monkeypatch):
+    file_path = tmp_path / "session.jsonl"
+    file_path.write_text("")
+    file = CorpusFile("transcripts", "cellar", file_path)
+
+    known_chunk = Chunk(
+        corpus="transcripts",
+        repo="cellar",
+        doc_type="turn",
+        path=str(file_path),
+        heading="user turn",
+        body="body",
+        line_start=1,
+        line_end=1,
+        content_hash="hash123",
+        chunk_ordinal=1,
+    )
+
+    calls = []
+
+    def fake_transcripts_chunk(path, repo, content_hash):
+        calls.append((path, repo, content_hash))
+        return [known_chunk]
+
+    def refuse_chunk_markdown(*a, **k):
+        raise AssertionError("chunk_markdown should not be used for a transcripts file")
+
+    monkeypatch.setattr("engram.indexer.transcripts.chunk", fake_transcripts_chunk)
+    monkeypatch.setattr("engram.indexer.chunk_markdown", refuse_chunk_markdown)
+
+    result = _chunk_file(file, "hash123")
+
+    assert calls == [(file_path, "cellar", "hash123")]
+    assert result == [known_chunk]
+
+
+def test_chunk_file_routes_code_corpus_to_symbols_chunk(tmp_path, monkeypatch):
+    file_path = tmp_path / "main.py"
+    file_path.write_text("def f():\n    pass\n")
+    file = CorpusFile("code", "repoA", file_path)
+
+    known_chunk = Chunk(
+        corpus="code",
+        repo="repoA",
+        doc_type="function",
+        path=str(file_path),
+        heading="function f",
+        body="def f():\n    pass",
+        line_start=1,
+        line_end=2,
+        content_hash="hash456",
+        chunk_ordinal=1,
+    )
+
+    calls = []
+
+    def fake_symbols_chunk(path, repo, content_hash):
+        calls.append((path, repo, content_hash))
+        return [known_chunk]
+
+    def refuse_chunk_markdown(*a, **k):
+        raise AssertionError("chunk_markdown should not be used for a code file")
+
+    monkeypatch.setattr("engram.indexer.symbols.chunk", fake_symbols_chunk)
+    monkeypatch.setattr("engram.indexer.chunk_markdown", refuse_chunk_markdown)
+
+    result = _chunk_file(file, "hash456")
+
+    assert calls == [(file_path, "repoA", "hash456")]
+    assert result == [known_chunk]
+
+
+def test_chunk_file_routes_other_corpora_to_chunk_markdown(tmp_path, monkeypatch):
+    file_path = tmp_path / "doc.md"
+    file_path.write_text("# H\nbody\n")
+    file = CorpusFile("memory", "repoA", file_path)
+
+    known_chunk = Chunk(
+        corpus="memory",
+        repo="repoA",
+        doc_type="md",
+        path=str(file_path),
+        heading="H",
+        body="body",
+        line_start=1,
+        line_end=2,
+        content_hash="hash789",
+        chunk_ordinal=0,
+    )
+
+    calls = []
+
+    def fake_chunk_markdown(path, corpus, repo, content_hash):
+        calls.append((path, corpus, repo, content_hash))
+        return [known_chunk]
+
+    monkeypatch.setattr("engram.indexer.chunk_markdown", fake_chunk_markdown)
+
+    result = _chunk_file(file, "hash789")
+
+    assert calls == [(file_path, "memory", "repoA", "hash789")]
+    assert result == [known_chunk]
+
+
+# --- index() enumerates the transcripts producer ---
+
+
+def test_index_enumerates_transcripts_producer_and_indexes_its_chunks(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+
+    transcript_path = tmp_path / "session.jsonl"
+    transcript_path.write_text('{"type": "user"}\n')
+
+    def fake_enum_corpora(*a, **k):
+        return iter(())
+
+    def fake_transcripts_enum(*a, **k):
+        yield CorpusFile("transcripts", "cellar", transcript_path)
+
+    transcript_chunk = Chunk(
+        corpus="transcripts",
+        repo="cellar",
+        doc_type="turn",
+        path=str(transcript_path),
+        heading="user turn",
+        body="freshly-added-transcript-marker",
+        line_start=1,
+        line_end=1,
+        content_hash="whatever",
+        chunk_ordinal=1,
+    )
+
+    def fake_transcripts_chunk(path, repo, content_hash):
+        return [transcript_chunk]
+
+    monkeypatch.setattr("engram.indexer.enumerate_corpora", fake_enum_corpora)
+    monkeypatch.setattr("engram.indexer.transcripts.enumerate", fake_transcripts_enum)
+    monkeypatch.setattr("engram.indexer.transcripts.chunk", fake_transcripts_chunk)
+    monkeypatch.setattr("engram.indexer.embed", fake_embed)
+
+    report = index(store, config, Scope("portfolio", None))
+
+    assert report.chunks_added > 0
+    hits = store.search_bm25(
+        "freshly-added-transcript-marker", Scope("portfolio", None), corpus=None, k=10
+    )
+    assert len(hits) == 1

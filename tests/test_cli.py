@@ -11,6 +11,14 @@ def _refuse(*args, **kwargs):
     raise AssertionError("should not be called")
 
 
+@pytest.fixture(autouse=True)
+def _stub_symbols_count_skipped(monkeypatch):
+    # _run_status now prints a "code\tskipped=N" line driven by
+    # symbols.count_skipped(); default it to 0 (no line printed) so existing
+    # tests (written before this producer existed) are unaffected.
+    monkeypatch.setattr("engram.cli.symbols.count_skipped", lambda *a, **k: 0, raising=False)
+
+
 class _FakeStoreForStatus:
     def __init__(self, report):
         self._report = report
@@ -148,6 +156,44 @@ def test_status_scope_portfolio_prints_tab_separated_corpus_lines(monkeypatch, c
     ]
     # this report has stale files and dead rows, so status must fail loud
     assert exit_code != 0
+
+
+# --- status surfaces symbols.count_skipped() ---
+
+
+def test_status_prints_skipped_line_when_symbols_have_skipped_files(monkeypatch, capsys):
+    report = StatusReport(
+        per_corpus={
+            "docs": CorpusStatus(row_count=42, stale_files=[], dead_rows=0),
+        }
+    )
+    monkeypatch.setattr(corpora, "missing_dirs", [])
+    monkeypatch.setattr("engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False)
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report))
+    monkeypatch.setattr("engram.cli.symbols.count_skipped", lambda *a, **k: 3, raising=False)
+
+    exit_code = main(["status", "--scope", "portfolio"])
+
+    captured = capsys.readouterr()
+    assert any("skipped=3" in line for line in captured.out.splitlines())
+    assert exit_code == 0
+
+
+def test_status_prints_no_skipped_line_when_no_files_were_skipped(monkeypatch, capsys):
+    report = StatusReport(
+        per_corpus={
+            "docs": CorpusStatus(row_count=42, stale_files=[], dead_rows=0),
+        }
+    )
+    monkeypatch.setattr(corpora, "missing_dirs", [])
+    monkeypatch.setattr("engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False)
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report))
+
+    exit_code = main(["status", "--scope", "portfolio"])
+
+    captured = capsys.readouterr()
+    assert "skipped=" not in captured.out
+    assert exit_code == 0
 
 
 # --- status fails loud on staleness ---
@@ -341,6 +387,44 @@ def test_index_fails_loud_when_repos_csv_missing(monkeypatch, capsys):
     captured = capsys.readouterr()
     assert exit_code != 0
     assert "repos.csv" in captured.err
+
+
+# --- index/status print the raised FileNotFoundError's own message ---
+
+
+def test_index_file_not_found_error_prints_the_producer_supplied_message(monkeypatch, capsys):
+    def fake_index(*args, **kwargs):
+        raise FileNotFoundError("custom-cellar-marker not found")
+
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.index", fake_index)
+
+    exit_code = main(["index", "--scope", "portfolio"])
+
+    captured = capsys.readouterr()
+    assert exit_code != 0
+    assert "custom-cellar-marker" in captured.err
+
+
+def test_status_file_not_found_error_prints_the_producer_supplied_message(monkeypatch, capsys):
+    report = StatusReport(
+        per_corpus={
+            "docs": CorpusStatus(row_count=42, stale_files=[], dead_rows=0),
+        }
+    )
+
+    def fake_enumerate_corpora(*args, **kwargs):
+        raise FileNotFoundError("custom-cellar-marker not found")
+
+    monkeypatch.setattr("engram.cli.enumerate_corpora", fake_enumerate_corpora, raising=False)
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report))
+
+    exit_code = main(["status", "--scope", "portfolio"])
+
+    captured = capsys.readouterr()
+    assert exit_code != 0
+    assert "custom-cellar-marker" in captured.err
 
 
 # --- index --rebuild is mutually exclusive with --scope and --corpus ---

@@ -163,6 +163,11 @@ def _patch_common(
     monkeypatch.setattr(
         "engram.harness.enumerate_corpora", enumerate_fn or _harmless_enumerate_corpora(tmp_path)
     )
+    # _baseline_hit_rate now also chains in the transcripts and symbols
+    # producers; default them to no-ops so existing tests (written before
+    # those producers existed) don't hit the real filesystem or spawn git.
+    monkeypatch.setattr("engram.harness.transcripts.enumerate", lambda *a, **k: iter(()))
+    monkeypatch.setattr("engram.harness.symbols.enumerate", lambda *a, **k: iter(()))
 
 
 # --- load_goldset: entry count ---
@@ -224,6 +229,21 @@ def test_load_goldset_accepts_valid_fixture_and_normalizes_expected_path(tmp_pat
         assert gold_entry.corpus == entry["corpus"]
         assert gold_entry.expected_path == str(file.resolve())
         assert Path(gold_entry.expected_path).is_absolute()
+
+
+def test_load_goldset_accepts_transcripts_and_code_corpora(tmp_path):
+    files = _dummy_files(tmp_path, 30)
+    entries = _valid_goldset_entries(files)
+    entries[0]["corpus"] = "transcripts"
+    entries[1]["corpus"] = "code"
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries)
+
+    result = load_goldset(goldset_path)
+
+    assert len(result) == 30
+    assert result[0].corpus == "transcripts"
+    assert result[1].corpus == "code"
 
 
 # --- run_harness: scores each configured entry independently ---
@@ -623,6 +643,49 @@ def test_run_harness_baseline_skips_rg_when_no_corpus_files(tmp_path, monkeypatc
 
     assert report.baseline_hit_rate == 0.0
     assert rg_calls == []
+
+
+# --- rg baseline: includes files from the transcripts producer ---
+
+
+def test_baseline_hit_rate_includes_files_from_transcripts_producer(tmp_path, monkeypatch):
+    files = _dummy_files(tmp_path, 30, prefix="basetranscript")
+    entries_meta = _valid_goldset_entries(files)
+
+    transcript_file = tmp_path / "unique-transcript-source.md"
+    transcript_file.write_text("# Transcript\nuniquetranscripttoken appears here\n")
+    entries_meta.append(
+        {
+            "query": "uniquetranscripttoken",
+            "expected_path": str(transcript_file),
+            "corpus": "transcripts",
+        }
+    )
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    entry = _entry("transcript-baseline-model", 8120)
+    config = _harness_config(tmp_path, [entry])
+    _write_config_toml(config.config_path, [entry])
+
+    # The model always misses, so any hit in the report can only come from
+    # the rg baseline seeing the transcripts producer's file.
+    def scripted_query(store, config, text, scope, corpus=None, k=5):
+        return [_pointer(path="/never/matches.md", rank=1)]
+
+    _patch_common(monkeypatch, tmp_path, scripted_query)
+    monkeypatch.setattr(
+        "engram.harness.transcripts.enumerate",
+        lambda *a, **k: iter([CorpusFile("transcripts", "cellar", transcript_file)]),
+    )
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    report = run_harness(config, goldset_path, work_dir)
+
+    assert report.per_model["transcript-baseline-model"].hit_rate == 0.0
+    assert report.baseline_hit_rate > 0.0
 
 
 # --- rg baseline: rg error codes must not be swallowed as "no match" ---
