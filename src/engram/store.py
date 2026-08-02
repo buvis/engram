@@ -117,6 +117,14 @@ class Store:
         where = " AND ".join(conditions) if conditions else "1 = 1"
         return where, params
 
+    def assert_configured_model(self, model_id: str) -> None:
+        stored = self._get_meta("embedding_model_id")
+        if stored is not None and stored != model_id:
+            raise StoreModelMismatchError(
+                f"configured embedding model {model_id!r} does not match "
+                f"indexed model {stored!r}; run `engram index --rebuild`"
+            )
+
     def _validate_vector(self, vector: Vector) -> None:
         stored_model_id = self._get_meta("embedding_model_id")
         if stored_model_id is None:

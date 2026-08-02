@@ -4,8 +4,8 @@ from dataclasses import dataclass
 
 import engram.corpora as corpora
 from engram.chunker import chunk_markdown
-from engram.client import EngramConfig, embed
-from engram.corpora import enumerate_corpora, hash_source
+from engram.client import EmbeddingEntry, EngramConfig, embed
+from engram.corpora import CorpusFile, enumerate_corpora, hash_source
 from engram.store import ChunkWithVector, Scope, Store
 
 
@@ -33,9 +33,38 @@ def index(
 
     corpora_missing = list(corpora.missing_dirs)
 
-    # 2. Diff against known sources
-    known = store.known_sources(scope, corpus)
+    if config.pinned_id is not None:
+        entry = next(e for e in config.embeddings if e.id == config.pinned_id)
+    else:
+        entry = config.embeddings[0]
 
+    store.assert_configured_model(entry.id)
+
+    # 2. Diff against known sources, chunk, and embed changed files
+    known = store.known_sources(scope, corpus)
+    all_chunks, chunks_added, active_sources = _diff_and_embed(files, known, entry)
+
+    # 3. Upsert
+    if all_chunks:
+        store.upsert_chunks(all_chunks)
+
+    # 4. Prune
+    chunks_pruned = store.prune(scope, corpus, active_sources)
+
+    return IndexReport(
+        files_scanned=len(files),
+        chunks_added=chunks_added,
+        chunks_updated=0,
+        chunks_pruned=chunks_pruned,
+        corpora_missing=corpora_missing,
+    )
+
+
+def _diff_and_embed(
+    files: list[CorpusFile],
+    known: set[tuple[str, str, str]],
+    entry: EmbeddingEntry,
+) -> tuple[list[ChunkWithVector], int, set[tuple[str, str, str]]]:
     chunks_added = 0
     all_chunks: list[ChunkWithVector] = []
     active_sources: set[tuple[str, str, str]] = set()
@@ -52,28 +81,11 @@ def index(
         if not chunks:
             continue
 
-        if config.pinned_id is not None:
-            entry = next(e for e in config.embeddings if e.id == config.pinned_id)
-        else:
-            entry = config.embeddings[0]
-
-        vectors = embed([c.body for c in chunks], entry)
+        texts = [f"{c.heading}\n{c.body}" if c.heading else c.body for c in chunks]
+        vectors = embed(texts, entry)
         all_chunks.extend(
             ChunkWithVector(chunk=c, vector=v) for c, v in zip(chunks, vectors)
         )
         chunks_added += len(chunks)
 
-    # 3. Upsert
-    if all_chunks:
-        store.upsert_chunks(all_chunks)
-
-    # 4. Prune
-    chunks_pruned = store.prune(scope, corpus, active_sources)
-
-    return IndexReport(
-        files_scanned=len(files),
-        chunks_added=chunks_added,
-        chunks_updated=0,
-        chunks_pruned=chunks_pruned,
-        corpora_missing=corpora_missing,
-    )
+    return all_chunks, chunks_added, active_sources
