@@ -1,13 +1,10 @@
-import email.message
 import http.server
-import io
 import json
 import os
 import socket
 import threading
 import time
 import tomllib
-import urllib.request
 from pathlib import Path
 
 import pytest
@@ -22,7 +19,6 @@ from engram.client import (
     EmbeddingServerError,
     EngramConfig,
     ServerLease,
-    Vector,
     embed,
     ensure_served,
     load_config,
@@ -31,89 +27,13 @@ from engram.client import (
     stop_served,
 )
 
-
-def _free_port() -> int:
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
+from _embedding_server import _MockEmbeddingServer, _free_port, _input_list
 
 
 def _free_port_v6() -> int:
     with socket.socket(socket.AF_INET6, socket.SOCK_STREAM) as s:
         s.bind(("::1", 0))
         return s.getsockname()[1]
-
-
-def _input_list(payload: dict) -> list:
-    inputs = payload.get("input", [])
-    return [inputs] if isinstance(inputs, str) else inputs
-
-
-class _MockEmbeddingServer:
-    """In-process stand-in for llama-server's /v1/embeddings endpoint."""
-
-    def __init__(self, port: int, model_id: str):
-        self.port = port
-        self.model_id = model_id
-        self.requests: list[dict] = []
-        self.responder = self._default_responder
-        outer = self
-
-        class Handler(http.server.BaseHTTPRequestHandler):
-            def log_message(self, *a):
-                pass
-
-            def _send(self, code, body):
-                self.send_response(code)
-                self.send_header("Content-Type", "application/json")
-                self.send_header("Content-Length", str(len(body)))
-                self.end_headers()
-                self.wfile.write(body)
-
-            def do_GET(self):
-                if self.path.rstrip("/") == "/v1/models":
-                    body = json.dumps(
-                        {"object": "list", "data": [{"id": outer.model_id, "object": "model"}]}
-                    ).encode()
-                    self._send(200, body)
-                else:
-                    self._send(404, b"{}")
-
-            def do_POST(self):
-                n = int(self.headers.get("Content-Length") or 0)
-                raw = self.rfile.read(n)
-                if self.path.rstrip("/") != "/v1/embeddings":
-                    self._send(404, b"{}")
-                    return
-                payload = json.loads(raw) if raw else {}
-                outer.requests.append(payload)
-                code, body = outer.responder(payload)
-                self._send(code, body)
-
-        self._server = http.server.ThreadingHTTPServer(("127.0.0.1", port), Handler)
-        self._server.daemon_threads = True
-        self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
-
-    def _default_responder(self, payload: dict):
-        inputs = _input_list(payload)
-        data = [
-            {"index": i, "embedding": [float(i)] * 4, "object": "embedding"}
-            for i in range(len(inputs))
-        ]
-        body = json.dumps({"object": "list", "model": self.model_id, "data": data}).encode()
-        return 200, body
-
-    @property
-    def base_url(self) -> str:
-        return f"http://127.0.0.1:{self.port}/v1"
-
-    def start(self):
-        self._thread.start()
-
-    def stop(self):
-        self._server.shutdown()
-        self._server.server_close()
-        self._thread.join(timeout=5)
 
 
 @pytest.fixture
@@ -123,17 +43,6 @@ def mock_server():
     server.start()
     yield server
     server.stop()
-
-
-def _responder_with_broken_batch(model_id: str, broken_data: list):
-    def responder(payload):
-        inputs = _input_list(payload)
-        if len(inputs) == 1:
-            data = [{"index": 0, "embedding": [0.1, 0.2, 0.3, 0.4], "object": "embedding"}]
-            return 200, json.dumps({"object": "list", "model": model_id, "data": data}).encode()
-        return 200, json.dumps({"object": "list", "model": model_id, "data": broken_data}).encode()
-
-    return responder
 
 
 _STUB_LLAMA_SERVER = '''#!/usr/bin/env python3
@@ -567,68 +476,6 @@ def test_embed_splits_large_batch_into_multiple_requests(mock_server):
     assert sizes == sorted([EMBED_BATCH_SIZE, 6])
 
 
-def test_embed_raises_on_missing_index_in_response(mock_server):
-    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
-    mock_server.responder = _responder_with_broken_batch(
-        mock_server.model_id,
-        [{"index": 0, "embedding": [0.1, 0.2, 0.3, 0.4], "object": "embedding"}],
-    )
-
-    with pytest.raises(EmbeddingPreflightError):
-        embed(["alpha", "beta"], entry)
-
-
-def test_embed_raises_on_duplicate_index_in_response(mock_server):
-    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
-    mock_server.responder = _responder_with_broken_batch(
-        mock_server.model_id,
-        [
-            {"index": 0, "embedding": [0.1, 0.2, 0.3, 0.4], "object": "embedding"},
-            {"index": 0, "embedding": [0.5, 0.6, 0.7, 0.8], "object": "embedding"},
-        ],
-    )
-
-    with pytest.raises(EmbeddingPreflightError):
-        embed(["alpha", "beta"], entry)
-
-
-def test_embed_raises_on_mismatched_vector_dimension_in_response(mock_server):
-    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
-    mock_server.responder = _responder_with_broken_batch(
-        mock_server.model_id,
-        [
-            {"index": 0, "embedding": [0.1, 0.2, 0.3, 0.4], "object": "embedding"},
-            {"index": 1, "embedding": [0.5, 0.6], "object": "embedding"},
-        ],
-    )
-
-    with pytest.raises(EmbeddingPreflightError):
-        embed(["alpha", "beta"], entry)
-
-
-def test_embed_preserves_original_input_order_despite_out_of_order_response(mock_server):
-    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
-
-    def shuffled_responder(payload):
-        inputs = _input_list(payload)
-        items = [
-            {"index": i, "embedding": [float(i)] * 4, "object": "embedding"}
-            for i in range(len(inputs))
-        ]
-        if len(items) > 1:
-            items = list(reversed(items))
-        body = json.dumps({"object": "list", "model": mock_server.model_id, "data": items}).encode()
-        return 200, body
-
-    mock_server.responder = shuffled_responder
-
-    vectors = embed(["alpha", "beta", "gamma"], entry)
-
-    assert all(isinstance(v, Vector) for v in vectors)
-    assert [v.values for v in vectors] == [[0.0] * 4, [1.0] * 4, [2.0] * 4]
-    assert all(v.dim == 4 for v in vectors)
-
-
 def test_embed_truncates_long_text_only_in_outgoing_request(mock_server):
     entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
     long_text = "x" * 10000
@@ -646,37 +493,6 @@ def test_embed_truncates_long_text_only_in_outgoing_request(mock_server):
     assert len(sent[0]) == EMBED_MAX_CHARS
     assert sent[0] == long_text[:EMBED_MAX_CHARS]
     assert sent[1] == "short"
-
-
-# --- regression: embed() rejects empty/non-finite embedding vectors ---
-
-
-def test_embed_raises_on_empty_embedding_vector_in_response(mock_server):
-    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
-    mock_server.responder = _responder_with_broken_batch(
-        mock_server.model_id,
-        [
-            {"index": 0, "embedding": [], "object": "embedding"},
-            {"index": 1, "embedding": [0.5, 0.6, 0.7, 0.8], "object": "embedding"},
-        ],
-    )
-
-    with pytest.raises(EmbeddingPreflightError):
-        embed(["alpha", "beta"], entry)
-
-
-def test_embed_raises_on_non_finite_value_in_embedding_vector(mock_server):
-    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
-    mock_server.responder = _responder_with_broken_batch(
-        mock_server.model_id,
-        [
-            {"index": 0, "embedding": [0.1, float("nan"), 0.3, 0.4], "object": "embedding"},
-            {"index": 1, "embedding": [0.5, float("inf"), 0.7, 0.8], "object": "embedding"},
-        ],
-    )
-
-    with pytest.raises(EmbeddingPreflightError):
-        embed(["alpha", "beta"], entry)
 
 
 # --- regression: ensure_served() reaps the spawned process on readiness timeout ---
@@ -747,32 +563,6 @@ def test_stop_served_escalates_to_sigkill_when_process_ignores_sigterm(tmp_path,
     assert not alive
 
 
-# --- regression: embed() names the failed batch's index range ---
-
-
-def test_embed_names_batch_index_range_on_post_failure(mock_server):
-    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
-
-    def responder(payload):
-        inputs = _input_list(payload)
-        if len(inputs) == 1:
-            data = [{"index": 0, "embedding": [0.1, 0.2, 0.3, 0.4], "object": "embedding"}]
-            body = json.dumps(
-                {"object": "list", "model": mock_server.model_id, "data": data}
-            ).encode()
-            return 200, body
-        return 500, b'{"error": "boom"}'
-
-    mock_server.responder = responder
-
-    with pytest.raises(EmbeddingPreflightError) as excinfo:
-        embed(["alpha", "beta"], entry)
-
-    message = str(excinfo.value)
-    assert "0" in message
-    assert "1" in message
-
-
 # --- regression: preflight() rejects a non-object JSON response ---
 
 
@@ -797,39 +587,16 @@ def test_embedding_entry_rejects_endpoint_without_explicit_port():
 # --- regression: _LoopbackRedirectHandler refuses off-machine redirect targets ---
 
 
-def test_loopback_redirect_handler_refuses_off_machine_target():
-    handler = client._LoopbackRedirectHandler()
-    req = urllib.request.Request("http://127.0.0.1:8081/v1/embeddings")
-    headers = email.message.Message()
-    fp = io.BytesIO(b"")
-
-    with pytest.raises(Exception):
-        handler.redirect_request(req, fp, 302, "Found", headers, "http://93.184.216.34/evil")
-
-    with pytest.raises(Exception):
-        handler.redirect_request(req, fp, 302, "Found", headers, "http://127.0.0.2:9/x")
-
-
-def test_post_embeddings_refuses_redirect_to_reachable_off_machine_loopback_host():
-    """End-to-end: drives _post_embeddings's real HTTP call through _OPENER
-    against a real 302 redirect, rather than calling the redirect handler
-    directly.
-
-    The redirect target (IPv6 loopback ::1, not in _LOOPBACK_HOSTS) is a
-    genuinely reachable, listening server that would answer with a valid
-    embedding if followed. This makes the assertion below bind to _OPENER
-    being wired in: with _OPENER, _LoopbackRedirectHandler refuses the
-    redirect and this raises EmbeddingPreflightError. If _post_embeddings
-    ever stopped routing through _OPENER (e.g. plain urllib.request.urlopen),
-    the default redirect handler would follow the redirect to the reachable
-    stub below and the call would SUCCEED instead of raising, so this test
-    would fail.
+@pytest.fixture
+def _redirect_chain_to_reachable_off_machine_loopback():
+    """Start a reachable ::1 server and a 127.0.0.1 server that redirects
+    to it. Yields the redirecting server's port; tears both down on exit.
     """
     reachable_port = _free_port_v6()
 
     class ReachableHandler(http.server.BaseHTTPRequestHandler):
         def log_message(self, *a):
-            pass
+            """Suppress default request logging to stderr."""
 
         def _respond(self):
             body = json.dumps(
@@ -866,7 +633,7 @@ def test_post_embeddings_refuses_redirect_to_reachable_off_machine_loopback_host
 
     class RedirectHandler(http.server.BaseHTTPRequestHandler):
         def log_message(self, *a):
-            pass
+            """Suppress default request logging to stderr."""
 
         def do_POST(self):
             n = int(self.headers.get("Content-Length") or 0)
@@ -882,10 +649,7 @@ def test_post_embeddings_refuses_redirect_to_reachable_off_machine_loopback_host
     redirect_thread.start()
 
     try:
-        entry = EmbeddingEntry(id="x", endpoint=f"http://127.0.0.1:{redirect_port}/v1")
-
-        with pytest.raises(EmbeddingPreflightError):
-            client._post_embeddings(entry, ["hello"])
+        yield redirect_port
     finally:
         redirect_server.shutdown()
         redirect_server.server_close()
@@ -895,40 +659,30 @@ def test_post_embeddings_refuses_redirect_to_reachable_off_machine_loopback_host
         reachable_thread.join(timeout=5)
 
 
-# --- regression: embed() fails loud on a null data field instead of raising TypeError ---
+def test_post_embeddings_refuses_redirect_to_host_outside_loopback_allowlist(
+    _redirect_chain_to_reachable_off_machine_loopback,
+):
+    """End-to-end: drives _post_embeddings's real HTTP call through _OPENER
+    against a real 302 redirect, rather than calling the redirect handler
+    directly.
 
-
-def test_embed_raises_on_null_data_field(mock_server):
-    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
-    mock_server.responder = lambda payload: (
-        200,
-        json.dumps({"object": "list", "model": mock_server.model_id, "data": None}).encode(),
-    )
-
-    with pytest.raises(EmbeddingPreflightError):
-        embed(["alpha"], entry)
-
-
-def test_embed_raises_on_null_data_element(mock_server):
-    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
-    mock_server.responder = lambda payload: (
-        200,
-        json.dumps({"object": "list", "model": mock_server.model_id, "data": [None]}).encode(),
-    )
-
-    with pytest.raises(EmbeddingPreflightError):
-        embed(["alpha"], entry)
-
-
-def test_embed_raises_on_scalar_data_element(mock_server):
-    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
-    mock_server.responder = lambda payload: (
-        200,
-        json.dumps({"object": "list", "model": mock_server.model_id, "data": [1]}).encode(),
-    )
+    IPv6 ::1 IS a loopback host. It is used here deliberately as a
+    REACHABLE stand-in for a host that is NOT in _LOOPBACK_HOSTS (which
+    only contains "127.0.0.1" and "localhost") - a genuinely reachable,
+    listening server that would answer with a valid embedding if followed.
+    This proves the refusal below is allowlist-based, not reachability-
+    based: with _OPENER wired in, _LoopbackRedirectHandler refuses the
+    redirect regardless of reachability, so this raises
+    EmbeddingPreflightError. If _post_embeddings ever stopped routing
+    through _OPENER (e.g. plain urllib.request.urlopen), the default
+    redirect handler would follow the redirect to the reachable stub and
+    the call would SUCCEED instead of raising, so this test would fail.
+    """
+    redirect_port = _redirect_chain_to_reachable_off_machine_loopback
+    entry = EmbeddingEntry(id="x", endpoint=f"http://127.0.0.1:{redirect_port}/v1")
 
     with pytest.raises(EmbeddingPreflightError):
-        embed(["alpha"], entry)
+        client._post_embeddings(entry, ["hello"])
 
 
 # --- regression: ensure_served() reaps the spawned process on model identity mismatch ---
