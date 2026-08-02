@@ -20,12 +20,14 @@ from engram.client import (
     EmbeddingModelIdentityError,
     EmbeddingPreflightError,
     EmbeddingServerError,
+    EngramConfig,
     ServerLease,
     Vector,
     embed,
     ensure_served,
     load_config,
     preflight,
+    resolve_pinned_entry,
     stop_served,
 )
 
@@ -881,3 +883,50 @@ def test_load_config_rejects_pinned_id_absent_from_shortlist(tmp_path):
         load_config(path=config_path)
 
     assert "model-b" in str(excinfo.value)
+
+
+# --- resolve_pinned_entry ---
+
+
+def test_resolve_pinned_entry_returns_first_when_unpinned(tmp_path):
+    e0 = EmbeddingEntry(id="m0", endpoint="http://127.0.0.1:8081/v1")
+    e1 = EmbeddingEntry(id="m1", endpoint="http://127.0.0.1:8082/v1")
+    config = EngramConfig(
+        embeddings=[e0, e1], pinned_id=None, config_path=tmp_path / "config.toml"
+    )
+
+    entry = resolve_pinned_entry(config)
+
+    assert entry == e0
+
+
+def test_resolve_pinned_entry_returns_pinned_match(tmp_path):
+    e0 = EmbeddingEntry(id="m0", endpoint="http://127.0.0.1:8081/v1")
+    e1 = EmbeddingEntry(id="m1", endpoint="http://127.0.0.1:8082/v1")
+    config = EngramConfig(
+        embeddings=[e0, e1], pinned_id=e1.id, config_path=tmp_path / "config.toml"
+    )
+
+    entry = resolve_pinned_entry(config)
+
+    assert entry == e1
+    assert entry != e0
+
+
+def test_resolve_pinned_entry_raises_on_empty_embeddings(tmp_path):
+    config = EngramConfig(embeddings=[], pinned_id=None, config_path=tmp_path / "config.toml")
+
+    with pytest.raises(ValueError):
+        resolve_pinned_entry(config)
+
+
+def test_resolve_pinned_entry_raises_on_unknown_pinned_id(tmp_path):
+    e0 = EmbeddingEntry(id="m0", endpoint="http://127.0.0.1:8081/v1")
+    config = EngramConfig(
+        embeddings=[e0], pinned_id="ghost", config_path=tmp_path / "config.toml"
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        resolve_pinned_entry(config)
+
+    assert "ghost" in str(excinfo.value)

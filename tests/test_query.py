@@ -311,3 +311,20 @@ def test_corpus_filter_restricts_results_to_that_corpus(tmp_path, monkeypatch):
     )
 
     assert [p.path for p in results] == ["docs.md"]
+
+
+# --- fails loud on empty embedding shortlist ---
+
+
+def test_query_raises_clear_error_on_empty_embeddings(tmp_path):
+    class _RaisingStore:
+        def search_bm25(self, *args, **kwargs):
+            raise AssertionError("search_bm25 should not run when embeddings is empty")
+
+        def search_knn(self, *args, **kwargs):
+            raise AssertionError("search_knn should not run when embeddings is empty")
+
+    config = EngramConfig(embeddings=[], pinned_id=None, config_path=tmp_path / "config.toml")
+
+    with pytest.raises(ValueError):
+        query(_RaisingStore(), config, "some text", Scope("portfolio", None))
