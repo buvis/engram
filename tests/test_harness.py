@@ -1,3 +1,5 @@
+import types
+
 from pathlib import Path
 
 import pytest
@@ -7,7 +9,10 @@ from engram.corpora import CorpusFile
 from engram.harness import (
     RRF_DEDUP_POOL,
     GoldEntry,
+    HarnessReport,
+    ModelScore,
     _sanitize_for_filename,
+    _write_pinned,
     load_goldset,
     run_harness,
 )
@@ -169,7 +174,7 @@ def test_load_goldset_rejects_fewer_than_30_entries(tmp_path):
     goldset_path = tmp_path / "goldset.yaml"
     _write_goldset(goldset_path, entries)
 
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         load_goldset(goldset_path)
 
 
@@ -183,7 +188,7 @@ def test_load_goldset_rejects_entry_with_unrecognized_corpus(tmp_path):
     goldset_path = tmp_path / "goldset.yaml"
     _write_goldset(goldset_path, entries)
 
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         load_goldset(goldset_path)
 
 
@@ -197,7 +202,7 @@ def test_load_goldset_rejects_entry_with_missing_expected_path(tmp_path):
     goldset_path = tmp_path / "goldset.yaml"
     _write_goldset(goldset_path, entries)
 
-    with pytest.raises(Exception):
+    with pytest.raises(ValueError):
         load_goldset(goldset_path)
 
 
@@ -618,3 +623,130 @@ def test_run_harness_baseline_skips_rg_when_no_corpus_files(tmp_path, monkeypatc
 
     assert report.baseline_hit_rate == 0.0
     assert rg_calls == []
+
+
+# --- rg baseline: rg error codes must not be swallowed as "no match" ---
+
+
+def test_baseline_raises_when_rg_returns_error_code(tmp_path, monkeypatch):
+    # Regression: `_baseline_hit_rate` only special-cases returncode 0 (match)
+    # and 1 (no match); any other rg returncode (e.g. 2 for a real error) is
+    # silently treated as "no match found" today, which zeroes out matches
+    # for that term instead of surfacing the failure -- a false-positive eval
+    # gate, since a broken baseline can never legitimately be beaten.
+    files = _dummy_files(tmp_path, 30, prefix="rgerr")
+    entries_meta = _valid_goldset_entries(files)
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    entry = _entry("rg-error-model", 8111)
+    config = _harness_config(tmp_path, [entry])
+    _write_config_toml(config.config_path, [entry])
+
+    expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
+    scripted_query = _hit_or_miss_query(expected_by_query, lambda c: True)
+
+    # Default _harmless_enumerate_corpora stub gives a non-empty corpus_files
+    # list, so the baseline pass actually reaches subprocess.run instead of
+    # short-circuiting.
+    _patch_common(monkeypatch, tmp_path, scripted_query)
+
+    def erroring_run(*args, **kwargs):
+        return types.SimpleNamespace(returncode=2, stdout="", stderr="")
+
+    monkeypatch.setattr("engram.harness.subprocess.run", erroring_run)
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    with pytest.raises(RuntimeError):
+        run_harness(config, goldset_path, work_dir)
+
+
+# --- _score_candidate: sqlite store lifecycle ---
+
+
+def test_score_candidate_closes_store_connection(tmp_path, monkeypatch):
+    # Regression: _score_candidate opens a fresh sqlite store per candidate
+    # via open_store but never closes the connection it opens, leaking one
+    # sqlite connection per configured embedding entry per harness run.
+    files = _dummy_files(tmp_path, 30, prefix="connleak")
+    entries_meta = _valid_goldset_entries(files)
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    entry_a = _entry("conn-model-a", 8112)
+    entry_b = _entry("conn-model-b", 8113)
+    config = _harness_config(tmp_path, [entry_a, entry_b])
+    _write_config_toml(config.config_path, [entry_a, entry_b])
+
+    expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
+    scripted_query = _hit_or_miss_query(expected_by_query, lambda c: True)
+
+    _patch_common(monkeypatch, tmp_path, scripted_query)
+
+    class _FakeConn:
+        def __init__(self):
+            self.closed = False
+
+        def close(self):
+            self.closed = True
+
+    class _FakeStore:
+        def __init__(self):
+            self.conn = _FakeConn()
+
+    opened = []
+
+    def fake_open_store(path):
+        s = _FakeStore()
+        opened.append(s)
+        return s
+
+    monkeypatch.setattr("engram.harness.open_store", fake_open_store)
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    run_harness(config, goldset_path, work_dir)
+
+    assert opened
+    assert all(s.conn.closed for s in opened)
+
+
+# --- format_report: per-model, per-corpus hit rates ---
+
+
+def test_format_report_emits_per_corpus_hit_rates():
+    from engram.harness import format_report
+
+    report = HarnessReport(
+        per_model={
+            "m1": ModelScore(hit_rate=0.8, per_corpus_hit_rate={"memory": 0.9, "prd": 0.7})
+        },
+        winner_id="m1",
+        baseline_hit_rate=0.5,
+        gate_passed=True,
+    )
+
+    lines = format_report(report)
+    output = "\n".join(lines)
+
+    assert "memory" in output
+    assert "prd" in output
+    assert "0.900" in output
+    assert "0.700" in output
+
+
+# --- _write_pinned: fail loud on malformed config ---
+
+
+def test_write_pinned_fails_loud_when_no_pinned_section(tmp_path):
+    entry = _entry("solo-model", 8114)
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        "[[embedding]]\n" f'id = "{entry.id}"\n' f'endpoint = "{entry.endpoint}"\n'
+    )
+
+    with pytest.raises(ValueError):
+        _write_pinned(config_path, "winner-id")
