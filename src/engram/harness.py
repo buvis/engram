@@ -67,9 +67,9 @@ def load_goldset(goldset_path: Path) -> list[GoldEntry]:
     ]
 
 
-def _score_candidate(entry: EmbeddingEntry, config: EngramConfig, goldset, work_dir: Path) -> ModelScore:
+def _score_candidate(entry: EmbeddingEntry, config_path: Path, goldset, work_dir: Path) -> ModelScore:
     cand_cfg = EngramConfig(
-        embeddings=[entry], pinned_id=entry.id, config_path=config.config_path
+        embeddings=[entry], pinned_id=entry.id, config_path=config_path
     )
     db = work_dir / f"harness-{_sanitize_for_filename(entry.id)}.db"
     if db.exists():
@@ -104,6 +104,10 @@ def _score_candidate(entry: EmbeddingEntry, config: EngramConfig, goldset, work_
 def _baseline_hit_rate(goldset) -> float:
     goldset_corpora = {g.corpus for g in goldset}
     corpus_files = [f.path for f in enumerate_corpora() if f.corpus in goldset_corpora]
+    if not corpus_files:
+        # No corpus files to search — never pass an empty path list to rg, which
+        # would make it recursively scan the cwd and corrupt the baseline.
+        return 0.0
     baseline_hits = 0
     for g in goldset:
         tokens = {
@@ -156,7 +160,7 @@ def run_harness(config: EngramConfig, goldset_path: Path, work_dir: Path) -> Har
     try:
         for entry in config.embeddings:
             leases.append(ensure_served(entry))
-            per_model[entry.id] = _score_candidate(entry, config, goldset, work_dir)
+            per_model[entry.id] = _score_candidate(entry, config.config_path, goldset, work_dir)
 
         best_rate = -1.0
         for entry in config.embeddings:

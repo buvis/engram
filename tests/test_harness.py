@@ -577,3 +577,44 @@ def test_sanitize_for_filename_leaves_allowed_characters_and_replaces_arbitrary_
     assert _sanitize_for_filename(allowed) == allowed
 
     assert _sanitize_for_filename("a b@c#d") == "a_b_c_d"
+
+
+# --- rg baseline: empty corpus must not fall through to an unscoped cwd scan ---
+
+
+def test_run_harness_baseline_skips_rg_when_no_corpus_files(tmp_path, monkeypatch):
+    # Regression: when enumerate_corpora yields no files for the goldset's
+    # corpora, the baseline must short-circuit to 0.0 and NEVER invoke rg with an
+    # empty path list (which makes rg recursively scan the cwd and corrupt the
+    # gate's baseline_hit_rate).
+    files = _dummy_files(tmp_path, 30, prefix="norg")
+    entries_meta = _valid_goldset_entries(files)
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    entry = _entry("no-corpus-model", 8110)
+    config = _harness_config(tmp_path, [entry])
+    _write_config_toml(config.config_path, [entry])
+
+    expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
+    scripted_query = _hit_or_miss_query(expected_by_query, lambda c: True)
+
+    def empty_enum(*a, **k):
+        return iter(())
+
+    rg_calls = []
+
+    def forbidden_run(*args, **kwargs):
+        rg_calls.append(args)
+        raise AssertionError("rg must not run when corpus_files is empty")
+
+    _patch_common(monkeypatch, tmp_path, scripted_query, enumerate_fn=empty_enum)
+    monkeypatch.setattr("engram.harness.subprocess.run", forbidden_run)
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    report = run_harness(config, goldset_path, work_dir)
+
+    assert report.baseline_hit_rate == 0.0
+    assert rg_calls == []
