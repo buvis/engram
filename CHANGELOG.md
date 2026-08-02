@@ -22,6 +22,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **findings**: review-file parser - extract durable records from review-contract files (frontmatter `reviewers:` plus `Verdict:`/`Tests:` lines), recognising Consolidated-Findings table rows and severity-emoji bullets with their continuation lines; any body line matching neither shape is kept as unstructured record text so no finding content is dropped, and an incomplete or unreadable file fails loud as a total parse failure rather than degrading to a partial record set
 
+- **findings**: durable record store - findings persist as extracted records (`corpus=findings`) that survive their source file, via an atomic `replace_chunks_for_source` keyed on (corpus, path) so a re-harvest replaces a path's records in one transaction, embedding before deleting so a failed embed leaves the prior records intact; findings rows are exempt from reindex pruning and are carried forward (freshly re-embedded from their stored text) across `engram index --rebuild`, which would otherwise destroy them permanently
+
 ### Fixed
 
 - **cli**: `status` exits nonzero on staleness (stale files or dead rows) and lists missing corpus dirs; `index` reports missing corpora instead of discarding them; query scores print at fixed precision; `-k` rejects non-positive values; `index --rebuild` clears a leftover temp DB before building; `query`, `status`, and `index` fail loud with a clear "repos.csv not found" message on a missing gita repos.csv under every scope, including the default/repo scope (which previously showed a misleading "not inside a registered repo" hint); `index --corpus` scopes missing-dir warnings to that corpus

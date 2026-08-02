@@ -4,7 +4,7 @@ from engram import corpora
 from engram.cli import main
 from engram.indexer import IndexReport
 from engram.query import Pointer
-from engram.store import CorpusStatus, DEFAULT_DB_PATH, StatusReport, StoreModelMismatchError
+from engram.store import CorpusStatus, StatusReport, StoreModelMismatchError
 
 
 def _refuse(*args, **kwargs):
@@ -16,7 +16,9 @@ def _stub_symbols_count_skipped(monkeypatch):
     # _run_status now prints a "code\tskipped=N" line driven by
     # symbols.count_skipped(); default it to 0 (no line printed) so existing
     # tests (written before this producer existed) are unaffected.
-    monkeypatch.setattr("engram.cli.symbols.count_skipped", lambda *a, **k: 0, raising=False)
+    monkeypatch.setattr(
+        "engram.cli.symbols.count_skipped", lambda *a, **k: 0, raising=False
+    )
 
 
 class _FakeStoreForStatus:
@@ -139,13 +141,19 @@ def test_query_prints_pointer_score_at_fixed_precision(monkeypatch, capsys):
 def test_status_scope_portfolio_prints_tab_separated_corpus_lines(monkeypatch, capsys):
     report = StatusReport(
         per_corpus={
-            "docs": CorpusStatus(row_count=42, stale_files=["a.md", "b.md"], dead_rows=3),
+            "docs": CorpusStatus(
+                row_count=42, stale_files=["a.md", "b.md"], dead_rows=3
+            ),
             "adr": CorpusStatus(row_count=7, stale_files=[], dead_rows=0),
-        }
+        },
     )
     monkeypatch.setattr(corpora, "missing_dirs", [])
-    monkeypatch.setattr("engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False)
-    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report))
+    monkeypatch.setattr(
+        "engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False
+    )
+    monkeypatch.setattr(
+        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+    )
 
     exit_code = main(["status", "--scope", "portfolio"])
 
@@ -161,16 +169,24 @@ def test_status_scope_portfolio_prints_tab_separated_corpus_lines(monkeypatch, c
 # --- status surfaces symbols.count_skipped() ---
 
 
-def test_status_prints_skipped_line_when_symbols_have_skipped_files(monkeypatch, capsys):
+def test_status_prints_skipped_line_when_symbols_have_skipped_files(
+    monkeypatch, capsys
+):
     report = StatusReport(
         per_corpus={
             "docs": CorpusStatus(row_count=42, stale_files=[], dead_rows=0),
-        }
+        },
     )
     monkeypatch.setattr(corpora, "missing_dirs", [])
-    monkeypatch.setattr("engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False)
-    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report))
-    monkeypatch.setattr("engram.cli.symbols.count_skipped", lambda *a, **k: 3, raising=False)
+    monkeypatch.setattr(
+        "engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False
+    )
+    monkeypatch.setattr(
+        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+    )
+    monkeypatch.setattr(
+        "engram.cli.symbols.count_skipped", lambda *a, **k: 3, raising=False
+    )
 
     exit_code = main(["status", "--scope", "portfolio"])
 
@@ -183,11 +199,15 @@ def test_status_prints_no_skipped_line_when_no_files_were_skipped(monkeypatch, c
     report = StatusReport(
         per_corpus={
             "docs": CorpusStatus(row_count=42, stale_files=[], dead_rows=0),
-        }
+        },
     )
     monkeypatch.setattr(corpora, "missing_dirs", [])
-    monkeypatch.setattr("engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False)
-    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report))
+    monkeypatch.setattr(
+        "engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False
+    )
+    monkeypatch.setattr(
+        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+    )
 
     exit_code = main(["status", "--scope", "portfolio"])
 
@@ -203,11 +223,15 @@ def test_status_exits_nonzero_when_a_corpus_has_stale_files(monkeypatch):
     report = StatusReport(
         per_corpus={
             "docs": CorpusStatus(row_count=42, stale_files=["a.md"], dead_rows=0),
-        }
+        },
     )
     monkeypatch.setattr(corpora, "missing_dirs", [])
-    monkeypatch.setattr("engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False)
-    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report))
+    monkeypatch.setattr(
+        "engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False
+    )
+    monkeypatch.setattr(
+        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+    )
 
     exit_code = main(["status", "--scope", "portfolio"])
 
@@ -218,11 +242,15 @@ def test_status_exits_nonzero_when_a_corpus_has_dead_rows(monkeypatch):
     report = StatusReport(
         per_corpus={
             "docs": CorpusStatus(row_count=42, stale_files=[], dead_rows=1),
-        }
+        },
     )
     monkeypatch.setattr(corpora, "missing_dirs", [])
-    monkeypatch.setattr("engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False)
-    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report))
+    monkeypatch.setattr(
+        "engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False
+    )
+    monkeypatch.setattr(
+        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+    )
 
     exit_code = main(["status", "--scope", "portfolio"])
 
@@ -234,11 +262,15 @@ def test_status_exits_zero_when_no_corpus_has_staleness_or_dead_rows(monkeypatch
         per_corpus={
             "docs": CorpusStatus(row_count=42, stale_files=[], dead_rows=0),
             "adr": CorpusStatus(row_count=7, stale_files=[], dead_rows=0),
-        }
+        },
     )
     monkeypatch.setattr(corpora, "missing_dirs", [])
-    monkeypatch.setattr("engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False)
-    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report))
+    monkeypatch.setattr(
+        "engram.cli.enumerate_corpora", lambda *a, **k: iter([]), raising=False
+    )
+    monkeypatch.setattr(
+        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+    )
 
     exit_code = main(["status", "--scope", "portfolio"])
 
@@ -248,11 +280,13 @@ def test_status_exits_zero_when_no_corpus_has_staleness_or_dead_rows(monkeypatch
 # --- status surfaces missing corpus dirs ---
 
 
-def test_status_reports_missing_corpus_dirs_without_forcing_nonzero_exit(monkeypatch, capsys):
+def test_status_reports_missing_corpus_dirs_without_forcing_nonzero_exit(
+    monkeypatch, capsys
+):
     report = StatusReport(
         per_corpus={
             "docs": CorpusStatus(row_count=42, stale_files=[], dead_rows=0),
-        }
+        },
     )
     monkeypatch.setattr(corpora, "missing_dirs", [])
 
@@ -260,8 +294,12 @@ def test_status_reports_missing_corpus_dirs_without_forcing_nonzero_exit(monkeyp
         corpora.missing_dirs[:] = ["decision:repoA", "discovery:repoA"]
         return iter([])
 
-    monkeypatch.setattr("engram.cli.enumerate_corpora", fake_enumerate_corpora, raising=False)
-    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report))
+    monkeypatch.setattr(
+        "engram.cli.enumerate_corpora", fake_enumerate_corpora, raising=False
+    )
+    monkeypatch.setattr(
+        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+    )
 
     exit_code = main(["status", "--scope", "portfolio"])
 
@@ -279,14 +317,18 @@ def test_status_fails_loud_when_repos_csv_missing(monkeypatch, capsys):
     report = StatusReport(
         per_corpus={
             "docs": CorpusStatus(row_count=42, stale_files=[], dead_rows=0),
-        }
+        },
     )
 
     def fake_enumerate_corpora(*args, **kwargs):
         raise FileNotFoundError("repos.csv not found")
 
-    monkeypatch.setattr("engram.cli.enumerate_corpora", fake_enumerate_corpora, raising=False)
-    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report))
+    monkeypatch.setattr(
+        "engram.cli.enumerate_corpora", fake_enumerate_corpora, raising=False
+    )
+    monkeypatch.setattr(
+        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+    )
 
     exit_code = main(["status", "--scope", "portfolio"])
 
@@ -392,7 +434,9 @@ def test_index_fails_loud_when_repos_csv_missing(monkeypatch, capsys):
 # --- index/status print the raised FileNotFoundError's own message ---
 
 
-def test_index_file_not_found_error_prints_the_producer_supplied_message(monkeypatch, capsys):
+def test_index_file_not_found_error_prints_the_producer_supplied_message(
+    monkeypatch, capsys
+):
     def fake_index(*args, **kwargs):
         raise FileNotFoundError("custom-cellar-marker not found")
 
@@ -407,18 +451,24 @@ def test_index_file_not_found_error_prints_the_producer_supplied_message(monkeyp
     assert "custom-cellar-marker" in captured.err
 
 
-def test_status_file_not_found_error_prints_the_producer_supplied_message(monkeypatch, capsys):
+def test_status_file_not_found_error_prints_the_producer_supplied_message(
+    monkeypatch, capsys
+):
     report = StatusReport(
         per_corpus={
             "docs": CorpusStatus(row_count=42, stale_files=[], dead_rows=0),
-        }
+        },
     )
 
     def fake_enumerate_corpora(*args, **kwargs):
         raise FileNotFoundError("custom-cellar-marker not found")
 
-    monkeypatch.setattr("engram.cli.enumerate_corpora", fake_enumerate_corpora, raising=False)
-    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report))
+    monkeypatch.setattr(
+        "engram.cli.enumerate_corpora", fake_enumerate_corpora, raising=False
+    )
+    monkeypatch.setattr(
+        "engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report)
+    )
 
     exit_code = main(["status", "--scope", "portfolio"])
 
@@ -453,7 +503,9 @@ def test_index_rebuild_with_corpus_is_rejected(monkeypatch):
 # --- StoreModelMismatchError fails loud with --rebuild guidance ---
 
 
-def test_query_store_model_mismatch_returns_nonzero_and_mentions_rebuild(monkeypatch, capsys):
+def test_query_store_model_mismatch_returns_nonzero_and_mentions_rebuild(
+    monkeypatch, capsys
+):
     def fake_query(*args, **kwargs):
         raise StoreModelMismatchError("embedding model mismatch")
 
@@ -471,12 +523,14 @@ def test_query_store_model_mismatch_returns_nonzero_and_mentions_rebuild(monkeyp
 # --- index --rebuild atomicity ---
 
 
-def test_index_rebuild_swaps_live_db_only_after_successful_build(monkeypatch):
+def test_index_rebuild_swaps_live_db_only_after_successful_build(monkeypatch, tmp_path):
+    fake_db_path = tmp_path / "engram.db"
     replace_calls = []
 
     def fake_replace(src, dst):
         replace_calls.append((str(src), str(dst)))
 
+    monkeypatch.setattr("engram.cli.DEFAULT_DB_PATH", fake_db_path)
     monkeypatch.setattr("engram.cli.os.replace", fake_replace)
     monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
     monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeRebuildStore([]))
@@ -493,19 +547,24 @@ def test_index_rebuild_swaps_live_db_only_after_successful_build(monkeypatch):
 
     exit_code = main(["index", "--rebuild"])
 
-    assert replace_calls == [(str(DEFAULT_DB_PATH) + ".rebuild-tmp", str(DEFAULT_DB_PATH))]
+    assert replace_calls == [(str(fake_db_path) + ".rebuild-tmp", str(fake_db_path))]
     assert exit_code == 0
 
 
-def test_index_rebuild_closes_temp_store_connection_before_os_replace(monkeypatch):
+def test_index_rebuild_closes_temp_store_connection_before_os_replace(
+    monkeypatch, tmp_path
+):
     events = []
 
     def fake_replace(src, dst):
         events.append("replace")
 
+    monkeypatch.setattr("engram.cli.DEFAULT_DB_PATH", tmp_path / "engram.db")
     monkeypatch.setattr("engram.cli.os.replace", fake_replace)
     monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
-    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeRebuildStore(events))
+    monkeypatch.setattr(
+        "engram.cli.open_store", lambda *a, **k: _FakeRebuildStore(events)
+    )
     monkeypatch.setattr(
         "engram.cli.index",
         lambda *a, **k: IndexReport(
@@ -573,7 +632,9 @@ def test_index_rebuild_removes_leftover_tmp_db_before_building(monkeypatch, tmp_
 
 
 def test_index_default_scope_fails_loud_with_repos_csv_message_when_registry_missing(
-    monkeypatch, tmp_path, capsys
+    monkeypatch,
+    tmp_path,
+    capsys,
 ):
     monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", tmp_path / "nonexistent-repos.csv")
     monkeypatch.setattr("engram.cli.load_config", _refuse)
@@ -590,7 +651,9 @@ def test_index_default_scope_fails_loud_with_repos_csv_message_when_registry_mis
 
 
 def test_status_default_scope_fails_loud_with_repos_csv_message_when_registry_missing(
-    monkeypatch, tmp_path, capsys
+    monkeypatch,
+    tmp_path,
+    capsys,
 ):
     monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", tmp_path / "nonexistent-repos.csv")
     monkeypatch.setattr("engram.cli.open_store", _refuse)
@@ -606,7 +669,9 @@ def test_status_default_scope_fails_loud_with_repos_csv_message_when_registry_mi
 
 
 def test_index_default_scope_reports_not_in_registered_repo_when_repos_csv_present_but_repo_unregistered(
-    monkeypatch, tmp_path, capsys
+    monkeypatch,
+    tmp_path,
+    capsys,
 ):
     repos_csv = tmp_path / "repos.csv"
     repos_csv.write_text("/some/other/repo,other-repo\n")
@@ -625,7 +690,9 @@ def test_index_default_scope_reports_not_in_registered_repo_when_repos_csv_prese
 
 
 def test_status_default_scope_reports_not_in_registered_repo_when_repos_csv_present_but_repo_unregistered(
-    monkeypatch, tmp_path, capsys
+    monkeypatch,
+    tmp_path,
+    capsys,
 ):
     repos_csv = tmp_path / "repos.csv"
     repos_csv.write_text("/some/other/repo,other-repo\n")
@@ -646,7 +713,9 @@ def test_status_default_scope_reports_not_in_registered_repo_when_repos_csv_pres
 
 
 def test_query_repo_scope_fails_loud_with_repos_csv_message_when_registry_missing(
-    monkeypatch, tmp_path, capsys
+    monkeypatch,
+    tmp_path,
+    capsys,
 ):
     monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", tmp_path / "nonexistent-repos.csv")
     monkeypatch.setattr("engram.cli.load_config", _refuse)
@@ -663,7 +732,9 @@ def test_query_repo_scope_fails_loud_with_repos_csv_message_when_registry_missin
 
 
 def test_query_repo_scope_reports_not_in_registered_repo_when_repos_csv_present_but_repo_unregistered(
-    monkeypatch, tmp_path, capsys
+    monkeypatch,
+    tmp_path,
+    capsys,
 ):
     repos_csv = tmp_path / "repos.csv"
     repos_csv.write_text("/some/other/repo,other-repo\n")

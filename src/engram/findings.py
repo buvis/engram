@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -7,13 +8,16 @@ from pathlib import Path
 
 import yaml
 
+from engram.client import EngramConfig, embed, resolve_pinned_entry
+from engram.store import Chunk, ChunkWithVector, Store
+
 FINDINGS_CORPUS = "findings"
 
-VERDICT_RE = re.compile(r"^Verdict:\s*(.+)$", re.M)
-TESTS_RE = re.compile(r"^Tests:\s*(.+)$", re.M)
+VERDICT_RE = re.compile(r"^Verdict:\s*(.+)$", re.MULTILINE)
+TESTS_RE = re.compile(r"^Tests:\s*(.+)$", re.MULTILINE)
 TABLE_SEPARATOR_CELL_RE = re.compile(r"^[-: ]+$")
 BULLET_RE = re.compile(
-    r"^\s*-\s+(?:\[\d+/\d+\]\s*)?[🔴🟠🟡⚪]\s*(?:\[\d+/\d+\]\s*)?(.*)$"
+    r"^\s*-\s+(?:\[\d+/\d+\]\s*)?[🔴🟠🟡⚪]\s*(?:\[\d+/\d+\]\s*)?(.*)$",
 )
 BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 HEADING_RE = re.compile(r"^#+\s+(.*)$")
@@ -87,7 +91,7 @@ def parse(path: Path) -> list[Record]:
                         else body
                     )
                     records.append(
-                        Record(heading, body, line_number, line_number, True)
+                        Record(heading, body, line_number, line_number, True),
                     )
                 index += 1
                 continue
@@ -105,9 +109,7 @@ def parse(path: Path) -> list[Record]:
                 body = "\n".join(body_lines[index : end_index + 1]).rstrip()
                 bold_match = BOLD_RE.search(body)
                 heading = (
-                    bold_match.group(1)
-                    if bold_match
-                    else bullet_match.group(1).strip()
+                    bold_match.group(1) if bold_match else bullet_match.group(1).strip()
                 )
                 records.append(
                     Record(
@@ -116,7 +118,7 @@ def parse(path: Path) -> list[Record]:
                         line_number,
                         frontmatter_end + end_index + 2,
                         True,
-                    )
+                    ),
                 )
                 index = end_index + 1
                 continue
@@ -124,7 +126,7 @@ def parse(path: Path) -> list[Record]:
             if line.strip():
                 body = line.strip()
                 records.append(
-                    Record(current_heading, body, line_number, line_number, False)
+                    Record(current_heading, body, line_number, line_number, False),
                 )
                 heading_match = HEADING_RE.match(line)
                 if heading_match:
@@ -137,3 +139,35 @@ def parse(path: Path) -> list[Record]:
         raise
     except Exception as exc:
         raise ValueError(f"unable to parse {path}") from exc
+
+
+def upsert(
+    store: Store,
+    config: EngramConfig,
+    repo: str,
+    path: Path,
+    records: list[Record],
+) -> int:
+    chunks = [
+        Chunk(
+            corpus=FINDINGS_CORPUS,
+            repo=repo,
+            doc_type="finding",
+            path=str(path),
+            heading=record.heading,
+            body=record.body,
+            line_start=record.line_start,
+            line_end=record.line_end,
+            content_hash=hashlib.sha1(record.body.encode()).hexdigest(),
+            chunk_ordinal=i,
+        )
+        for i, record in enumerate(records)
+    ]
+    texts = [f"{c.heading}\n{c.body}" if c.heading else c.body for c in chunks]
+
+    vectors = embed(texts, resolve_pinned_entry(config)) if texts else []
+
+    items = [ChunkWithVector(chunk=c, vector=v) for c, v in zip(chunks, vectors)]
+    store.replace_chunks_for_source(FINDINGS_CORPUS, str(path), items)
+
+    return len(records)

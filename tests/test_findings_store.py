@@ -342,6 +342,24 @@ def test_findings_upsert_with_empty_records_deletes_prior_and_returns_zero(tmp_p
     assert store.chunks_for_corpus(FINDINGS_CORPUS) == []
 
 
+def test_findings_upsert_with_empty_records_does_not_call_embed(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+    path = Path("review.md")
+    monkeypatch.setattr("engram.findings.embed", _make_embed())
+    findings.upsert(store, config, "repoA", path, [Record("H1", "body-token", 1, 1, False)])
+
+    def failing_embed(texts, entry):
+        raise AssertionError("embed must not be called for an empty record set")
+
+    monkeypatch.setattr("engram.findings.embed", failing_embed)
+
+    result = findings.upsert(store, config, "repoA", path, [])
+
+    assert result == 0
+    assert store.chunks_for_corpus(FINDINGS_CORPUS) == []
+
+
 def test_findings_upsert_repo_rename_yields_one_record_set_no_orphan_under_old_name(
     tmp_path, monkeypatch
 ):

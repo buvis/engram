@@ -7,13 +7,20 @@ import subprocess
 import sys
 from pathlib import Path
 
-import engram.corpora as corpora
-from engram import symbols
-from engram.client import load_config
+from engram import corpora, symbols
+from engram.client import embed, load_config, resolve_pinned_entry
 from engram.corpora import GITA_REPOS_CSV, enumerate_corpora
+from engram.findings import FINDINGS_CORPUS
 from engram.indexer import index
 from engram.query import query
-from engram.store import DEFAULT_DB_PATH, Scope, StoreModelMismatchError, open_store
+from engram.store import (
+    DEFAULT_DB_PATH,
+    Chunk,
+    ChunkWithVector,
+    Scope,
+    StoreModelMismatchError,
+    open_store,
+)
 
 _NOT_IN_REPO_MSG = "not inside a registered repo; pass --scope portfolio instead"
 
@@ -91,11 +98,16 @@ def _run_query(args: argparse.Namespace) -> int:
     try:
         pointers = query(store, config, args.text, scope, corpus=args.corpus, k=args.k)
     except StoreModelMismatchError as e:
-        print(f"{e}; run `engram index --rebuild` to rebuild the store", file=sys.stderr)
+        print(
+            f"{e}; run `engram index --rebuild` to rebuild the store",
+            file=sys.stderr,
+        )
         return 1
 
     for p in pointers:
-        print(f"{p.rank}\t{p.score:.4f}\t{p.path}:{p.line_start}-{p.line_end}\t{p.heading}")
+        print(
+            f"{p.rank}\t{p.score:.4f}\t{p.path}:{p.line_start}-{p.line_end}\t{p.heading}",
+        )
     return 0
 
 
@@ -123,6 +135,27 @@ def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
             print(f"rebuild failed: {e}", file=sys.stderr)
             return 1
 
+        findings_chunks: list[Chunk] = []
+        if DEFAULT_DB_PATH.exists():
+            live_store = open_store(DEFAULT_DB_PATH)
+            findings_chunks = live_store.chunks_for_corpus(FINDINGS_CORPUS)
+            live_store.conn.close()
+
+        if findings_chunks:
+            entry = resolve_pinned_entry(config)
+            by_source: dict[str, list[Chunk]] = {}
+            for c in findings_chunks:
+                by_source.setdefault(c.path, []).append(c)
+            for path, chunks in by_source.items():
+                texts = [
+                    f"{c.heading}\n{c.body}" if c.heading else c.body for c in chunks
+                ]
+                vectors = embed(texts, entry)
+                items = [
+                    ChunkWithVector(chunk=c, vector=v) for c, v in zip(chunks, vectors)
+                ]
+                tmp_store.replace_chunks_for_source(FINDINGS_CORPUS, path, items)
+
         tmp_store.conn.close()
         os.replace(tmp_path, DEFAULT_DB_PATH)
         _print_missing(report.corpora_missing, Scope("portfolio", None))
@@ -138,7 +171,10 @@ def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
     try:
         report = index(store, config, scope, corpus=args.corpus)
     except StoreModelMismatchError as e:
-        print(f"{e}; run `engram index --rebuild` to rebuild the store", file=sys.stderr)
+        print(
+            f"{e}; run `engram index --rebuild` to rebuild the store",
+            file=sys.stderr,
+        )
         return 1
     except FileNotFoundError as e:
         print(str(e), file=sys.stderr)
@@ -158,7 +194,9 @@ def _run_status(args: argparse.Namespace) -> int:
     report = store.status(scope)
     exit_code = 0
     for corpus, cs in report.per_corpus.items():
-        print(f"{corpus}\t{cs.row_count}\tstale={len(cs.stale_files)}\tdead={cs.dead_rows}")
+        print(
+            f"{corpus}\t{cs.row_count}\tstale={len(cs.stale_files)}\tdead={cs.dead_rows}",
+        )
         if cs.stale_files or cs.dead_rows > 0:
             exit_code = 1
 

@@ -78,11 +78,11 @@ def open_store(db_path: Path = DEFAULT_DB_PATH) -> "Store":
         "id INTEGER PRIMARY KEY, corpus TEXT, repo TEXT, doc_type TEXT, path TEXT, "
         "heading TEXT, body TEXT, line_start INT, line_end INT, content_hash TEXT, "
         "chunk_ordinal INT, "
-        "UNIQUE(repo, path, content_hash, chunk_ordinal))"
+        "UNIQUE(repo, path, content_hash, chunk_ordinal))",
     )
     conn.execute(
         "CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5("
-        "heading, body, content='chunks', content_rowid='id')"
+        "heading, body, content='chunks', content_rowid='id')",
     )
     conn.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)")
 
@@ -94,17 +94,22 @@ class Store:
         self.conn = conn
 
     def _get_meta(self, key: str) -> str | None:
-        row = self.conn.execute("SELECT value FROM meta WHERE key = ?", (key,)).fetchone()
+        row = self.conn.execute(
+            "SELECT value FROM meta WHERE key = ?", (key,)
+        ).fetchone()
         return row[0] if row is not None else None
 
     def _chunks_vec_exists(self) -> bool:
         row = self.conn.execute(
-            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'chunks_vec'"
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'chunks_vec'",
         ).fetchone()
         return row is not None
 
     def _scope_conditions(
-        self, scope: Scope, corpus: str | None, alias: str
+        self,
+        scope: Scope,
+        corpus: str | None,
+        alias: str,
     ) -> tuple[str, list]:
         conditions = []
         params: list = []
@@ -122,7 +127,7 @@ class Store:
         if stored is not None and stored != model_id:
             raise StoreModelMismatchError(
                 f"configured embedding model {model_id!r} does not match "
-                f"indexed model {stored!r}; run `engram index --rebuild`"
+                f"indexed model {stored!r}; run `engram index --rebuild`",
             )
 
     def _validate_vector(self, vector: Vector) -> None:
@@ -133,7 +138,7 @@ class Store:
         if vector.model_id != stored_model_id or vector.dim != stored_dim:
             raise StoreModelMismatchError(
                 f"vector model {vector.model_id!r}/{vector.dim} does not match "
-                f"indexed model {stored_model_id!r}/{stored_dim}"
+                f"indexed model {stored_model_id!r}/{stored_dim}",
             )
 
     def _row_to_hit(self, row) -> SearchHit:
@@ -170,20 +175,20 @@ class Store:
             "CREATE VIRTUAL TABLE chunks_vec USING vec0("
             "chunk_id INTEGER PRIMARY KEY, "
             f"embedding FLOAT[{int(baseline_dim)}], "
-            "repo TEXT PARTITION KEY, corpus TEXT PARTITION KEY)"
+            "repo TEXT PARTITION KEY, corpus TEXT PARTITION KEY)",
         )
         self.conn.execute(
             "CREATE TRIGGER chunks_ai AFTER INSERT ON chunks BEGIN "
             "INSERT INTO chunks_fts(rowid, heading, body) "
             "VALUES (new.id, new.heading, new.body); "
-            "END"
+            "END",
         )
         self.conn.execute(
             "CREATE TRIGGER chunks_ad AFTER DELETE ON chunks BEGIN "
             "INSERT INTO chunks_fts(chunks_fts, rowid, heading, body) "
             "VALUES ('delete', old.id, old.heading, old.body); "
             "DELETE FROM chunks_vec WHERE chunk_id = old.id; "
-            "END"
+            "END",
         )
         self.conn.execute(
             "INSERT INTO meta (key, value) VALUES ('embedding_model_id', ?)",
@@ -225,6 +230,34 @@ class Store:
             ),
         )
 
+    def _insert_checked(self, items: list[ChunkWithVector]) -> None:
+        stored_model_id = self._get_meta("embedding_model_id")
+        if stored_model_id is not None:
+            baseline_model_id = stored_model_id
+            baseline_dim = int(self._get_meta("embedding_dim"))
+            first_write = False
+        else:
+            baseline_model_id = items[0].vector.model_id
+            baseline_dim = items[0].vector.dim
+            first_write = True
+
+        for item in items:
+            if (
+                item.vector.model_id != baseline_model_id
+                or item.vector.dim != baseline_dim
+            ):
+                raise StoreModelMismatchError(
+                    f"vector model {item.vector.model_id!r}/{item.vector.dim} "
+                    f"does not match indexed model "
+                    f"{baseline_model_id!r}/{baseline_dim}",
+                )
+
+        if first_write:
+            self._create_vec_schema(baseline_model_id, baseline_dim)
+
+        for item in items:
+            self._insert_chunk(item)
+
     def upsert_chunks(self, items: list[ChunkWithVector]) -> None:
         if not items:
             return
@@ -232,53 +265,80 @@ class Store:
         conn = self.conn
         conn.execute("BEGIN")
         try:
-            stored_model_id = self._get_meta("embedding_model_id")
-            if stored_model_id is not None:
-                baseline_model_id = stored_model_id
-                baseline_dim = int(self._get_meta("embedding_dim"))
-                first_write = False
-            else:
-                baseline_model_id = items[0].vector.model_id
-                baseline_dim = items[0].vector.dim
-                first_write = True
-
-            for item in items:
-                if (
-                    item.vector.model_id != baseline_model_id
-                    or item.vector.dim != baseline_dim
-                ):
-                    raise StoreModelMismatchError(
-                        f"vector model {item.vector.model_id!r}/{item.vector.dim} "
-                        f"does not match indexed model "
-                        f"{baseline_model_id!r}/{baseline_dim}"
-                    )
-
-            if first_write:
-                self._create_vec_schema(baseline_model_id, baseline_dim)
-
-            for item in items:
-                self._insert_chunk(item)
+            self._insert_checked(items)
         except Exception:
             conn.rollback()
             raise
         else:
             conn.commit()
 
+    def replace_chunks_for_source(
+        self,
+        corpus: str,
+        path: str,
+        items: list[ChunkWithVector],
+    ) -> None:
+        conn = self.conn
+        conn.execute("BEGIN")
+        try:
+            conn.execute(
+                "DELETE FROM chunks WHERE corpus = ? AND path = ?",
+                (corpus, path),
+            )
+            if items:
+                self._insert_checked(items)
+        except Exception:
+            conn.rollback()
+            raise
+        else:
+            conn.commit()
+
+    def chunks_for_corpus(self, corpus: str) -> list[Chunk]:
+        rows = self.conn.execute(
+            "SELECT corpus, repo, doc_type, path, heading, body, line_start, "
+            "line_end, content_hash, chunk_ordinal FROM chunks WHERE corpus = ? "
+            "ORDER BY id",
+            (corpus,),
+        ).fetchall()
+        return [
+            Chunk(
+                corpus=r[0],
+                repo=r[1],
+                doc_type=r[2],
+                path=r[3],
+                heading=r[4],
+                body=r[5],
+                line_start=r[6],
+                line_end=r[7],
+                content_hash=r[8],
+                chunk_ordinal=r[9],
+            )
+            for r in rows
+        ]
+
     def known_sources(
-        self, scope: Scope, corpus: str | None
+        self,
+        scope: Scope,
+        corpus: str | None,
     ) -> set[tuple[str, str, str]]:
         where, params = self._scope_conditions(scope, corpus, "chunks")
         rows = self.conn.execute(
-            f"SELECT repo, path, content_hash FROM chunks WHERE {where}", params
+            f"SELECT repo, path, content_hash FROM chunks WHERE {where}",
+            params,
         ).fetchall()
         return {(r[0], r[1], r[2]) for r in rows}
 
     def prune(
-        self, scope: Scope, corpus: str | None, active_sources: set[tuple[str, str, str]]
+        self,
+        scope: Scope,
+        corpus: str | None,
+        active_sources: set[tuple[str, str, str]],
     ) -> int:
         where, params = self._scope_conditions(scope, corpus, "chunks")
+        where = f"{where} AND chunks.corpus != 'findings'"
         rows = self.conn.execute(
-            f"SELECT id, repo, path, content_hash FROM chunks WHERE {where}", params
+            f"SELECT id, repo, path, content_hash FROM chunks WHERE {where}",
+            params,
         ).fetchall()
         to_delete = [
             row[0] for row in rows if (row[1], row[2], row[3]) not in active_sources
@@ -288,12 +348,17 @@ class Store:
 
         placeholders = ",".join("?" * len(to_delete))
         self.conn.execute(
-            f"DELETE FROM chunks WHERE id IN ({placeholders})", to_delete
+            f"DELETE FROM chunks WHERE id IN ({placeholders})",
+            to_delete,
         )
         return len(to_delete)
 
     def search_bm25(
-        self, query: str, scope: Scope, corpus: str | None, k: int
+        self,
+        query: str,
+        scope: Scope,
+        corpus: str | None,
+        k: int,
     ) -> list[SearchHit]:
         where, params = self._scope_conditions(scope, corpus, "c")
         sql = (
@@ -312,7 +377,11 @@ class Store:
         return [self._row_to_hit(row) for row in rows]
 
     def search_knn(
-        self, vector: Vector, scope: Scope, corpus: str | None, k: int
+        self,
+        vector: Vector,
+        scope: Scope,
+        corpus: str | None,
+        k: int,
     ) -> list[SearchHit]:
         self._validate_vector(vector)
         if not self._chunks_vec_exists():
@@ -328,7 +397,8 @@ class Store:
             "ORDER BY cv.distance"
         )
         rows = self.conn.execute(
-            sql, [sqlite_vec.serialize_float32(vector.values), k, *params]
+            sql,
+            [sqlite_vec.serialize_float32(vector.values), k, *params],
         ).fetchall()
         return [self._row_to_hit(row) for row in rows]
 
@@ -337,7 +407,8 @@ class Store:
         corpora = [
             row[0]
             for row in self.conn.execute(
-                f"SELECT DISTINCT corpus FROM chunks WHERE {where}", params
+                f"SELECT DISTINCT corpus FROM chunks WHERE {where}",
+                params,
             ).fetchall()
         ]
 
@@ -356,12 +427,14 @@ class Store:
                     continue
                 data = file_path.read_bytes()
                 actual_hash = hashlib.sha1(
-                    b"blob " + str(len(data)).encode() + b"\0" + data
+                    b"blob " + str(len(data)).encode() + b"\0" + data,
                 ).hexdigest()
                 if actual_hash != content_hash:
                     stale.add(path)
             per_corpus[corpus] = CorpusStatus(
-                row_count=len(rows), stale_files=sorted(stale), dead_rows=dead
+                row_count=len(rows),
+                stale_files=sorted(stale),
+                dead_rows=dead,
             )
 
         return StatusReport(per_corpus=per_corpus)
