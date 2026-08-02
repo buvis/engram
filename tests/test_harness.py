@@ -246,6 +246,26 @@ def test_load_goldset_accepts_transcripts_and_code_corpora(tmp_path):
     assert result[1].corpus == "code"
 
 
+# --- the shipped gold set itself loads clean and covers the heavy corpora ---
+
+
+def test_real_goldset_loads_clean_and_covers_transcripts_and_code():
+    # The synthetic tests above only exercise load_goldset's rules on fixtures;
+    # this one guards the actually-shipped eval/goldset.yaml. load_goldset
+    # re-checks that every expected_path exists, every corpus is known, and
+    # there are >= 30 entries, so it fails loud on PRD-lifecycle path drift (an
+    # entry pointing at a PRD that moved backlog->wip->done out from under it)
+    # and on a gold set that lost transcripts/code coverage. PRD 00002 added
+    # both heavy corpora, so both must be represented.
+    goldset_path = Path(__file__).resolve().parent.parent / "eval" / "goldset.yaml"
+
+    entries = load_goldset(goldset_path)
+
+    corpora = {e.corpus for e in entries}
+    assert "transcripts" in corpora
+    assert "code" in corpora
+
+
 # --- run_harness: scores each configured entry independently ---
 
 
