@@ -1,10 +1,13 @@
+import email.message
 import http.server
+import io
 import json
 import os
 import socket
 import threading
 import time
 import tomllib
+import urllib.request
 from pathlib import Path
 
 import pytest
@@ -288,6 +291,63 @@ http.server.HTTPServer(("127.0.0.1", port), Handler).serve_forever()
 def _write_stub_llama_server_ignoring_sigterm(bin_dir: Path) -> Path:
     stub_path = bin_dir / "llama-server"
     stub_path.write_text(_STUB_LLAMA_SERVER_IGNORES_SIGTERM)
+    stub_path.chmod(0o755)
+    return stub_path
+
+
+_STUB_LLAMA_SERVER_WRONG_MODEL_ID = '''#!/usr/bin/env python3
+import http.server
+import json
+import sys
+
+args = sys.argv[1:]
+
+
+def _flag(name, default=None):
+    if name in args:
+        return args[args.index(name) + 1]
+    return default
+
+
+port = int(_flag("--port"))
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    def log_message(self, *a):
+        pass
+
+    def _send(self, code, body):
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        self._send(404, b"{}")
+
+    def do_POST(self):
+        n = int(self.headers.get("Content-Length") or 0)
+        raw = self.rfile.read(n)
+        payload = json.loads(raw) if raw else {}
+        inputs = payload.get("input", [])
+        if isinstance(inputs, str):
+            inputs = [inputs]
+        data = [
+            {"index": i, "embedding": [0.1, 0.2, 0.3, 0.4], "object": "embedding"}
+            for i in range(len(inputs))
+        ]
+        body = json.dumps({"object": "list", "model": "wrong-model", "data": data}).encode()
+        self._send(200, body)
+
+
+http.server.HTTPServer(("127.0.0.1", port), Handler).serve_forever()
+'''
+
+
+def _write_stub_llama_server_wrong_model_id(bin_dir: Path) -> Path:
+    stub_path = bin_dir / "llama-server"
+    stub_path.write_text(_STUB_LLAMA_SERVER_WRONG_MODEL_ID)
     stub_path.chmod(0o755)
     return stub_path
 
@@ -724,3 +784,100 @@ def test_embedding_entry_rejects_endpoint_without_explicit_port():
         EmbeddingEntry(id="x", endpoint="http://127.0.0.1/v1")
 
     assert "x" in str(excinfo.value)
+
+
+# --- regression: _LoopbackRedirectHandler refuses off-machine redirect targets ---
+
+
+def test_loopback_redirect_handler_refuses_off_machine_target():
+    handler = client._LoopbackRedirectHandler()
+    req = urllib.request.Request("http://127.0.0.1:8081/v1/embeddings")
+    headers = email.message.Message()
+    fp = io.BytesIO(b"")
+
+    with pytest.raises(Exception):
+        handler.redirect_request(req, fp, 302, "Found", headers, "http://93.184.216.34/evil")
+
+    with pytest.raises(Exception):
+        handler.redirect_request(req, fp, 302, "Found", headers, "http://127.0.0.2:9/x")
+
+
+# --- regression: embed() fails loud on a null data field instead of raising TypeError ---
+
+
+def test_embed_raises_on_null_data_field(mock_server):
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+    mock_server.responder = lambda payload: (
+        200,
+        json.dumps({"object": "list", "model": mock_server.model_id, "data": None}).encode(),
+    )
+
+    with pytest.raises(EmbeddingPreflightError):
+        embed(["alpha"], entry)
+
+
+# --- regression: ensure_served() reaps the spawned process on model identity mismatch ---
+
+
+def test_ensure_served_reaps_process_on_model_identity_mismatch(tmp_path, monkeypatch):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    _write_stub_llama_server_wrong_model_id(bin_dir)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+    port = _free_port()
+    entry = EmbeddingEntry(id="expected-model", endpoint=f"http://127.0.0.1:{port}/v1")
+
+    captured = {}
+
+    def watch():
+        deadline = time.time() + 2
+        while time.time() < deadline:
+            if client._spawned_processes:
+                captured["pid"] = next(iter(client._spawned_processes))
+                return
+            time.sleep(0.01)
+
+    watcher = threading.Thread(target=watch, daemon=True)
+    watcher.start()
+
+    with pytest.raises((EmbeddingModelIdentityError, EmbeddingServerError)):
+        ensure_served(entry)
+
+    watcher.join(timeout=2)
+
+    assert client._spawned_processes == {}
+    assert "pid" in captured
+    with pytest.raises(ProcessLookupError):
+        os.kill(captured["pid"], 0)
+
+
+# --- regression: load_config() rejects an empty embedding shortlist and unknown pinned id ---
+
+
+def test_load_config_rejects_empty_embedding_list(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        "[pinned]\n"
+        'id = ""\n'
+    )
+
+    with pytest.raises(ValueError):
+        load_config(path=config_path)
+
+
+def test_load_config_rejects_pinned_id_absent_from_shortlist(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        '[[embedding]]\n'
+        'id = "model-a"\n'
+        'endpoint = "http://127.0.0.1:8081/v1"\n'
+        "\n"
+        "[pinned]\n"
+        'id = "model-b"\n'
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        load_config(path=config_path)
+
+    assert "model-b" in str(excinfo.value)
