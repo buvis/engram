@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **cli**: `engram query|index|status` command line - required-scope query printing file:line pointers, scoped or full `--rebuild` indexing (atomic temp-DB swap), per-corpus status, and a bare `engram` on PATH via `uv tool install`
 - **eval**: model-selection harness - score each configured embedding model against a real gold set (top-5 hit rate, deduped by path), compare to an rg baseline, pin the winner into config.toml, and gate on >=80% hit rate strictly beating baseline
 - **transcripts**: transcript corpus - enumerate cellar session JSONL and chunk one pointer-addressable turn per kept line, keeping user/assistant text turns plus error-bearing tool results (config-tunable error patterns); a missing cellar path fails loud instead of yielding an empty corpus
+- **symbols**: code corpus - enumerate HEAD-tracked files across gita-registered repos (`git ls-files` per repo, missing repos tracked not raised) and chunk each into pointer-addressable symbols via tree-sitter (one whole-symbol chunk per function/class at every nesting depth, body by line span); files with no grammar are skipped and counted for `status`
 
 ### Fixed
 

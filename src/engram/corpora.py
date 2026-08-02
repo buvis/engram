@@ -64,14 +64,13 @@ def _enumerate_repo_corpora(root: Path, name: str) -> Iterator[CorpusFile]:
         missing_dirs.append(f"discovery:{name}")
 
 
-def enumerate_corpora(
-    repos_csv: Path = GITA_REPOS_CSV,
-    projects_dir: Path = CLAUDE_PROJECTS_DIR,
-) -> Iterator[CorpusFile]:
-    missing_dirs.clear()
+def read_repos_csv(repos_csv: Path) -> list[tuple[str, str]]:
+    """Return [(repo_path, name), ...] from a gita repos.csv, skipping rows with
+    fewer than 2 fields. Raises FileNotFoundError with the gita-registration hint
+    when repos_csv is missing."""
+    if not repos_csv.exists():
+        raise FileNotFoundError(f"{repos_csv} not found; register repos with gita first")
 
-    # Build slug -> name mapping from repos.csv
-    slug_to_name: dict[str, str] = {}
     rows: list[tuple[str, str]] = []
     text = repos_csv.read_text()
     if text.strip():
@@ -79,10 +78,20 @@ def enumerate_corpora(
         for row in reader:
             if len(row) < 2:
                 continue
-            repo_path, name = row[0], row[1]
-            slug = repo_path.replace("/", "-")
-            slug_to_name[slug] = name
-            rows.append((repo_path, name))
+            rows.append((row[0], row[1]))
+    return rows
+
+
+def enumerate_corpora(
+    repos_csv: Path = GITA_REPOS_CSV,
+    projects_dir: Path = CLAUDE_PROJECTS_DIR,
+) -> Iterator[CorpusFile]:
+    missing_dirs.clear()
+
+    rows = read_repos_csv(repos_csv)
+    slug_to_name: dict[str, str] = {
+        repo_path.replace("/", "-"): name for repo_path, name in rows
+    }
 
     # Memory corpus (once, not per repo)
     yield from _enumerate_memory_corpora(projects_dir, slug_to_name)
