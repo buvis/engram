@@ -14,3 +14,4 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **corpora**: corpus enumerators - walk registered repos (gita repos.csv) for prd/decision/discovery sources plus auto-memory dirs (slug-resolved repo, `_unmapped` fallback), git-blob content hashing, and missing-source tracking
 - **indexer**: incremental indexer - enumerate and scope-filter corpora, skip unchanged files via content-hash diff, chunk/embed/upsert new and changed files, and prune vanished sources within the reindexed scope only
 - **query**: hybrid retrieval - fuse scoped BM25 and vector KNN results via reciprocal rank fusion (RRF), returning ranked file:line pointers; propagates a model mismatch loudly
+- **cli**: `engram query|index|status` command line - required-scope query printing file:line pointers, scoped or full `--rebuild` indexing (atomic temp-DB swap), per-corpus status, and a bare `engram` on PATH via `uv tool install`

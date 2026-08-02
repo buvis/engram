@@ -6,6 +6,9 @@ dependencies = [
     "sqlite-vec>=0.1.9",
 ]
 
+[project.scripts]
+engram = "engram.cli:main"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
