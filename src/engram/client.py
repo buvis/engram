@@ -93,6 +93,19 @@ class EmbeddingModelIdentityError(RuntimeError):
     pass
 
 
+class _LoopbackRedirectHandler(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        host = urllib.parse.urlsplit(newurl).hostname
+        if host not in _LOOPBACK_HOSTS:
+            raise urllib.error.HTTPError(
+                newurl, code, f"refusing off-machine redirect to {newurl!r}", headers, fp
+            )
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_OPENER = urllib.request.build_opener(_LoopbackRedirectHandler)
+
+
 # pid -> Popen, so stop_served can reap the process it terminates instead of
 # leaving a zombie that would keep answering os.kill(pid, 0).
 _spawned_processes: dict[int, subprocess.Popen] = {}
@@ -112,6 +125,13 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> EngramConfig:
 
     pinned_id = raw.get("pinned", {}).get("id") or None
 
+    if not embeddings:
+        raise ValueError(f"config {path} has no [[embedding]] entries")
+    if pinned_id is not None and pinned_id not in {e.id for e in embeddings}:
+        raise ValueError(
+            f"config {path} pins id {pinned_id!r} which is not in the embedding shortlist"
+        )
+
     return EngramConfig(embeddings=embeddings, pinned_id=pinned_id, config_path=path)
 
 
@@ -122,7 +142,7 @@ def _post_embeddings(entry: EmbeddingEntry, inputs) -> dict:
         url, data=body, headers={"Content-Type": "application/json"}, method="POST"
     )
     try:
-        with urllib.request.urlopen(request, timeout=EMBED_REQUEST_TIMEOUT_S) as response:
+        with _OPENER.open(request, timeout=EMBED_REQUEST_TIMEOUT_S) as response:
             raw = response.read()
         payload = json.loads(raw)
     except (
@@ -150,6 +170,15 @@ def preflight(entry: EmbeddingEntry) -> None:
             f"expected model {entry.id!r} but endpoint {entry.endpoint} reported "
             f"{actual_model!r}"
         )
+
+
+def _reap(process: subprocess.Popen) -> None:
+    _spawned_processes.pop(process.pid, None)
+    process.kill()
+    try:
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        pass
 
 
 def ensure_served(entry: EmbeddingEntry) -> ServerLease:
@@ -184,13 +213,11 @@ def ensure_served(entry: EmbeddingEntry) -> ServerLease:
         except EmbeddingPreflightError as e:
             last_error = e
             time.sleep(0.2)
+        except EmbeddingModelIdentityError:
+            _reap(process)
+            raise
 
-    _spawned_processes.pop(process.pid, None)
-    process.kill()
-    try:
-        process.wait(timeout=5)
-    except subprocess.TimeoutExpired:
-        pass
+    _reap(process)
 
     raise EmbeddingServerError(
         f"llama-server for {entry.id} did not become ready at {entry.endpoint}: {last_error}"
@@ -221,6 +248,58 @@ def stop_served(lease: ServerLease) -> None:
                 pass
 
 
+def _parse_batch_vectors(
+    payload: dict, batch: list[str], entry: EmbeddingEntry
+) -> list[Vector]:
+    data = payload.get("data", [])
+    if not isinstance(data, list):
+        raise EmbeddingPreflightError(
+            f"embedding response from {entry.endpoint} for {entry.id} had a non-list data field"
+        )
+
+    batch_vectors: list[Vector | None] = [None] * len(batch)
+    seen_idx: set[int] = set()
+    dim: int | None = None
+    for item in data:
+        idx = item.get("index")
+        if not isinstance(idx, int) or idx < 0 or idx >= len(batch):
+            raise EmbeddingPreflightError(
+                f"invalid index in embedding response from {entry.endpoint} "
+                f"for {entry.id}"
+            )
+        if idx in seen_idx:
+            raise EmbeddingPreflightError(
+                f"duplicate index {idx} in embedding response from "
+                f"{entry.endpoint} for {entry.id}"
+            )
+        seen_idx.add(idx)
+        values = item.get("embedding")
+        if (
+            not isinstance(values, list)
+            or not values
+            or not all(isinstance(v, (int, float)) and math.isfinite(v) for v in values)
+        ):
+            raise EmbeddingPreflightError(
+                f"invalid embedding vector at index {idx} in response from "
+                f"{entry.endpoint} for {entry.id}"
+            )
+        if dim is None:
+            dim = len(values)
+        elif len(values) != dim:
+            raise EmbeddingPreflightError(
+                f"inconsistent embedding dimension in response from "
+                f"{entry.endpoint} for {entry.id}"
+            )
+        batch_vectors[idx] = Vector(values=values, model_id=entry.id, dim=len(values))
+
+    if any(v is None for v in batch_vectors):
+        raise EmbeddingPreflightError(
+            f"missing index in embedding response from {entry.endpoint} for {entry.id}"
+        )
+
+    return batch_vectors
+
+
 def embed(texts: list[str], entry: EmbeddingEntry) -> list[Vector]:
     ensure_served(entry)
 
@@ -234,48 +313,6 @@ def embed(texts: list[str], entry: EmbeddingEntry) -> list[Vector]:
             raise EmbeddingPreflightError(
                 f"{e} (batch indices {start}..{start + len(batch) - 1})"
             ) from e
-        data = payload.get("data", [])
-
-        batch_vectors: list[Vector | None] = [None] * len(batch)
-        seen_idx: set[int] = set()
-        dim: int | None = None
-        for item in data:
-            idx = item.get("index")
-            if not isinstance(idx, int) or idx < 0 or idx >= len(batch):
-                raise EmbeddingPreflightError(
-                    f"invalid index in embedding response from {entry.endpoint} "
-                    f"for {entry.id}"
-                )
-            if idx in seen_idx:
-                raise EmbeddingPreflightError(
-                    f"duplicate index {idx} in embedding response from "
-                    f"{entry.endpoint} for {entry.id}"
-                )
-            seen_idx.add(idx)
-            values = item.get("embedding")
-            if (
-                not isinstance(values, list)
-                or not values
-                or not all(isinstance(v, (int, float)) and math.isfinite(v) for v in values)
-            ):
-                raise EmbeddingPreflightError(
-                    f"invalid embedding vector at index {idx} in response from "
-                    f"{entry.endpoint} for {entry.id}"
-                )
-            if dim is None:
-                dim = len(values)
-            elif len(values) != dim:
-                raise EmbeddingPreflightError(
-                    f"inconsistent embedding dimension in response from "
-                    f"{entry.endpoint} for {entry.id}"
-                )
-            batch_vectors[idx] = Vector(values=values, model_id=entry.id, dim=len(values))
-
-        if any(v is None for v in batch_vectors):
-            raise EmbeddingPreflightError(
-                f"missing index in embedding response from {entry.endpoint} for {entry.id}"
-            )
-
-        vectors.extend(batch_vectors)
+        vectors.extend(_parse_batch_vectors(payload, batch, entry))
 
     return vectors
