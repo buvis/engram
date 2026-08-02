@@ -66,7 +66,7 @@ def harvest(store, config, paths: list[Path]) -> HarvestReport:
     for path in paths:
         try:
             resolved_path = path.resolve()
-        except OSError as e:
+        except (OSError, RuntimeError) as e:
             results.append(
                 FileHarvestResult(
                     path=path,

@@ -416,9 +416,11 @@ def test_harvest_with_empty_paths_returns_empty_report_with_any_failed_false(tmp
     assert report.any_failed is False
 
 
+@pytest.mark.parametrize("resolve_error", [OSError, RuntimeError])
 def test_harvest_batch_isolates_failures_so_one_bad_path_does_not_abort_the_rest(
     tmp_path,
     monkeypatch,
+    resolve_error,
 ):
     store = open_store(tmp_path / "engram.db")
     config = _config(tmp_path)
@@ -440,7 +442,7 @@ def test_harvest_batch_isolates_failures_so_one_bad_path_does_not_abort_the_rest
 
     def flaky_resolve(self, *args, **kwargs):
         if self == unresolvable_path:
-            raise OSError("simulated symlink loop")
+            raise resolve_error("simulated symlink loop")
         return original_resolve(self, *args, **kwargs)
 
     monkeypatch.setattr(Path, "resolve", flaky_resolve)
