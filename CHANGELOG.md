@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **eval**: model-selection harness - score each configured embedding model against a real gold set (top-5 hit rate, deduped by path), compare to an rg baseline, pin the winner into config.toml, and gate on >=80% hit rate strictly beating baseline
 - **transcripts**: transcript corpus - enumerate cellar session JSONL and chunk one pointer-addressable turn per kept line, keeping user/assistant text turns plus error-bearing tool results (config-tunable error patterns); a missing cellar path fails loud instead of yielding an empty corpus
 - **symbols**: code corpus - enumerate HEAD-tracked files across gita-registered repos (`git ls-files` per repo, missing repos tracked not raised) and chunk each into pointer-addressable symbols via tree-sitter (one whole-symbol chunk per function/class at every nesting depth, body by line span); files with no grammar are skipped and counted for `status`
+- **corpora**: register the transcript and code corpora in the index/status/harness pipeline - `engram index` now enumerates and per-corpus dispatches chunking for cellar transcripts and repo code symbols; `engram status` reports the code corpus's grammarless skipped-file count; `index`/`status` surface the producing corpus's own missing-path message instead of a hardcoded repos.csv string; the eval harness accepts `transcripts`/`code` gold entries and includes their files in the rg baseline
 
 ### Fixed
 

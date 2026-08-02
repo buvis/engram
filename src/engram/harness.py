@@ -1,5 +1,6 @@
 """Eval harness: score embedding models against a gold set, compare to rg baseline."""
 
+import itertools
 import re
 import subprocess
 from dataclasses import dataclass
@@ -7,6 +8,7 @@ from pathlib import Path
 
 import yaml
 
+from engram import symbols, transcripts
 from engram.client import EmbeddingEntry, EngramConfig, ensure_served, stop_served
 from engram.corpora import enumerate_corpora
 from engram.indexer import index
@@ -19,7 +21,9 @@ STOPWORDS = frozenset(
     {"a", "the", "is", "are", "of", "to", "in", "and", "or", "for", "on", "with", "how", "what"}
 )
 
-_VALID_CORPORA = frozenset({"memory", "prd", "decision", "discovery"})
+_VALID_CORPORA = frozenset(
+    {"memory", "prd", "decision", "discovery", "transcripts", "code"}
+)
 
 
 @dataclass(frozen=True)
@@ -106,7 +110,11 @@ def _score_candidate(entry: EmbeddingEntry, config_path: Path, goldset, work_dir
 
 def _baseline_hit_rate(goldset) -> float:
     goldset_corpora = {g.corpus for g in goldset}
-    corpus_files = [f.path for f in enumerate_corpora() if f.corpus in goldset_corpora]
+    corpus_files = [
+        f.path
+        for f in itertools.chain(enumerate_corpora(), transcripts.enumerate(), symbols.enumerate())
+        if f.corpus in goldset_corpora
+    ]
     if not corpus_files:
         # No corpus files to search — never pass an empty path list to rg, which
         # would make it recursively scan the cwd and corrupt the baseline.

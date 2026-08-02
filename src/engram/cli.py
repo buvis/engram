@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 import engram.corpora as corpora
+from engram import symbols
 from engram.client import load_config
 from engram.corpora import GITA_REPOS_CSV, enumerate_corpora
 from engram.indexer import index
@@ -139,8 +140,8 @@ def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
     except StoreModelMismatchError as e:
         print(f"{e}; run `engram index --rebuild` to rebuild the store", file=sys.stderr)
         return 1
-    except FileNotFoundError:
-        print(f"{GITA_REPOS_CSV} not found; register repos with gita first", file=sys.stderr)
+    except FileNotFoundError as e:
+        print(str(e), file=sys.stderr)
         return 1
 
     _print_missing(report.corpora_missing, scope, args.corpus)
@@ -163,9 +164,14 @@ def _run_status(args: argparse.Namespace) -> int:
 
     try:
         list(enumerate_corpora())
-    except FileNotFoundError:
-        print(f"{GITA_REPOS_CSV} not found; register repos with gita first", file=sys.stderr)
+    except FileNotFoundError as e:
+        print(str(e), file=sys.stderr)
         return 1
+
+    skipped = symbols.count_skipped()
+    if skipped > 0:
+        print(f"code\tskipped={skipped}")
+
     _print_missing(corpora.missing_dirs, scope)
 
     return exit_code
