@@ -200,6 +200,135 @@ def test_malformed_json_line_is_skipped_and_surrounding_lines_keep_correct_line_
     ]
 
 
+# --- line splitting: Unicode line separators inside JSON strings don't over-split ---
+
+
+def test_unicode_line_separator_char_in_text_does_not_shift_following_line_numbers(tmp_path):
+    path = tmp_path / "session.jsonl"
+    line1 = json.dumps(
+        {
+            "type": "assistant",
+            "message": {
+                "role": "assistant",
+                "content": [{"type": "text", "text": "first second"}],
+            },
+        }
+    )
+    line2 = json.dumps({"type": "user", "message": {"role": "user", "content": "next turn"}})
+    path.write_text(f"{line1}\n{line2}\n")
+
+    chunks = transcripts.chunk(path, repo="cellar", content_hash="hash-abc", error_patterns=[])
+
+    assert chunks == [
+        Chunk(
+            corpus="transcripts",
+            repo="cellar",
+            doc_type="turn",
+            path=str(path),
+            heading="assistant turn",
+            body="first second",
+            line_start=1,
+            line_end=1,
+            content_hash="hash-abc",
+            chunk_ordinal=1,
+        ),
+        Chunk(
+            corpus="transcripts",
+            repo="cellar",
+            doc_type="turn",
+            path=str(path),
+            heading="user turn",
+            body="next turn",
+            line_start=2,
+            line_end=2,
+            content_hash="hash-abc",
+            chunk_ordinal=2,
+        ),
+    ]
+
+
+# --- turn filter: JSON lines that decode to a non-dict are skipped ---
+
+
+def test_json_line_decoding_to_non_dict_is_skipped_and_surrounding_lines_keep_correct_line_numbers(
+    tmp_path,
+):
+    path = tmp_path / "session.jsonl"
+    line1 = json.dumps({"type": "user", "message": {"role": "user", "content": "first turn"}})
+    line2 = "null"
+    line3 = json.dumps(
+        {
+            "type": "assistant",
+            "message": {
+                "role": "assistant",
+                "content": [{"type": "text", "text": "second turn"}],
+            },
+        }
+    )
+    path.write_text(f"{line1}\n{line2}\n{line3}\n")
+
+    chunks = transcripts.chunk(path, repo="cellar", content_hash="hash-abc", error_patterns=[])
+
+    assert chunks == [
+        Chunk(
+            corpus="transcripts",
+            repo="cellar",
+            doc_type="turn",
+            path=str(path),
+            heading="user turn",
+            body="first turn",
+            line_start=1,
+            line_end=1,
+            content_hash="hash-abc",
+            chunk_ordinal=1,
+        ),
+        Chunk(
+            corpus="transcripts",
+            repo="cellar",
+            doc_type="turn",
+            path=str(path),
+            heading="assistant turn",
+            body="second turn",
+            line_start=3,
+            line_end=3,
+            content_hash="hash-abc",
+            chunk_ordinal=3,
+        ),
+    ]
+
+
+# --- content list with a non-dict block does not raise and still extracts text ---
+
+
+def test_non_dict_block_in_content_list_is_skipped_and_text_block_still_extracted(tmp_path):
+    path = tmp_path / "session.jsonl"
+    record = {
+        "type": "assistant",
+        "message": {
+            "role": "assistant",
+            "content": ["a bare string block", {"type": "text", "text": "actual text"}],
+        },
+    }
+    path.write_text(json.dumps(record) + "\n")
+
+    chunks = transcripts.chunk(path, repo="cellar", content_hash="hash-abc", error_patterns=[])
+
+    assert chunks == [
+        Chunk(
+            corpus="transcripts",
+            repo="cellar",
+            doc_type="turn",
+            path=str(path),
+            heading="assistant turn",
+            body="actual text",
+            line_start=1,
+            line_end=1,
+            content_hash="hash-abc",
+            chunk_ordinal=1,
+        ),
+    ]
+
+
 # --- turn filter: isMeta / isSidechain / non-turn types are excluded ---
 
 

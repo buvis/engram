@@ -48,7 +48,9 @@ def _extract_text(content) -> str:
         return content
     if isinstance(content, list):
         return "\n".join(
-            block.get("text", "") for block in content if block.get("type") == "text"
+            block.get("text", "")
+            for block in content
+            if isinstance(block, dict) and block.get("type") == "text"
         )
     return ""
 
@@ -57,6 +59,8 @@ def _has_error_match(content, error_patterns: list[str]) -> bool:
     if not isinstance(content, list):
         return False
     for block in content:
+        if not isinstance(block, dict):
+            continue
         if block.get("type") != "tool_result":
             continue
         text = block.get("content")
@@ -76,12 +80,15 @@ def chunk(
     if error_patterns is None:
         error_patterns = _load_error_patterns()
 
-    lines = path.read_text().splitlines()
+    lines = path.read_text().split("\n")
     chunks: list[Chunk] = []
     for line_number in range(1, len(lines) + 1):
         try:
             record = json.loads(lines[line_number - 1])
         except json.JSONDecodeError:
+            continue
+
+        if not isinstance(record, dict):
             continue
 
         if record.get("type") not in {"user", "assistant"}:
