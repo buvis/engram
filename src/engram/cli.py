@@ -7,8 +7,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+import engram.corpora as corpora
 from engram.client import load_config
-from engram.corpora import GITA_REPOS_CSV
+from engram.corpora import GITA_REPOS_CSV, enumerate_corpora
 from engram.indexer import index
 from engram.query import query
 from engram.store import DEFAULT_DB_PATH, Scope, StoreModelMismatchError, open_store
@@ -74,6 +75,10 @@ def _run_query(args: argparse.Namespace) -> int:
         print(_NOT_IN_REPO_MSG, file=sys.stderr)
         return 1
 
+    if args.k <= 0:
+        print("-k must be positive", file=sys.stderr)
+        sys.exit(1)
+
     config = load_config()
     store = open_store()
     try:
@@ -83,8 +88,15 @@ def _run_query(args: argparse.Namespace) -> int:
         return 1
 
     for p in pointers:
-        print(f"{p.rank}\t{p.score}\t{p.path}:{p.line_start}-{p.line_end}\t{p.heading}")
+        print(f"{p.rank}\t{p.score:.4f}\t{p.path}:{p.line_start}-{p.line_end}\t{p.heading}")
     return 0
+
+
+def _print_missing(missing: list[str], scope: Scope) -> None:
+    if scope.kind == "repo":
+        missing = [m for m in missing if m.endswith(f":{scope.repo}")]
+    for m in missing:
+        print(m)
 
 
 def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
@@ -93,15 +105,17 @@ def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
             parser.error("--rebuild cannot be combined with --scope or --corpus")
 
         tmp_path = Path(str(DEFAULT_DB_PATH) + ".rebuild-tmp")
+        tmp_path.unlink(missing_ok=True)
         config = load_config()
         try:
             tmp_store = open_store(tmp_path)
-            index(tmp_store, config, Scope("portfolio", None))
+            report = index(tmp_store, config, Scope("portfolio", None))
         except Exception as e:
             print(f"rebuild failed: {e}", file=sys.stderr)
             return 1
 
         os.replace(tmp_path, DEFAULT_DB_PATH)
+        _print_missing(report.corpora_missing, Scope("portfolio", None))
         return 0
 
     scope = _resolve_scope(args.scope or "repo")
@@ -112,11 +126,12 @@ def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
     config = load_config()
     store = open_store()
     try:
-        index(store, config, scope, corpus=args.corpus)
+        report = index(store, config, scope, corpus=args.corpus)
     except StoreModelMismatchError as e:
         print(f"{e}; run `engram index --rebuild` to rebuild the store", file=sys.stderr)
         return 1
 
+    _print_missing(report.corpora_missing, scope)
     return 0
 
 
@@ -128,9 +143,19 @@ def _run_status(args: argparse.Namespace) -> int:
 
     store = open_store()
     report = store.status(scope)
+    exit_code = 0
     for corpus, cs in report.per_corpus.items():
         print(f"{corpus}\t{cs.row_count}\tstale={len(cs.stale_files)}\tdead={cs.dead_rows}")
-    return 0
+        if cs.stale_files or cs.dead_rows > 0:
+            exit_code = 1
+
+    try:
+        list(enumerate_corpora())
+    except FileNotFoundError:
+        pass
+    _print_missing(corpora.missing_dirs, scope)
+
+    return exit_code
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -16,3 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **query**: hybrid retrieval - fuse scoped BM25 and vector KNN results via reciprocal rank fusion (RRF), returning ranked file:line pointers; propagates a model mismatch loudly
 - **cli**: `engram query|index|status` command line - required-scope query printing file:line pointers, scoped or full `--rebuild` indexing (atomic temp-DB swap), per-corpus status, and a bare `engram` on PATH via `uv tool install`
 - **eval**: model-selection harness - score each configured embedding model against a real gold set (top-5 hit rate, deduped by path), compare to an rg baseline, pin the winner into config.toml, and gate on >=80% hit rate strictly beating baseline
+
+### Fixed
+
+- **cli**: `status` exits nonzero on staleness (stale files or dead rows) and lists missing corpus dirs; `index` reports missing corpora instead of discarding them; query scores print at fixed precision; `-k` rejects non-positive values; `index --rebuild` clears a leftover temp DB before building
