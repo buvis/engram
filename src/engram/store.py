@@ -165,6 +165,68 @@ class Store:
         )
         return SearchHit(chunk_id=chunk_id, score=score, chunk=chunk)
 
+    def _create_vec_schema(self, baseline_model_id: str, baseline_dim: int) -> None:
+        conn = self.conn
+        conn.execute(
+            "CREATE VIRTUAL TABLE chunks_vec USING vec0("
+            "chunk_id INTEGER PRIMARY KEY, "
+            f"embedding FLOAT[{int(baseline_dim)}], "
+            "repo TEXT PARTITION KEY, corpus TEXT PARTITION KEY)"
+        )
+        conn.execute(
+            "CREATE TRIGGER chunks_ai AFTER INSERT ON chunks BEGIN "
+            "INSERT INTO chunks_fts(rowid, heading, body) "
+            "VALUES (new.id, new.heading, new.body); "
+            "END"
+        )
+        conn.execute(
+            "CREATE TRIGGER chunks_ad AFTER DELETE ON chunks BEGIN "
+            "INSERT INTO chunks_fts(chunks_fts, rowid, heading, body) "
+            "VALUES ('delete', old.id, old.heading, old.body); "
+            "DELETE FROM chunks_vec WHERE chunk_id = old.id; "
+            "END"
+        )
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES ('embedding_model_id', ?)",
+            (baseline_model_id,),
+        )
+        conn.execute(
+            "INSERT INTO meta (key, value) VALUES ('embedding_dim', ?)",
+            (str(baseline_dim),),
+        )
+
+    def _insert_chunk(self, item: ChunkWithVector) -> None:
+        conn = self.conn
+        chunk = item.chunk
+        cursor = conn.execute(
+            "INSERT INTO chunks (corpus, repo, doc_type, path, heading, body, "
+            "line_start, line_end, content_hash, chunk_ordinal) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                chunk.corpus,
+                chunk.repo,
+                chunk.doc_type,
+                chunk.path,
+                chunk.heading,
+                chunk.body,
+                chunk.line_start,
+                chunk.line_end,
+                chunk.content_hash,
+                chunk.chunk_ordinal,
+            ),
+        )
+        chunk_id = cursor.lastrowid
+        conn.execute(
+            "INSERT INTO chunks_vec (chunk_id, embedding, repo, corpus) "
+            "VALUES (?, ?, ?, ?)",
+            (
+                chunk_id,
+                sqlite_vec.serialize_float32(item.vector.values),
+                chunk.repo,
+                chunk.corpus,
+            ),
+        )
+
     def upsert_chunks(self, items: list[ChunkWithVector]) -> None:
         if not items:
             return
@@ -194,64 +256,10 @@ class Store:
                     )
 
             if first_write:
-                conn.execute(
-                    "CREATE VIRTUAL TABLE chunks_vec USING vec0("
-                    "chunk_id INTEGER PRIMARY KEY, "
-                    f"embedding FLOAT[{int(baseline_dim)}], "
-                    "repo TEXT PARTITION KEY, corpus TEXT PARTITION KEY)"
-                )
-                conn.execute(
-                    "CREATE TRIGGER chunks_ai AFTER INSERT ON chunks BEGIN "
-                    "INSERT INTO chunks_fts(rowid, heading, body) "
-                    "VALUES (new.id, new.heading, new.body); "
-                    "END"
-                )
-                conn.execute(
-                    "CREATE TRIGGER chunks_ad AFTER DELETE ON chunks BEGIN "
-                    "INSERT INTO chunks_fts(chunks_fts, rowid, heading, body) "
-                    "VALUES ('delete', old.id, old.heading, old.body); "
-                    "DELETE FROM chunks_vec WHERE chunk_id = old.id; "
-                    "END"
-                )
-                conn.execute(
-                    "INSERT INTO meta (key, value) VALUES ('embedding_model_id', ?)",
-                    (baseline_model_id,),
-                )
-                conn.execute(
-                    "INSERT INTO meta (key, value) VALUES ('embedding_dim', ?)",
-                    (str(baseline_dim),),
-                )
+                self._create_vec_schema(baseline_model_id, baseline_dim)
 
             for item in items:
-                chunk = item.chunk
-                cursor = conn.execute(
-                    "INSERT INTO chunks (corpus, repo, doc_type, path, heading, body, "
-                    "line_start, line_end, content_hash, chunk_ordinal) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    (
-                        chunk.corpus,
-                        chunk.repo,
-                        chunk.doc_type,
-                        chunk.path,
-                        chunk.heading,
-                        chunk.body,
-                        chunk.line_start,
-                        chunk.line_end,
-                        chunk.content_hash,
-                        chunk.chunk_ordinal,
-                    ),
-                )
-                chunk_id = cursor.lastrowid
-                conn.execute(
-                    "INSERT INTO chunks_vec (chunk_id, embedding, repo, corpus) "
-                    "VALUES (?, ?, ?, ?)",
-                    (
-                        chunk_id,
-                        sqlite_vec.serialize_float32(item.vector.values),
-                        chunk.repo,
-                        chunk.corpus,
-                    ),
-                )
+                self._insert_chunk(item)
         except Exception:
             conn.rollback()
             raise
