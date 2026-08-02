@@ -19,6 +19,19 @@ class _FakeStoreForStatus:
         return self._report
 
 
+class _RecordingConn:
+    def __init__(self, events):
+        self._events = events
+
+    def close(self):
+        self._events.append("close")
+
+
+class _FakeRebuildStore:
+    def __init__(self, events):
+        self.conn = _RecordingConn(events)
+
+
 # --- query requires --scope ---
 
 
@@ -40,11 +53,10 @@ def test_query_rejects_non_positive_k(monkeypatch, capsys, k):
     monkeypatch.setattr("engram.cli.open_store", _refuse)
     monkeypatch.setattr("engram.cli.query", _refuse)
 
-    with pytest.raises(SystemExit) as exc_info:
-        main(["query", "--scope", "portfolio", "-k", k, "some text"])
+    exit_code = main(["query", "--scope", "portfolio", "-k", k, "some text"])
 
     captured = capsys.readouterr()
-    assert exc_info.value.code != 0
+    assert exit_code != 0
     assert captured.err != ""
 
 
@@ -214,6 +226,29 @@ def test_status_reports_missing_corpus_dirs_without_forcing_nonzero_exit(monkeyp
     assert exit_code == 0
 
 
+# --- status fails loud on a missing repos.csv ---
+
+
+def test_status_fails_loud_when_repos_csv_missing(monkeypatch, capsys):
+    report = StatusReport(
+        per_corpus={
+            "docs": CorpusStatus(row_count=42, stale_files=[], dead_rows=0),
+        }
+    )
+
+    def fake_enumerate_corpora(*args, **kwargs):
+        raise FileNotFoundError("repos.csv not found")
+
+    monkeypatch.setattr("engram.cli.enumerate_corpora", fake_enumerate_corpora, raising=False)
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeStoreForStatus(report))
+
+    exit_code = main(["status", "--scope", "portfolio"])
+
+    captured = capsys.readouterr()
+    assert exit_code != 0
+    assert "repos.csv" in captured.err
+
+
 # --- index --scope + --corpus combine legally without --rebuild ---
 
 
@@ -265,6 +300,47 @@ def test_index_prints_missing_corpora_from_report(monkeypatch, capsys):
     captured = capsys.readouterr()
     assert "prd:repoB" in captured.out
     assert exit_code == 0
+
+
+def test_index_corpus_scopes_missing_dir_warnings_to_that_corpus(monkeypatch, capsys):
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+    monkeypatch.setattr(
+        "engram.cli.index",
+        lambda *a, **k: IndexReport(
+            files_scanned=1,
+            chunks_added=1,
+            chunks_updated=0,
+            chunks_pruned=0,
+            corpora_missing=["prd:repoB", "decision:repoB", "discovery:repoB"],
+        ),
+    )
+
+    exit_code = main(["index", "--scope", "portfolio", "--corpus", "prd"])
+
+    captured = capsys.readouterr()
+    assert "prd:repoB" in captured.out
+    assert "decision:repoB" not in captured.out
+    assert "discovery:repoB" not in captured.out
+    assert exit_code == 0
+
+
+# --- index fails loud on a missing repos.csv ---
+
+
+def test_index_fails_loud_when_repos_csv_missing(monkeypatch, capsys):
+    def fake_index(*args, **kwargs):
+        raise FileNotFoundError("repos.csv not found")
+
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.index", fake_index)
+
+    exit_code = main(["index", "--scope", "portfolio"])
+
+    captured = capsys.readouterr()
+    assert exit_code != 0
+    assert "repos.csv" in captured.err
 
 
 # --- index --rebuild is mutually exclusive with --scope and --corpus ---
@@ -319,7 +395,7 @@ def test_index_rebuild_swaps_live_db_only_after_successful_build(monkeypatch):
 
     monkeypatch.setattr("engram.cli.os.replace", fake_replace)
     monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
-    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeRebuildStore([]))
     monkeypatch.setattr(
         "engram.cli.index",
         lambda *a, **k: IndexReport(
@@ -334,6 +410,32 @@ def test_index_rebuild_swaps_live_db_only_after_successful_build(monkeypatch):
     exit_code = main(["index", "--rebuild"])
 
     assert replace_calls == [(str(DEFAULT_DB_PATH) + ".rebuild-tmp", str(DEFAULT_DB_PATH))]
+    assert exit_code == 0
+
+
+def test_index_rebuild_closes_temp_store_connection_before_os_replace(monkeypatch):
+    events = []
+
+    def fake_replace(src, dst):
+        events.append("replace")
+
+    monkeypatch.setattr("engram.cli.os.replace", fake_replace)
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeRebuildStore(events))
+    monkeypatch.setattr(
+        "engram.cli.index",
+        lambda *a, **k: IndexReport(
+            files_scanned=1,
+            chunks_added=1,
+            chunks_updated=0,
+            chunks_pruned=0,
+            corpora_missing=[],
+        ),
+    )
+
+    exit_code = main(["index", "--rebuild"])
+
+    assert events == ["close", "replace"]
     assert exit_code == 0
 
 
@@ -365,7 +467,7 @@ def test_index_rebuild_removes_leftover_tmp_db_before_building(monkeypatch, tmp_
     monkeypatch.setattr("engram.cli.DEFAULT_DB_PATH", fake_db_path)
     monkeypatch.setattr("engram.cli.os.replace", lambda src, dst: None)
     monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
-    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: _FakeRebuildStore([]))
     monkeypatch.setattr(
         "engram.cli.index",
         lambda *a, **k: IndexReport(
