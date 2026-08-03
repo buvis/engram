@@ -200,7 +200,8 @@ def test_non_findings_hit_prints_only_summary_line(monkeypatch, capsys):
 
 
 def test_mixed_results_interleave_body_lines_only_for_findings_hits(
-    monkeypatch, capsys
+    monkeypatch,
+    capsys,
 ):
     findings_pointer = Pointer(
         rank=1,
@@ -994,7 +995,7 @@ def test_harvest_appends_error_suffix_when_result_has_error(monkeypatch, capsys)
 
     captured = capsys.readouterr()
     assert captured.out.splitlines() == [
-        "broken.md\tparse_failed\t0\tmissing Tests: line"
+        "broken.md\tparse_failed\t0\tmissing Tests: line",
     ]
     assert exit_code != 0
 
@@ -1340,9 +1341,7 @@ def test_pack_diff_materializes_diff_under_repo_root_when_invoked_from_a_subdire
         toplevel / "dev/local/tmp/engram-pack-diff-abc123--def456.diff"
     )
     assert written_at_repo_root.read_text() == fake_stdout
-    assert not (
-        subdir / "dev/local/tmp/engram-pack-diff-abc123--def456.diff"
-    ).exists()
+    assert not (subdir / "dev/local/tmp/engram-pack-diff-abc123--def456.diff").exists()
 
 
 def test_pack_out_dir_default_anchors_to_repo_root_when_invoked_from_a_subdirectory(
@@ -1504,9 +1503,7 @@ def test_pack_diff_materializes_git_diff_and_slugs_id_per_given_example(
     assert call["source_ref"] == "def456"
     assert (
         call["diff_path"].resolve()
-        == (
-            toplevel / "dev/local/tmp/engram-pack-diff-abc123--def456.diff"
-        ).resolve()
+        == (toplevel / "dev/local/tmp/engram-pack-diff-abc123--def456.diff").resolve()
     )
     written = (
         toplevel / "dev/local/tmp/engram-pack-diff-abc123--def456.diff"
