@@ -196,3 +196,64 @@ def test_enumerate_appends_missing_repo_to_missing_dirs_and_does_not_raise(tmp_p
 
     assert results == []
     assert "code:ghost" in corpora.missing_dirs
+
+
+# --- enumerate(): a submodule gitlink is a directory on disk, not a regular file, and must not be yielded ---
+
+
+def test_submodule_gitlink_path_is_not_yielded(tmp_path):
+    repo_dir = _init_git_repo(
+        tmp_path / "repo",
+        {"a.py": "def f():\n    pass\n"},
+    )
+    subprocess.run(
+        [
+            "git",
+            "update-index",
+            "--add",
+            "--cacheinfo",
+            "160000,4b825dc642cb6eb9a060e54bf8d69288fbee4904,sub",
+        ],
+        cwd=repo_dir,
+        check=True,
+        capture_output=True,
+    )
+    (repo_dir / "sub").mkdir()
+    tracked = subprocess.run(
+        ["git", "-C", str(repo_dir), "ls-files"],
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.splitlines()
+    assert "sub" in tracked
+
+    repos_csv = tmp_path / "repos.csv"
+    repos_csv.write_text(f"{repo_dir},widget,,\n")
+
+    results = set(symbols.enumerate(repos_csv=repos_csv))
+
+    assert results == {
+        CorpusFile(corpus="code", repo="widget", path=repo_dir / "a.py"),
+    }
+    assert str(repo_dir / "sub") not in symbols.skipped_files
+
+
+# --- enumerate(): a tracked file deleted from the working tree does not exist on disk and must not be yielded ---
+
+
+def test_tracked_but_deleted_file_is_not_yielded(tmp_path):
+    repo_dir = _init_git_repo(
+        tmp_path / "repo",
+        {"a.py": "def f():\n    pass\n", "b.py": "def g():\n    pass\n"},
+    )
+    (repo_dir / "b.py").unlink()
+
+    repos_csv = tmp_path / "repos.csv"
+    repos_csv.write_text(f"{repo_dir},widget,,\n")
+
+    results = set(symbols.enumerate(repos_csv=repos_csv))
+
+    assert results == {
+        CorpusFile(corpus="code", repo="widget", path=repo_dir / "a.py"),
+    }
+    assert str(repo_dir / "b.py") not in symbols.skipped_files
