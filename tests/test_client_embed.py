@@ -350,6 +350,54 @@ def test_embed_fails_loud_when_the_replacement_server_is_also_degraded(
     assert calls == ["ensure", "stop", "ensure"]
 
 
+# --- regression: the char budget comes from the model's real context ---
+# EMBED_MAX_CHARS was a single Qwen-derived constant applied to every model, so
+# engram truncated an 8000-char chunk (~5225 dense tokens) and sent it to a
+# 2048-context model, which rejected it: "input (5225 tokens) is larger than the
+# max context size (2048 tokens)". The limit is a fixed property of the model and
+# llama.cpp reports it on /props even when spawned with a larger -c.
+
+
+def _longest_sent(mock_server) -> int:
+    return max(
+        len(t) for payload in _embed_payloads(mock_server) for t in _input_list(payload)
+    )
+
+
+def test_embed_truncates_to_the_context_the_server_reports(mock_server, monkeypatch):
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+    monkeypatch.setattr(client, "_max_chars_by_endpoint", {})
+    mock_server.props = {"default_generation_settings": {"n_ctx": 2048}}
+
+    embed(["x" * EMBED_MAX_CHARS], entry)
+
+    assert _longest_sent(mock_server) == int(2048 / client.WORST_CASE_TOKENS_PER_CHAR)
+
+
+def test_embed_keeps_the_full_ceiling_for_a_roomy_context(mock_server, monkeypatch):
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+    monkeypatch.setattr(client, "_max_chars_by_endpoint", {})
+    mock_server.props = {"default_generation_settings": {"n_ctx": 8192}}
+
+    embed(["x" * (EMBED_MAX_CHARS * 2)], entry)
+
+    # 8192 / 0.75 exceeds the ceiling, so the corpus-wide cap still governs and
+    # nothing changes for the model the live index was built with.
+    assert _longest_sent(mock_server) == EMBED_MAX_CHARS
+
+
+def test_embed_falls_back_to_the_ceiling_when_props_is_unavailable(
+    mock_server, monkeypatch
+):
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+    monkeypatch.setattr(client, "_max_chars_by_endpoint", {})
+    mock_server.props = None  # a plain OpenAI-compatible server 404s /props
+
+    embed(["x" * (EMBED_MAX_CHARS * 2)], entry)
+
+    assert _longest_sent(mock_server) == EMBED_MAX_CHARS
+
+
 def test_embed_never_restarts_a_server_it_did_not_spawn(mock_server, monkeypatch):
     entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
     calls = _fake_lifecycle(monkeypatch, spawned=False)

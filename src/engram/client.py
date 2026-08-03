@@ -8,14 +8,13 @@ import shutil
 import signal
 import subprocess
 import time
+import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-
-import tomllib
 
 EMBED_MAX_CHARS = 8000
 EMBED_BATCH_SIZE = 64
@@ -26,6 +25,12 @@ EMBED_BATCH_SIZE = 64
 # character (token-dense chunks: stack traces, JSON dumps, minified code).
 EMBED_BATCH_MAX_CHARS = EMBED_MAX_CHARS
 EMBED_SERVER_CTX_TOKENS = 8192
+
+# Measured token density of the corpora, worst case: dense chunks (JSON dumps,
+# tracebacks, minified code) run ~0.65 tokens per character and prose ~0.17, so
+# 0.75 keeps a margin over the densest content seen. Used to turn a server's
+# reported context into a character budget without carrying a tokenizer.
+WORST_CASE_TOKENS_PER_CHAR = 0.75
 EMBED_REQUEST_TIMEOUT_S = 120
 STOP_WAIT_TIMEOUT_S = 5
 
@@ -158,6 +163,11 @@ _spawned_processes: dict[int, subprocess.Popen] = {}
 # through a whole index run.
 _spawned_pids_by_endpoint: dict[str, int] = {}
 
+# endpoint -> character budget resolved from that server's reported context.
+# Cached because it is a fixed property of the model behind the endpoint, and
+# re-probing on every embed() call would add a round trip per batch.
+_max_chars_by_endpoint: dict[str, int] = {}
+
 
 def _forget_spawned(pid: int) -> None:
     _spawned_processes.pop(pid, None)
@@ -268,7 +278,9 @@ def _post_embeddings(entry: EmbeddingEntry, inputs) -> dict:
             raw = response.read()
         payload = json.loads(raw)
     except urllib.error.HTTPError as e:
-        message = f"embedding request to {entry.endpoint} for model {entry.id} failed: {e}"
+        message = (
+            f"embedding request to {entry.endpoint} for model {entry.id} failed: {e}"
+        )
         if 500 <= e.code < 600:
             # A server-side 5xx is the same shape of degradation as null
             # vectors: the server is sick, not our request. Let it hit the
@@ -290,6 +302,58 @@ def _post_embeddings(entry: EmbeddingEntry, inputs) -> dict:
             f"embedding response from {entry.endpoint} for {entry.id} was not a JSON object",
         )
     return payload
+
+
+def _server_context_tokens(entry: EmbeddingEntry) -> int | None:
+    """Context the server will actually enforce, from llama.cpp's `/props`.
+
+    Authoritative rather than an echo of what we asked for: spawning
+    nomic-embed-text-v1.5 with `-c 8192` still reports 2048, because llama.cpp
+    clamps to the model's trained context. Returns None for an endpoint that
+    does not serve `/props` (it is not part of the OpenAI API), leaving the
+    caller on the static budget.
+    """
+    root = entry.endpoint.rstrip("/").removesuffix("/v1")
+    try:
+        with _OPENER.open(f"{root}/props", timeout=EMBED_REQUEST_TIMEOUT_S) as response:
+            payload = json.loads(response.read())
+    except (
+        urllib.error.URLError,
+        OSError,
+        json.JSONDecodeError,
+        http.client.HTTPException,
+    ):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    settings = payload.get("default_generation_settings")
+    for value in (
+        settings.get("n_ctx") if isinstance(settings, dict) else None,
+        payload.get("n_ctx"),
+    ):
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+            return value
+    return None
+
+
+def _max_chars_for(entry: EmbeddingEntry) -> int:
+    """Per-model character budget, cached per endpoint.
+
+    A model cannot embed more than its context holds, and the context is a fixed
+    property of the model rather than something we choose - so the budget is
+    derived from what the server reports, capped by the corpus-wide ceiling.
+    Qwen (8192 ctx) keeps the full EMBED_MAX_CHARS; a 2048-context model gets
+    ~2730 chars instead of silently sending text it will reject.
+    """
+    cached = _max_chars_by_endpoint.get(entry.endpoint)
+    if cached is not None:
+        return cached
+    tokens = _server_context_tokens(entry)
+    budget = EMBED_MAX_CHARS
+    if tokens is not None:
+        budget = min(EMBED_MAX_CHARS, int(tokens / WORST_CASE_TOKENS_PER_CHAR))
+    _max_chars_by_endpoint[entry.endpoint] = budget
+    return budget
 
 
 def preflight(entry: EmbeddingEntry) -> None:
@@ -487,21 +551,25 @@ def _parse_batch_vectors(
     return [v for v in batch_vectors if v is not None]
 
 
-def _budgeted_batches(texts: list[str]) -> Iterator[tuple[int, list[str]]]:
+def _budgeted_batches(
+    texts: list[str], max_chars: int = EMBED_MAX_CHARS
+) -> Iterator[tuple[int, list[str]]]:
     """Yield `(start_index, truncated_texts)` requests within both budgets.
 
-    A batch closes when adding the next text would exceed EMBED_BATCH_SIZE
-    texts or EMBED_BATCH_MAX_CHARS characters. Batching by count alone let a
-    run of long, token-dense chunks build a request far past what the server
-    can hold; a text at the truncation cap is sent alone rather than dropped.
+    A batch closes when adding the next text would exceed EMBED_BATCH_SIZE texts
+    or `max_chars` characters. Batching by count alone let a run of long,
+    token-dense chunks build a request far past what the server can hold; a text
+    at the truncation cap is sent alone rather than dropped. `max_chars` is the
+    per-model budget from `_max_chars_for`, so it doubles as the per-text
+    truncation and the per-request total - one max-length text always fits alone.
     """
     start = 0
     batch: list[str] = []
     total = 0
     for index, text in enumerate(texts):
-        piece = text[:EMBED_MAX_CHARS]
+        piece = text[:max_chars]
         if batch and (
-            len(batch) >= EMBED_BATCH_SIZE or total + len(piece) > EMBED_BATCH_MAX_CHARS
+            len(batch) >= EMBED_BATCH_SIZE or total + len(piece) > max_chars
         ):
             yield start, batch
             start, batch, total = index, [], 0
@@ -550,9 +618,10 @@ def _embed_batch(
 
 def embed(texts: list[str], entry: EmbeddingEntry) -> list[Vector]:
     lease = ensure_served(entry)
+    max_chars = _max_chars_for(entry)
 
     vectors: list[Vector] = []
-    for start, truncated in _budgeted_batches(texts):
+    for start, truncated in _budgeted_batches(texts, max_chars):
         batch_vectors, lease = _embed_batch(truncated, entry, start, lease)
         vectors.extend(batch_vectors)
 

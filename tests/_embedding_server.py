@@ -23,6 +23,9 @@ class _MockEmbeddingServer:
         self.model_id = model_id
         self.requests: list[dict] = []
         self.responder = self._default_responder
+        # Set to a dict to serve llama.cpp's /props; left None the endpoint 404s
+        # it, which is how a plain OpenAI-compatible server behaves.
+        self.props: dict | None = None
         outer = self
 
         class Handler(http.server.BaseHTTPRequestHandler):
@@ -37,7 +40,9 @@ class _MockEmbeddingServer:
                 self.wfile.write(body)
 
             def do_GET(self):
-                if self.path.rstrip("/") == "/v1/models":
+                if self.path.rstrip("/") == "/props" and outer.props is not None:
+                    self._send(200, json.dumps(outer.props).encode())
+                elif self.path.rstrip("/") == "/v1/models":
                     body = json.dumps(
                         {"object": "list", "data": [{"id": outer.model_id, "object": "model"}]}
                     ).encode()
