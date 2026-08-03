@@ -4,11 +4,16 @@ import os
 import socket
 import threading
 import time
-import tomllib
 from pathlib import Path
 
 import pytest
-
+import tomllib
+from _embedding_server import (
+    _embed_payloads,
+    _free_port,
+    _input_list,
+    _MockEmbeddingServer,
+)
 from engram import client
 from engram.client import (
     EMBED_BATCH_SIZE,
@@ -28,13 +33,6 @@ from engram.client import (
     stop_served,
 )
 
-from _embedding_server import (
-    _MockEmbeddingServer,
-    _embed_payloads,
-    _free_port,
-    _input_list,
-)
-
 
 def _free_port_v6() -> int:
     with socket.socket(socket.AF_INET6, socket.SOCK_STREAM) as s:
@@ -51,7 +49,7 @@ def mock_server():
     server.stop()
 
 
-_STUB_LLAMA_SERVER = '''#!/usr/bin/env python3
+_STUB_LLAMA_SERVER = """#!/usr/bin/env python3
 import http.server
 import json
 import sys
@@ -99,7 +97,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 http.server.HTTPServer(("127.0.0.1", port), Handler).serve_forever()
-'''
+"""
 
 
 def _write_stub_llama_server(bin_dir: Path) -> Path:
@@ -109,7 +107,7 @@ def _write_stub_llama_server(bin_dir: Path) -> Path:
     return stub_path
 
 
-_STUB_LLAMA_SERVER_NEVER_READY = '''#!/usr/bin/env python3
+_STUB_LLAMA_SERVER_NEVER_READY = """#!/usr/bin/env python3
 import http.server
 import sys
 
@@ -147,7 +145,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 http.server.HTTPServer(("127.0.0.1", port), Handler).serve_forever()
-'''
+"""
 
 
 def _write_never_ready_stub_llama_server(bin_dir: Path) -> Path:
@@ -157,7 +155,7 @@ def _write_never_ready_stub_llama_server(bin_dir: Path) -> Path:
     return stub_path
 
 
-_STUB_LLAMA_SERVER_IGNORES_SIGTERM = '''#!/usr/bin/env python3
+_STUB_LLAMA_SERVER_IGNORES_SIGTERM = """#!/usr/bin/env python3
 import http.server
 import json
 import signal
@@ -208,7 +206,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 http.server.HTTPServer(("127.0.0.1", port), Handler).serve_forever()
-'''
+"""
 
 
 def _write_stub_llama_server_ignoring_sigterm(bin_dir: Path) -> Path:
@@ -218,7 +216,7 @@ def _write_stub_llama_server_ignoring_sigterm(bin_dir: Path) -> Path:
     return stub_path
 
 
-_STUB_LLAMA_SERVER_WRONG_MODEL_ID = '''#!/usr/bin/env python3
+_STUB_LLAMA_SERVER_WRONG_MODEL_ID = """#!/usr/bin/env python3
 import http.server
 import json
 import sys
@@ -265,7 +263,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 
 http.server.HTTPServer(("127.0.0.1", port), Handler).serve_forever()
-'''
+"""
 
 
 def _write_stub_llama_server_wrong_model_id(bin_dir: Path) -> Path:
@@ -308,12 +306,12 @@ def test_load_config_writes_default_shortlist_when_file_absent(tmp_path):
 def test_load_config_rejects_non_loopback_endpoint(tmp_path):
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        '[[embedding]]\n'
+        "[[embedding]]\n"
         'id = "remote-model"\n'
         'endpoint = "http://93.184.216.34:8081/v1"\n'
         "\n"
         "[pinned]\n"
-        'id = ""\n'
+        'id = ""\n',
     )
 
     with pytest.raises(ValueError) as excinfo:
@@ -405,7 +403,8 @@ def test_ensure_served_returns_unspawned_lease_for_healthy_endpoint(mock_server)
 
 
 def test_ensure_served_still_leases_a_server_it_spawned_earlier_as_ours(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -447,7 +446,8 @@ def test_ensure_served_disowns_a_stopped_server(tmp_path, monkeypatch):
 
 
 def test_ensure_served_reaps_our_sick_server_before_spawning_a_replacement(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -483,7 +483,9 @@ def test_ensure_served_reaps_our_sick_server_before_spawning_a_replacement(
     monkeypatch.setattr(client, "_spawned_processes", {sick.pid: sick})
     monkeypatch.setattr(client, "_spawned_pids_by_endpoint", {entry.endpoint: sick.pid})
     monkeypatch.setattr(
-        client.subprocess, "Popen", lambda argv, **kwargs: _FakeProcess(pid=922922)
+        client.subprocess,
+        "Popen",
+        lambda argv, **kwargs: _FakeProcess(pid=922922),
     )
 
     with pytest.raises(EmbeddingServerError):
@@ -514,7 +516,8 @@ def test_ensure_served_spawns_stub_server_when_endpoint_is_dead(tmp_path, monkey
 
 
 def test_ensure_served_sizes_the_spawned_server_to_hold_a_full_request(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     """Without explicit -c/-b/--ubatch-size the server runs on llama.cpp
     defaults smaller than one budgeted request, and closes the connection
@@ -563,7 +566,9 @@ def test_ensure_served_sizes_the_spawned_server_to_hold_a_full_request(
     assert client.EMBED_SERVER_CTX_TOKENS >= client.EMBED_BATCH_MAX_CHARS
 
 
-def test_ensure_served_raises_when_llama_server_missing_from_path(tmp_path, monkeypatch):
+def test_ensure_served_raises_when_llama_server_missing_from_path(
+    tmp_path, monkeypatch
+):
     empty_bin = tmp_path / "empty-bin"
     empty_bin.mkdir()
     monkeypatch.setenv("PATH", str(empty_bin))
@@ -647,7 +652,9 @@ def test_embed_truncates_long_text_only_in_outgoing_request(mock_server):
 # --- regression: ensure_served() reaps the spawned process on readiness timeout ---
 
 
-def test_ensure_served_terminates_orphaned_process_on_readiness_timeout(tmp_path, monkeypatch):
+def test_ensure_served_terminates_orphaned_process_on_readiness_timeout(
+    tmp_path, monkeypatch
+):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     _write_never_ready_stub_llama_server(bin_dir)
@@ -655,7 +662,9 @@ def test_ensure_served_terminates_orphaned_process_on_readiness_timeout(tmp_path
     monkeypatch.setattr(client, "EMBED_REQUEST_TIMEOUT_S", 0.5)
 
     port = _free_port()
-    entry = EmbeddingEntry(id="never-ready-model", endpoint=f"http://127.0.0.1:{port}/v1")
+    entry = EmbeddingEntry(
+        id="never-ready-model", endpoint=f"http://127.0.0.1:{port}/v1"
+    )
 
     captured = {}
 
@@ -684,7 +693,9 @@ def test_ensure_served_terminates_orphaned_process_on_readiness_timeout(tmp_path
 # --- regression: stop_served() escalates to SIGKILL when SIGTERM is ignored ---
 
 
-def test_stop_served_escalates_to_sigkill_when_process_ignores_sigterm(tmp_path, monkeypatch):
+def test_stop_served_escalates_to_sigkill_when_process_ignores_sigterm(
+    tmp_path, monkeypatch
+):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     _write_stub_llama_server_ignoring_sigterm(bin_dir)
@@ -693,7 +704,8 @@ def test_stop_served_escalates_to_sigkill_when_process_ignores_sigterm(tmp_path,
 
     port = _free_port()
     entry = EmbeddingEntry(
-        id="stub-model-ignores-sigterm", endpoint=f"http://127.0.0.1:{port}/v1"
+        id="stub-model-ignores-sigterm",
+        endpoint=f"http://127.0.0.1:{port}/v1",
     )
     lease = ensure_served(entry)
     assert lease.spawned is True
@@ -753,9 +765,13 @@ def _redirect_chain_to_reachable_off_machine_loopback():
                     "object": "list",
                     "model": "off-machine",
                     "data": [
-                        {"index": 0, "embedding": [9.0, 9.0, 9.0, 9.0], "object": "embedding"}
+                        {
+                            "index": 0,
+                            "embedding": [9.0, 9.0, 9.0, 9.0],
+                            "object": "embedding",
+                        },
                     ],
-                }
+                },
             ).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
@@ -775,7 +791,9 @@ def _redirect_chain_to_reachable_off_machine_loopback():
         address_family = socket.AF_INET6
 
     reachable_server = _V6HTTPServer(("::1", reachable_port), ReachableHandler)
-    reachable_thread = threading.Thread(target=reachable_server.serve_forever, daemon=True)
+    reachable_thread = threading.Thread(
+        target=reachable_server.serve_forever, daemon=True
+    )
     reachable_thread.start()
 
     redirect_target = f"http://[::1]:{reachable_port}/v1/embeddings"
@@ -793,8 +811,12 @@ def _redirect_chain_to_reachable_off_machine_loopback():
             self.end_headers()
 
     redirect_port = _free_port()
-    redirect_server = http.server.HTTPServer(("127.0.0.1", redirect_port), RedirectHandler)
-    redirect_thread = threading.Thread(target=redirect_server.serve_forever, daemon=True)
+    redirect_server = http.server.HTTPServer(
+        ("127.0.0.1", redirect_port), RedirectHandler
+    )
+    redirect_thread = threading.Thread(
+        target=redirect_server.serve_forever, daemon=True
+    )
     redirect_thread.start()
 
     try:
@@ -876,8 +898,7 @@ def test_ensure_served_reaps_process_on_model_identity_mismatch(tmp_path, monkey
 def test_load_config_rejects_empty_embedding_list(tmp_path):
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        "[pinned]\n"
-        'id = ""\n'
+        '[pinned]\nid = ""\n',
     )
 
     with pytest.raises(ValueError):
@@ -887,12 +908,12 @@ def test_load_config_rejects_empty_embedding_list(tmp_path):
 def test_load_config_rejects_pinned_id_absent_from_shortlist(tmp_path):
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        '[[embedding]]\n'
+        "[[embedding]]\n"
         'id = "model-a"\n'
         'endpoint = "http://127.0.0.1:8081/v1"\n'
         "\n"
         "[pinned]\n"
-        'id = "model-b"\n'
+        'id = "model-b"\n',
     )
 
     with pytest.raises(ValueError) as excinfo:
@@ -908,7 +929,9 @@ def test_resolve_pinned_entry_returns_first_when_unpinned(tmp_path):
     e0 = EmbeddingEntry(id="m0", endpoint="http://127.0.0.1:8081/v1")
     e1 = EmbeddingEntry(id="m1", endpoint="http://127.0.0.1:8082/v1")
     config = EngramConfig(
-        embeddings=[e0, e1], pinned_id=None, config_path=tmp_path / "config.toml"
+        embeddings=[e0, e1],
+        pinned_id=None,
+        config_path=tmp_path / "config.toml",
     )
 
     entry = resolve_pinned_entry(config)
@@ -920,7 +943,9 @@ def test_resolve_pinned_entry_returns_pinned_match(tmp_path):
     e0 = EmbeddingEntry(id="m0", endpoint="http://127.0.0.1:8081/v1")
     e1 = EmbeddingEntry(id="m1", endpoint="http://127.0.0.1:8082/v1")
     config = EngramConfig(
-        embeddings=[e0, e1], pinned_id=e1.id, config_path=tmp_path / "config.toml"
+        embeddings=[e0, e1],
+        pinned_id=e1.id,
+        config_path=tmp_path / "config.toml",
     )
 
     entry = resolve_pinned_entry(config)
@@ -930,7 +955,9 @@ def test_resolve_pinned_entry_returns_pinned_match(tmp_path):
 
 
 def test_resolve_pinned_entry_raises_on_empty_embeddings(tmp_path):
-    config = EngramConfig(embeddings=[], pinned_id=None, config_path=tmp_path / "config.toml")
+    config = EngramConfig(
+        embeddings=[], pinned_id=None, config_path=tmp_path / "config.toml"
+    )
 
     with pytest.raises(ValueError):
         resolve_pinned_entry(config)
@@ -939,7 +966,9 @@ def test_resolve_pinned_entry_raises_on_empty_embeddings(tmp_path):
 def test_resolve_pinned_entry_raises_on_unknown_pinned_id(tmp_path):
     e0 = EmbeddingEntry(id="m0", endpoint="http://127.0.0.1:8081/v1")
     config = EngramConfig(
-        embeddings=[e0], pinned_id="ghost", config_path=tmp_path / "config.toml"
+        embeddings=[e0],
+        pinned_id="ghost",
+        config_path=tmp_path / "config.toml",
     )
 
     with pytest.raises(ValueError) as excinfo:
@@ -964,12 +993,12 @@ def test_packbudget_defaults_are_the_five_documented_values():
 def test_load_config_defaults_pack_budget_when_pack_table_absent(tmp_path):
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        '[[embedding]]\n'
+        "[[embedding]]\n"
         'id = "model-a"\n'
         'endpoint = "http://127.0.0.1:8081/v1"\n'
         "\n"
         "[pinned]\n"
-        'id = ""\n'
+        'id = ""\n',
     )
 
     config = load_config(path=config_path)
@@ -980,7 +1009,7 @@ def test_load_config_defaults_pack_budget_when_pack_table_absent(tmp_path):
 def test_load_config_accepts_pack_table_with_explicit_default_values(tmp_path):
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        '[[embedding]]\n'
+        "[[embedding]]\n"
         'id = "model-a"\n'
         'endpoint = "http://127.0.0.1:8081/v1"\n'
         "\n"
@@ -992,7 +1021,7 @@ def test_load_config_accepts_pack_table_with_explicit_default_values(tmp_path):
         "similar_cap_tokens = 1400\n"
         "reuse_cap_tokens = 1000\n"
         "findings_cap_tokens = 1000\n"
-        "prose_cap_tokens = 500\n"
+        "prose_cap_tokens = 500\n",
     )
 
     config = load_config(path=config_path)  # must not raise
@@ -1003,7 +1032,7 @@ def test_load_config_accepts_pack_table_with_explicit_default_values(tmp_path):
 def test_load_config_reads_full_pack_table_field_by_field(tmp_path):
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        '[[embedding]]\n'
+        "[[embedding]]\n"
         'id = "model-a"\n'
         'endpoint = "http://127.0.0.1:8081/v1"\n'
         "\n"
@@ -1015,7 +1044,7 @@ def test_load_config_reads_full_pack_table_field_by_field(tmp_path):
         "similar_cap_tokens = 3000\n"
         "reuse_cap_tokens = 2000\n"
         "findings_cap_tokens = 1500\n"
-        "prose_cap_tokens = 1000\n"
+        "prose_cap_tokens = 1000\n",
     )
 
     config = load_config(path=config_path)
@@ -1030,7 +1059,7 @@ def test_load_config_reads_full_pack_table_field_by_field(tmp_path):
 def test_load_config_fills_defaults_for_fields_absent_from_partial_pack_table(tmp_path):
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        '[[embedding]]\n'
+        "[[embedding]]\n"
         'id = "model-a"\n'
         'endpoint = "http://127.0.0.1:8081/v1"\n'
         "\n"
@@ -1039,7 +1068,7 @@ def test_load_config_fills_defaults_for_fields_absent_from_partial_pack_table(tm
         "\n"
         "[pack]\n"
         "hard_cap_tokens = 5000\n"
-        "similar_cap_tokens = 2000\n"
+        "similar_cap_tokens = 2000\n",
     )
 
     config = load_config(path=config_path)
@@ -1054,7 +1083,7 @@ def test_load_config_fills_defaults_for_fields_absent_from_partial_pack_table(tm
 def test_load_config_rejects_zero_value_for_pack_cap_field(tmp_path):
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        '[[embedding]]\n'
+        "[[embedding]]\n"
         'id = "model-a"\n'
         'endpoint = "http://127.0.0.1:8081/v1"\n'
         "\n"
@@ -1062,7 +1091,7 @@ def test_load_config_rejects_zero_value_for_pack_cap_field(tmp_path):
         'id = ""\n'
         "\n"
         "[pack]\n"
-        "reuse_cap_tokens = 0\n"
+        "reuse_cap_tokens = 0\n",
     )
 
     with pytest.raises(ValueError):
@@ -1072,7 +1101,7 @@ def test_load_config_rejects_zero_value_for_pack_cap_field(tmp_path):
 def test_load_config_rejects_negative_value_for_pack_cap_field(tmp_path):
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        '[[embedding]]\n'
+        "[[embedding]]\n"
         'id = "model-a"\n'
         'endpoint = "http://127.0.0.1:8081/v1"\n'
         "\n"
@@ -1080,7 +1109,7 @@ def test_load_config_rejects_negative_value_for_pack_cap_field(tmp_path):
         'id = ""\n'
         "\n"
         "[pack]\n"
-        "reuse_cap_tokens = -5\n"
+        "reuse_cap_tokens = -5\n",
     )
 
     with pytest.raises(ValueError):
@@ -1090,7 +1119,7 @@ def test_load_config_rejects_negative_value_for_pack_cap_field(tmp_path):
 def test_load_config_rejects_string_value_for_pack_cap_field(tmp_path):
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        '[[embedding]]\n'
+        "[[embedding]]\n"
         'id = "model-a"\n'
         'endpoint = "http://127.0.0.1:8081/v1"\n'
         "\n"
@@ -1098,7 +1127,7 @@ def test_load_config_rejects_string_value_for_pack_cap_field(tmp_path):
         'id = ""\n'
         "\n"
         "[pack]\n"
-        'findings_cap_tokens = "1000"\n'
+        'findings_cap_tokens = "1000"\n',
     )
 
     with pytest.raises(ValueError):
@@ -1108,7 +1137,7 @@ def test_load_config_rejects_string_value_for_pack_cap_field(tmp_path):
 def test_load_config_rejects_float_value_for_pack_cap_field(tmp_path):
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        '[[embedding]]\n'
+        "[[embedding]]\n"
         'id = "model-a"\n'
         'endpoint = "http://127.0.0.1:8081/v1"\n'
         "\n"
@@ -1116,7 +1145,7 @@ def test_load_config_rejects_float_value_for_pack_cap_field(tmp_path):
         'id = ""\n'
         "\n"
         "[pack]\n"
-        "findings_cap_tokens = 1000.0\n"
+        "findings_cap_tokens = 1000.0\n",
     )
 
     with pytest.raises(ValueError):
@@ -1126,7 +1155,7 @@ def test_load_config_rejects_float_value_for_pack_cap_field(tmp_path):
 def test_load_config_rejects_boolean_value_for_pack_cap_field(tmp_path):
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        '[[embedding]]\n'
+        "[[embedding]]\n"
         'id = "model-a"\n'
         'endpoint = "http://127.0.0.1:8081/v1"\n'
         "\n"
@@ -1134,7 +1163,7 @@ def test_load_config_rejects_boolean_value_for_pack_cap_field(tmp_path):
         'id = ""\n'
         "\n"
         "[pack]\n"
-        "prose_cap_tokens = true\n"
+        "prose_cap_tokens = true\n",
     )
 
     with pytest.raises(ValueError):
@@ -1144,7 +1173,7 @@ def test_load_config_rejects_boolean_value_for_pack_cap_field(tmp_path):
 def test_load_config_rejects_pack_table_whose_section_caps_exceed_hard_cap(tmp_path):
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        '[[embedding]]\n'
+        "[[embedding]]\n"
         'id = "model-a"\n'
         'endpoint = "http://127.0.0.1:8081/v1"\n'
         "\n"
@@ -1152,7 +1181,7 @@ def test_load_config_rejects_pack_table_whose_section_caps_exceed_hard_cap(tmp_p
         'id = ""\n'
         "\n"
         "[pack]\n"
-        "hard_cap_tokens = 3000\n"
+        "hard_cap_tokens = 3000\n",
     )
 
     with pytest.raises(ValueError) as excinfo:
@@ -1161,10 +1190,12 @@ def test_load_config_rejects_pack_table_whose_section_caps_exceed_hard_cap(tmp_p
     assert "3000" in str(excinfo.value)
 
 
-def test_load_config_accepts_pack_table_where_section_caps_sum_exactly_to_hard_cap(tmp_path):
+def test_load_config_accepts_pack_table_where_section_caps_sum_exactly_to_hard_cap(
+    tmp_path,
+):
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        '[[embedding]]\n'
+        "[[embedding]]\n"
         'id = "model-a"\n'
         'endpoint = "http://127.0.0.1:8081/v1"\n'
         "\n"
@@ -1176,7 +1207,7 @@ def test_load_config_accepts_pack_table_where_section_caps_sum_exactly_to_hard_c
         "similar_cap_tokens = 500\n"
         "reuse_cap_tokens = 500\n"
         "findings_cap_tokens = 500\n"
-        "prose_cap_tokens = 400\n"
+        "prose_cap_tokens = 400\n",
     )
 
     config = load_config(path=config_path)  # must not raise: sum == hard cap exactly
