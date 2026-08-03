@@ -44,7 +44,10 @@ class _MockEmbeddingServer:
                     self._send(200, json.dumps(outer.props).encode())
                 elif self.path.rstrip("/") == "/v1/models":
                     body = json.dumps(
-                        {"object": "list", "data": [{"id": outer.model_id, "object": "model"}]}
+                        {
+                            "object": "list",
+                            "data": [{"id": outer.model_id, "object": "model"}],
+                        },
                     ).encode()
                     self._send(200, body)
                 else:
@@ -71,7 +74,9 @@ class _MockEmbeddingServer:
             {"index": i, "embedding": [float(i)] * 4, "object": "embedding"}
             for i in range(len(inputs))
         ]
-        body = json.dumps({"object": "list", "model": self.model_id, "data": data}).encode()
+        body = json.dumps(
+            {"object": "list", "model": self.model_id, "data": data}
+        ).encode()
         return 200, body
 
     @property
@@ -101,8 +106,14 @@ def _responder_with_broken_batch(model_id: str, broken_data: list):
     def responder(payload):
         inputs = _input_list(payload)
         if len(inputs) == 1:
-            data = [{"index": 0, "embedding": [0.1, 0.2, 0.3, 0.4], "object": "embedding"}]
-            return 200, json.dumps({"object": "list", "model": model_id, "data": data}).encode()
-        return 200, json.dumps({"object": "list", "model": model_id, "data": broken_data}).encode()
+            data = [
+                {"index": 0, "embedding": [0.1, 0.2, 0.3, 0.4], "object": "embedding"}
+            ]
+            return 200, json.dumps(
+                {"object": "list", "model": model_id, "data": data}
+            ).encode()
+        return 200, json.dumps(
+            {"object": "list", "model": model_id, "data": broken_data}
+        ).encode()
 
     return responder

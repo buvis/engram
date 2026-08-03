@@ -8,7 +8,6 @@ from _embedding_server import (
     _MockEmbeddingServer,
     _responder_with_broken_batch,
 )
-
 from engram import client
 from engram.client import (
     EMBED_BATCH_MAX_CHARS,
@@ -387,7 +386,8 @@ def test_embed_keeps_the_full_ceiling_for_a_roomy_context(mock_server, monkeypat
 
 
 def test_embed_falls_back_to_the_ceiling_when_props_is_unavailable(
-    mock_server, monkeypatch
+    mock_server,
+    monkeypatch,
 ):
     entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
     monkeypatch.setattr(client, "_max_chars_by_endpoint", {})
@@ -442,7 +442,8 @@ def test_embed_recycles_a_5xx_from_a_spawned_server_and_retries_the_request(
 
 
 def test_embed_treats_a_4xx_as_a_bad_request_not_a_degradation(
-    mock_server, monkeypatch
+    mock_server,
+    monkeypatch,
 ):
     entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
     calls = _fake_lifecycle(monkeypatch, spawned=True)

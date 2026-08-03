@@ -8,13 +8,14 @@ import shutil
 import signal
 import subprocess
 import time
-import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
+
+import tomllib
 
 EMBED_MAX_CHARS = 8000
 EMBED_BATCH_SIZE = 64
@@ -552,7 +553,8 @@ def _parse_batch_vectors(
 
 
 def _budgeted_batches(
-    texts: list[str], max_chars: int = EMBED_MAX_CHARS
+    texts: list[str],
+    max_chars: int = EMBED_MAX_CHARS,
 ) -> Iterator[tuple[int, list[str]]]:
     """Yield `(start_index, truncated_texts)` requests within both budgets.
 
@@ -568,9 +570,7 @@ def _budgeted_batches(
     total = 0
     for index, text in enumerate(texts):
         piece = text[:max_chars]
-        if batch and (
-            len(batch) >= EMBED_BATCH_SIZE or total + len(piece) > max_chars
-        ):
+        if batch and (len(batch) >= EMBED_BATCH_SIZE or total + len(piece) > max_chars):
             yield start, batch
             start, batch, total = index, [], 0
         batch.append(piece)
