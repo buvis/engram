@@ -16,15 +16,17 @@ def _write_diff(tmp_path: Path, lines: list[str]) -> Path:
 # --- changed_symbols(): an added line resolves to its smallest enclosing symbol ---
 
 
-def test_added_line_inside_function_or_method_resolves_to_smallest_enclosing_symbol(tmp_path):
+def test_added_line_inside_function_or_method_resolves_to_smallest_enclosing_symbol(
+    tmp_path,
+):
     (tmp_path / "mod.py").write_text(
-        'def foo():\n'
-        '    return 1\n'
-        '\n'
-        '\n'
-        'class Bar:\n'
-        '    def method(self):\n'
-        '        return 2\n'
+        "def foo():\n"
+        "    return 1\n"
+        "\n"
+        "\n"
+        "class Bar:\n"
+        "    def method(self):\n"
+        "        return 2\n",
     )
     diff_path = _write_diff(
         tmp_path,
@@ -49,22 +51,23 @@ def test_added_line_inside_function_or_method_resolves_to_smallest_enclosing_sym
     expected_path = str(tmp_path / "mod.py")
     assert len(result) == 2
     assert set(result) == {
-        Symbol(path=expected_path, name="foo", kind="function", line_start=1, line_end=2),
-        Symbol(path=expected_path, name="method", kind="function", line_start=6, line_end=7),
+        Symbol(
+            path=expected_path, name="foo", kind="function", line_start=1, line_end=2
+        ),
+        Symbol(
+            path=expected_path, name="method", kind="function", line_start=6, line_end=7
+        ),
     }
 
 
 # --- changed_symbols(): only '+' lines are mapped, not the whole @@ span ---
 
 
-def test_context_line_spillover_in_hunk_span_does_not_pull_in_neighboring_symbol(tmp_path):
+def test_context_line_spillover_in_hunk_span_does_not_pull_in_neighboring_symbol(
+    tmp_path,
+):
     (tmp_path / "mod.py").write_text(
-        'def foo():\n'
-        '    return 1\n'
-        '\n'
-        '\n'
-        'def bar():\n'
-        '    return 2\n'
+        "def foo():\n    return 1\n\n\ndef bar():\n    return 2\n",
     )
     diff_path = _write_diff(
         tmp_path,
@@ -107,15 +110,11 @@ def test_context_line_spillover_in_hunk_span_does_not_pull_in_neighboring_symbol
     ],
     ids=["import", "top_level_constant"],
 )
-def test_added_line_touching_only_module_level_code_falls_back_to_file_level(tmp_path, hunk_lines):
+def test_added_line_touching_only_module_level_code_falls_back_to_file_level(
+    tmp_path, hunk_lines
+):
     (tmp_path / "mod2.py").write_text(
-        'import os\n'
-        '\n'
-        'X = 1\n'
-        '\n'
-        '\n'
-        'def foo():\n'
-        '    return 1\n'
+        "import os\n\nX = 1\n\n\ndef foo():\n    return 1\n",
     )
     diff_path = _write_diff(
         tmp_path,
@@ -138,14 +137,11 @@ def test_added_line_touching_only_module_level_code_falls_back_to_file_level(tmp
 # --- changed_symbols(): a pure-deletion hunk has no post-image line to map, falls back to file-level ---
 
 
-def test_pure_deletion_hunk_falls_back_to_file_level_anchored_at_post_image_start(tmp_path):
+def test_pure_deletion_hunk_falls_back_to_file_level_anchored_at_post_image_start(
+    tmp_path,
+):
     (tmp_path / "mod3.py").write_text(
-        'def alpha():\n'
-        '    return 1\n'
-        '\n'
-        '\n'
-        'def beta():\n'
-        '    return 2\n'
+        "def alpha():\n    return 1\n\n\ndef beta():\n    return 2\n",
     )
     diff_path = _write_diff(
         tmp_path,
@@ -171,7 +167,9 @@ def test_pure_deletion_hunk_falls_back_to_file_level_anchored_at_post_image_star
 # --- changed_symbols(): a file section with +++ /dev/null is a deletion, not a diff-relative path guess ---
 
 
-def test_file_section_with_dev_null_target_is_deletion_and_yields_file_level_symbol(tmp_path):
+def test_file_section_with_dev_null_target_is_deletion_and_yields_file_level_symbol(
+    tmp_path,
+):
     diff_path = _write_diff(
         tmp_path,
         [
@@ -198,10 +196,7 @@ def test_file_section_with_dev_null_target_is_deletion_and_yields_file_level_sym
 
 def test_multiple_changed_lines_in_same_function_dedup_to_one_symbol(tmp_path):
     (tmp_path / "mod4.py").write_text(
-        'def calc():\n'
-        '    a = 1\n'
-        '    b = 2\n'
-        '    return a + b\n'
+        "def calc():\n    a = 1\n    b = 2\n    return a + b\n",
     )
     diff_path = _write_diff(
         tmp_path,
@@ -240,8 +235,7 @@ def test_symbol_path_is_absolute_and_matches_chunk_path_for_same_file(tmp_path):
     (tmp_path / "pkg").mkdir()
     source_path = tmp_path / "pkg" / "mod.py"
     source_path.write_text(
-        'def only():\n'
-        '    return 1\n'
+        "def only():\n    return 1\n",
     )
     diff_path = _write_diff(
         tmp_path,
@@ -277,8 +271,7 @@ def test_symbol_path_is_absolute_and_matches_chunk_path_for_same_file(tmp_path):
 def test_historical_source_ref_reads_that_commits_content_not_the_worktree(tmp_path):
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
     (tmp_path / "mod.py").write_text(
-        'def alpha():\n'
-        '    return 1\n'
+        "def alpha():\n    return 1\n",
     )
     subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
     subprocess.run(
@@ -296,8 +289,7 @@ def test_historical_source_ref_reads_that_commits_content_not_the_worktree(tmp_p
     ).stdout.strip()
 
     (tmp_path / "mod.py").write_text(
-        'def beta():\n'
-        '    return 2\n'
+        "def beta():\n    return 2\n",
     )
     subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
     subprocess.run(
@@ -377,7 +369,11 @@ def test_binary_file_section_yields_no_symbol_and_does_not_crash_the_parse(tmp_p
     image_path.write_bytes(b"\x89PNG\r\n\x1a\n\x00\x09\x08\x07")
 
     diff_text = subprocess.run(
-        ["git", "diff"], cwd=tmp_path, check=True, capture_output=True, text=True
+        ["git", "diff"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
     ).stdout
     diff_path = tmp_path / "changes.diff"
     diff_path.write_text(diff_text)
@@ -393,7 +389,10 @@ def test_binary_file_section_yields_no_symbol_and_does_not_crash_the_parse(tmp_p
 def test_mode_only_section_yields_no_symbol_and_does_not_crash_the_parse(tmp_path):
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
     subprocess.run(
-        ["git", "config", "core.fileMode", "true"], cwd=tmp_path, check=True, capture_output=True
+        ["git", "config", "core.fileMode", "true"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
     )
     script_path = tmp_path / "run.sh"
     script_path.write_text("echo hi\n")
@@ -408,7 +407,11 @@ def test_mode_only_section_yields_no_symbol_and_does_not_crash_the_parse(tmp_pat
     script_path.chmod(0o755)
 
     diff_text = subprocess.run(
-        ["git", "diff"], cwd=tmp_path, check=True, capture_output=True, text=True
+        ["git", "diff"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
     ).stdout
     diff_path = tmp_path / "changes.diff"
     diff_path.write_text(diff_text)
@@ -421,10 +424,15 @@ def test_mode_only_section_yields_no_symbol_and_does_not_crash_the_parse(tmp_pat
 # --- changed_symbols(): binary and mode-only sections before a text change don't abort mapping the rest of the diff ---
 
 
-def test_binary_and_mode_sections_before_text_change_do_not_abort_the_rest_of_the_parse(tmp_path):
+def test_binary_and_mode_sections_before_text_change_do_not_abort_the_rest_of_the_parse(
+    tmp_path,
+):
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
     subprocess.run(
-        ["git", "config", "core.fileMode", "true"], cwd=tmp_path, check=True, capture_output=True
+        ["git", "config", "core.fileMode", "true"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
     )
     image_path = tmp_path / "aaa_img.png"
     image_path.write_bytes(b"\x89PNG\r\n\x1a\n\x00\x01\x02\x03")
@@ -433,8 +441,7 @@ def test_binary_and_mode_sections_before_text_change_do_not_abort_the_rest_of_th
     script_path.chmod(0o644)
     module_path = tmp_path / "mod.py"
     module_path.write_text(
-        'def foo():\n'
-        '    return 1\n'
+        "def foo():\n    return 1\n",
     )
     subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
     subprocess.run(
@@ -446,12 +453,15 @@ def test_binary_and_mode_sections_before_text_change_do_not_abort_the_rest_of_th
     image_path.write_bytes(b"\x89PNG\r\n\x1a\n\x00\x09\x08\x07")
     script_path.chmod(0o755)
     module_path.write_text(
-        'def foo():\n'
-        '    return 2\n'
+        "def foo():\n    return 2\n",
     )
 
     diff_text = subprocess.run(
-        ["git", "diff"], cwd=tmp_path, check=True, capture_output=True, text=True
+        ["git", "diff"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
     ).stdout
     diff_path = tmp_path / "changes.diff"
     diff_path.write_text(diff_text)
@@ -504,7 +514,9 @@ def test_non_utf8_source_file_is_parsed_with_replacement_not_crashed_on(tmp_path
 # --- changed_symbols(): a non-UTF-8 source file is decoded with replacement, not crashed on (historical mode) ---
 
 
-def test_non_utf8_source_file_at_source_ref_is_parsed_with_replacement_not_crashed_on(tmp_path):
+def test_non_utf8_source_file_at_source_ref_is_parsed_with_replacement_not_crashed_on(
+    tmp_path,
+):
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
     (tmp_path / "weird.py").write_bytes(b'def foo():\n    return "\xe9"\n')
     subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
@@ -523,8 +535,7 @@ def test_non_utf8_source_file_at_source_ref_is_parsed_with_replacement_not_crash
     ).stdout.strip()
 
     (tmp_path / "weird.py").write_text(
-        'def beta():\n'
-        '    return 2\n'
+        "def beta():\n    return 2\n",
     )
     subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
     subprocess.run(
@@ -564,7 +575,9 @@ def test_non_utf8_source_file_at_source_ref_is_parsed_with_replacement_not_crash
 # --- changed_symbols(): non-UTF-8 bytes in the diff file itself are decoded with replacement, not crashed on ---
 
 
-def test_non_utf8_bytes_in_the_diff_file_are_decoded_with_replacement_not_crashed_on(tmp_path):
+def test_non_utf8_bytes_in_the_diff_file_are_decoded_with_replacement_not_crashed_on(
+    tmp_path,
+):
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
     module_path = tmp_path / "mod.py"
     module_path.write_bytes(b'def foo():\n    return "x"\n')
@@ -578,7 +591,10 @@ def test_non_utf8_bytes_in_the_diff_file_are_decoded_with_replacement_not_crashe
     module_path.write_bytes(b'def foo():\n    return "\xe9"\n')
 
     diff_result = subprocess.run(
-        ["git", "diff"], cwd=tmp_path, check=True, capture_output=True
+        ["git", "diff"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
     )
     diff_path = tmp_path / "changes.diff"
     diff_path.write_bytes(diff_result.stdout)
@@ -637,7 +653,9 @@ def test_multiline_change_to_grammarless_file_yields_one_file_level_symbol_ancho
 
 
 def test_multiple_hunks_in_grammarless_file_dedup_to_one_file_level_symbol(tmp_path):
-    (tmp_path / "Makefile").write_text("build:\n\tgo build ./...\n\ntest:\n\tgo test ./...\n")
+    (tmp_path / "Makefile").write_text(
+        "build:\n\tgo build ./...\n\ntest:\n\tgo test ./...\n"
+    )
     diff_path = _write_diff(
         tmp_path,
         [
@@ -666,13 +684,11 @@ def test_multiple_hunks_in_grammarless_file_dedup_to_one_file_level_symbol(tmp_p
 # --- changed_symbols(): several module-level edits in one Python file dedup to one file-level symbol ---
 
 
-def test_multiple_module_level_edits_in_python_file_dedup_to_one_file_level_symbol(tmp_path):
+def test_multiple_module_level_edits_in_python_file_dedup_to_one_file_level_symbol(
+    tmp_path,
+):
     (tmp_path / "mod6.py").write_text(
-        'import os\n'
-        'import sys\n'
-        '\n'
-        'def foo():\n'
-        '    return 1\n'
+        "import os\nimport sys\n\ndef foo():\n    return 1\n",
     )
     diff_path = _write_diff(
         tmp_path,
@@ -731,26 +747,40 @@ def test_dedup_is_per_file_not_global_across_two_grammarless_files(tmp_path):
 
     assert len(result) == 2
     assert set(result) == {
-        Symbol(path=str(tmp_path / "data.bin"), name="data.bin", kind="file", line_start=2, line_end=2),
-        Symbol(path=str(tmp_path / "Makefile"), name="Makefile", kind="file", line_start=3, line_end=3),
+        Symbol(
+            path=str(tmp_path / "data.bin"),
+            name="data.bin",
+            kind="file",
+            line_start=2,
+            line_end=2,
+        ),
+        Symbol(
+            path=str(tmp_path / "Makefile"),
+            name="Makefile",
+            kind="file",
+            line_start=3,
+            line_end=3,
+        ),
     }
 
 
 # --- changed_symbols(): deduping the file-level fallback does not swallow real function symbols ---
 
 
-def test_function_and_module_level_edits_in_same_file_yield_functions_plus_one_file_symbol(tmp_path):
+def test_function_and_module_level_edits_in_same_file_yield_functions_plus_one_file_symbol(
+    tmp_path,
+):
     (tmp_path / "mod5.py").write_text(
-        'import os\n'
-        'import sys\n'
-        '\n'
-        '\n'
-        'def foo():\n'
-        '    return 1\n'
-        '\n'
-        '\n'
-        'def bar():\n'
-        '    return 2\n'
+        "import os\n"
+        "import sys\n"
+        "\n"
+        "\n"
+        "def foo():\n"
+        "    return 1\n"
+        "\n"
+        "\n"
+        "def bar():\n"
+        "    return 2\n",
     )
     diff_path = _write_diff(
         tmp_path,
@@ -780,7 +810,13 @@ def test_function_and_module_level_edits_in_same_file_yield_functions_plus_one_f
     expected_path = str(tmp_path / "mod5.py")
     assert len(result) == 3
     assert set(result) == {
-        Symbol(path=expected_path, name="mod5.py", kind="file", line_start=1, line_end=1),
-        Symbol(path=expected_path, name="foo", kind="function", line_start=5, line_end=6),
-        Symbol(path=expected_path, name="bar", kind="function", line_start=9, line_end=10),
+        Symbol(
+            path=expected_path, name="mod5.py", kind="file", line_start=1, line_end=1
+        ),
+        Symbol(
+            path=expected_path, name="foo", kind="function", line_start=5, line_end=6
+        ),
+        Symbol(
+            path=expected_path, name="bar", kind="function", line_start=9, line_end=10
+        ),
     }
