@@ -599,6 +599,38 @@ def test_pack_diff_range_starting_with_dash_is_rejected_before_reaching_git(
     assert diff_calls == []
 
 
+def test_pack_diff_range_head_starting_with_dash_is_rejected_before_reaching_git(
+    monkeypatch,
+    tmp_path,
+    capsys,
+):
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    toplevel = _init_git_repo(repo_dir)
+    _register_repo(monkeypatch, tmp_path, toplevel)
+    monkeypatch.chdir(toplevel)
+
+    diff_calls, fake_run = _make_fake_git_diff_run(
+        "diff --git a/foo b/foo\n+added line\n",
+        returncode=0,
+    )
+    monkeypatch.setattr("engram.cli.subprocess.run", fake_run)
+
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.build", _refuse)
+
+    malicious_head = "--output=/tmp/pwned"
+    exit_code = main(["pack", f"--diff=HEAD..{malicious_head}"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert captured.err != ""
+    assert malicious_head in captured.err
+    # git must never have been invoked with the rejected value.
+    assert diff_calls == []
+
+
 # --- pack: --prd default resolution ---
 
 
