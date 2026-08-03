@@ -130,12 +130,8 @@ def _append_prose_entry(entries: list[str], text: str, cap_chars: int) -> None:
         entries.append(text[:remaining_chars])
 
 
-def _prd_query_text(prd_path: Path) -> str:
-    try:
-        text = prd_path.read_text(errors="replace")
-    except OSError:
-        return prd_path.stem
-    for line in text.splitlines():
+def _prd_query_text(prd_text: str | None, prd_path: Path) -> str:
+    for line in (prd_text or "").splitlines():
         if line.startswith("# "):
             return line[2:].strip()
     return prd_path.stem
@@ -161,10 +157,15 @@ def _task_prose_entries(
             _append_prose_entry(entries, section, leading_cap_chars)
 
     if prd_path is not None:
+        try:
+            prd_text = prd_path.read_text(errors="replace")
+        except OSError:
+            prd_text = None
+
         memory_hits = query(
             store,
             config,
-            _prd_query_text(prd_path),
+            _prd_query_text(prd_text, prd_path),
             Scope("portfolio", None),
             corpus="memory",
             k=RETRIEVAL_K,
@@ -174,11 +175,6 @@ def _task_prose_entries(
             if hit.body:
                 _append_prose_entry(entries, hit.body, leading_cap_chars)
 
-    if prd_path is not None:
-        try:
-            prd_text = prd_path.read_text(errors="replace")
-        except OSError:
-            prd_text = None
         if prd_text is not None:
             _append_prose_entry(entries, prd_text, total_cap_chars)
 
