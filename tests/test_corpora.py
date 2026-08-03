@@ -76,6 +76,31 @@ def test_memory_dir_matching_repos_csv_slug_resolves_to_repo_name(tmp_path):
     assert results == {("memory", "gadget", memory_file)}
 
 
+def test_memory_corpus_paths_are_symlink_resolved_when_projects_dir_is_a_symlink(tmp_path):
+    repo_root = tmp_path / "repos" / "gadget"
+    slug = str(repo_root).replace("/", "-")
+
+    real_projects_dir = tmp_path / "real_projects"
+    memory_dir = real_projects_dir / slug / "memory"
+    memory_dir.mkdir(parents=True)
+    memory_file = memory_dir / "notes.md"
+    memory_file.write_text("memory content")
+
+    projects_dir = tmp_path / "projects_link"
+    projects_dir.symlink_to(real_projects_dir)
+
+    repos_csv = tmp_path / "repos.csv"
+    _write_repos_csv(repos_csv, [(str(repo_root), "gadget")])
+
+    results = {
+        (cf.corpus, cf.repo, cf.path)
+        for cf in enumerate_corpora(repos_csv=repos_csv, projects_dir=projects_dir)
+        if cf.corpus == "memory"
+    }
+
+    assert results == {("memory", "gadget", memory_file.resolve())}
+
+
 def test_memory_dir_matching_no_repos_csv_row_resolves_to_unmapped(tmp_path):
     projects_dir = tmp_path / "projects"
     memory_dir = projects_dir / "-unknown-project" / "memory"
