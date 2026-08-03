@@ -358,3 +358,112 @@ def test_grammarless_file_yields_file_level_symbol(tmp_path, filename):
     assert len(result) == 1
     assert result[0].kind == "file"
     assert result[0].path == str(tmp_path / filename)
+
+
+# --- changed_symbols(): a binary-file diff section yields no symbol and does not crash the parse ---
+
+
+def test_binary_file_section_yields_no_symbol_and_does_not_crash_the_parse(tmp_path):
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    image_path = tmp_path / "img.png"
+    image_path.write_bytes(b"\x89PNG\r\n\x1a\n\x00\x01\x02\x03")
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=t", "commit", "-m", "initial"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    image_path.write_bytes(b"\x89PNG\r\n\x1a\n\x00\x09\x08\x07")
+
+    diff_text = subprocess.run(
+        ["git", "diff"], cwd=tmp_path, check=True, capture_output=True, text=True
+    ).stdout
+    diff_path = tmp_path / "changes.diff"
+    diff_path.write_text(diff_text)
+
+    result = changed_symbols(diff_path, tmp_path)
+
+    assert result == []
+
+
+# --- changed_symbols(): a mode-only diff section yields no symbol and does not crash the parse ---
+
+
+def test_mode_only_section_yields_no_symbol_and_does_not_crash_the_parse(tmp_path):
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "core.fileMode", "true"], cwd=tmp_path, check=True, capture_output=True
+    )
+    script_path = tmp_path / "run.sh"
+    script_path.write_text("echo hi\n")
+    script_path.chmod(0o644)
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=t", "commit", "-m", "initial"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    script_path.chmod(0o755)
+
+    diff_text = subprocess.run(
+        ["git", "diff"], cwd=tmp_path, check=True, capture_output=True, text=True
+    ).stdout
+    diff_path = tmp_path / "changes.diff"
+    diff_path.write_text(diff_text)
+
+    result = changed_symbols(diff_path, tmp_path)
+
+    assert result == []
+
+
+# --- changed_symbols(): binary and mode-only sections before a text change don't abort mapping the rest of the diff ---
+
+
+def test_binary_and_mode_sections_before_text_change_do_not_abort_the_rest_of_the_parse(tmp_path):
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "core.fileMode", "true"], cwd=tmp_path, check=True, capture_output=True
+    )
+    image_path = tmp_path / "aaa_img.png"
+    image_path.write_bytes(b"\x89PNG\r\n\x1a\n\x00\x01\x02\x03")
+    script_path = tmp_path / "aab_run.sh"
+    script_path.write_text("echo hi\n")
+    script_path.chmod(0o644)
+    module_path = tmp_path / "mod.py"
+    module_path.write_text(
+        'def foo():\n'
+        '    return 1\n'
+    )
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=t", "commit", "-m", "initial"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    image_path.write_bytes(b"\x89PNG\r\n\x1a\n\x00\x09\x08\x07")
+    script_path.chmod(0o755)
+    module_path.write_text(
+        'def foo():\n'
+        '    return 2\n'
+    )
+
+    diff_text = subprocess.run(
+        ["git", "diff"], cwd=tmp_path, check=True, capture_output=True, text=True
+    ).stdout
+    diff_path = tmp_path / "changes.diff"
+    diff_path.write_text(diff_text)
+
+    result = changed_symbols(diff_path, tmp_path)
+
+    assert result == [
+        Symbol(
+            path=str(tmp_path / "mod.py"),
+            name="foo",
+            kind="function",
+            line_start=1,
+            line_end=2,
+        ),
+    ]
