@@ -276,7 +276,8 @@ def _query_hits_for_symbol(
     similar = hits_for(repo_scope, "code")
     reuse = hits_for(portfolio_scope, "code")
     findings = hits_for(repo_scope, FINDINGS_CORPUS) + hits_for(
-        portfolio_scope, FINDINGS_CORPUS
+        portfolio_scope,
+        FINDINGS_CORPUS,
     )
     return similar, reuse, findings
 
@@ -299,7 +300,11 @@ def _retrieve_pack_hits(
 
     for text, vector in zip(query_texts, vectors):
         similar, reuse, findings = _query_hits_for_symbol(
-            store, config, repo, text, vector
+            store,
+            config,
+            repo,
+            text,
+            vector,
         )
         similar_hits.extend(similar)
         reuse_hits.extend(reuse)
@@ -323,23 +328,24 @@ def _build_pack_sections(
     store,
     config,
     id_: str,
-    similar_hits: list[Pointer],
-    reuse_hits: list[Pointer],
-    findings_hits: list[Pointer],
+    hits: tuple[list[Pointer], list[Pointer], list[Pointer]],
     changed_spans: set[tuple[str, int, int]],
     prd_path: Path | None,
     capsule_path: Path | None,
     budget,
 ) -> tuple[dict, list[str]]:
+    similar_hits, reuse_hits, findings_hits = hits
     sections: dict = {}
     trimmed_sections: list[str] = []
 
-    for label, hits, cap_tokens in (
+    for label, section_hits, cap_tokens in (
         ("Similar code", similar_hits, budget.similar_cap_tokens),
         ("Reuse precedent", reuse_hits, budget.reuse_cap_tokens),
         ("Findings precedent", findings_hits, budget.findings_cap_tokens),
     ):
-        items, was_trimmed = _prepare_section_items(hits, changed_spans, cap_tokens)
+        items, was_trimmed = _prepare_section_items(
+            section_hits, changed_spans, cap_tokens
+        )
         sections[label] = (items, _render_pointer)
         if was_trimmed:
             trimmed_sections.append(label)
@@ -430,11 +436,16 @@ def build(
 ) -> PackReport:
     index_report, changed_spans, query_symbols, symbols_omitted = (
         _reindex_and_resolve_symbols(
-            store, config, repo, repo_root, diff_path, source_ref
+            store,
+            config,
+            repo,
+            repo_root,
+            diff_path,
+            source_ref,
         )
     )
 
-    similar_hits, reuse_hits, findings_hits = _retrieve_pack_hits(
+    hits = _retrieve_pack_hits(
         store,
         config,
         repo,
@@ -448,9 +459,7 @@ def build(
         store,
         config,
         id_,
-        similar_hits,
-        reuse_hits,
-        findings_hits,
+        hits,
         changed_spans,
         prd_path,
         capsule_path,
