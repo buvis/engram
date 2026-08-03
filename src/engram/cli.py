@@ -1,9 +1,7 @@
 """Engram CLI entry point."""
 
 import argparse
-import csv
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -11,7 +9,7 @@ from engram import corpora, symbols
 from engram.client import EngramConfig, embed, load_config, resolve_pinned_entry
 from engram.corpora import GITA_REPOS_CSV, enumerate_corpora
 from engram.findings import FINDINGS_CORPUS
-from engram.harvest import harvest
+from engram.harvest import _resolve_repo_for_path, harvest
 from engram.indexer import index
 from engram.query import query
 from engram.store import (
@@ -28,25 +26,10 @@ _NOT_IN_REPO_MSG = "not inside a registered repo; pass --scope portfolio instead
 
 
 def _resolve_repo_name() -> str | None:
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return None
-
-    toplevel = result.stdout.strip()
-    if not GITA_REPOS_CSV.exists():
-        return None
-
-    with GITA_REPOS_CSV.open(newline="") as f:
-        for row in csv.reader(f):
-            if len(row) >= 2 and row[0] == toplevel:
-                return row[1]
-    return None
+    # _resolve_repo_for_path runs git with cwd=path.parent and checks
+    # path.resolve() for the ~/.claude sentinel; append a synthetic filename
+    # so both land on the process cwd.
+    return _resolve_repo_for_path(Path.cwd() / "_", repos_csv=GITA_REPOS_CSV)
 
 
 def _resolve_scope(kind: str) -> Scope | None:

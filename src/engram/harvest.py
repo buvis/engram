@@ -44,8 +44,12 @@ def _resolve_repo_for_path(path: Path, repos_csv: Path = GITA_REPOS_CSV) -> str 
             text=True,
             check=True,
         )
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        if path.resolve().is_relative_to(Path.home() / ".claude"):
+    except (subprocess.CalledProcessError, OSError):
+        try:
+            under_claude_home = path.resolve().is_relative_to(Path.home() / ".claude")
+        except (OSError, RuntimeError):
+            return None
+        if under_claude_home:
             return "claude-home"
         return None
 
