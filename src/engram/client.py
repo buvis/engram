@@ -8,13 +8,14 @@ import shutil
 import signal
 import subprocess
 import time
-import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
+
+import tomllib
 
 EMBED_MAX_CHARS = 8000
 EMBED_BATCH_SIZE = 64
@@ -109,6 +110,18 @@ class EmbeddingPreflightError(RuntimeError):
     pass
 
 
+class EmbeddingDegradedError(EmbeddingPreflightError):
+    """The server answered, but the vectors it returned are unusable.
+
+    Measured on `llama-server --embedding`: under sustained real load it starts
+    replying HTTP 200 with an embedding array of nulls, and once poisoned it can
+    null every later request including a trivial one. That is a sick server, not
+    a bad request, so `embed()` recycles the server it spawned and retries.
+    Subclasses EmbeddingPreflightError so callers that catch the broader type
+    are unaffected.
+    """
+
+
 class EmbeddingServerError(RuntimeError):
     pass
 
@@ -144,11 +157,13 @@ def _build_pack_budget(pack_raw: dict, path: Path) -> PackBudget:
     pack_budget = PackBudget(
         hard_cap_tokens=pack_raw.get("hard_cap_tokens", defaults.hard_cap_tokens),
         similar_cap_tokens=pack_raw.get(
-            "similar_cap_tokens", defaults.similar_cap_tokens
+            "similar_cap_tokens",
+            defaults.similar_cap_tokens,
         ),
         reuse_cap_tokens=pack_raw.get("reuse_cap_tokens", defaults.reuse_cap_tokens),
         findings_cap_tokens=pack_raw.get(
-            "findings_cap_tokens", defaults.findings_cap_tokens
+            "findings_cap_tokens",
+            defaults.findings_cap_tokens,
         ),
         prose_cap_tokens=pack_raw.get("prose_cap_tokens", defaults.prose_cap_tokens),
     )
@@ -219,7 +234,7 @@ def resolve_pinned_entry(config: EngramConfig) -> EmbeddingEntry:
         entry = next((e for e in config.embeddings if e.id == config.pinned_id), None)
         if entry is None:
             raise ValueError(
-                f"pinned id {config.pinned_id!r} is not in the embedding shortlist"
+                f"pinned id {config.pinned_id!r} is not in the embedding shortlist",
             )
         return entry
     return config.embeddings[0]
@@ -387,7 +402,7 @@ def _parse_vector_item(
         or not values
         or not all(isinstance(v, (int, float)) and math.isfinite(v) for v in values)
     ):
-        raise EmbeddingPreflightError(
+        raise EmbeddingDegradedError(
             f"invalid embedding vector at index {idx} in response from "
             f"{entry.endpoint} for {entry.id}",
         )
@@ -451,17 +466,47 @@ def _budgeted_batches(texts: list[str]) -> Iterator[tuple[int, list[str]]]:
         yield start, batch
 
 
+def _post_batch(texts: list[str], entry: EmbeddingEntry, start: int) -> list[Vector]:
+    try:
+        payload = _post_embeddings(entry, texts)
+    except EmbeddingDegradedError:
+        raise
+    except EmbeddingPreflightError as e:
+        raise EmbeddingPreflightError(
+            f"{e} (batch indices {start}..{start + len(texts) - 1})",
+        ) from e
+    return _parse_batch_vectors(payload, texts, entry)
+
+
+def _embed_batch(
+    texts: list[str],
+    entry: EmbeddingEntry,
+    start: int,
+    lease: ServerLease,
+) -> tuple[list[Vector], ServerLease]:
+    """Embed one batch, recycling a degraded server once before giving up.
+
+    Returns the batch's vectors and the lease the next batch should use (a new
+    one when the server was replaced). Only a server we spawned is recycled: an
+    endpoint someone else is running is not ours to restart, so a degraded
+    response from it fails loud.
+    """
+    try:
+        return _post_batch(texts, entry, start), lease
+    except EmbeddingDegradedError:
+        if not lease.spawned:
+            raise
+        stop_served(lease)
+        fresh = ensure_served(entry)
+        return _post_batch(texts, entry, start), fresh
+
+
 def embed(texts: list[str], entry: EmbeddingEntry) -> list[Vector]:
-    ensure_served(entry)
+    lease = ensure_served(entry)
 
     vectors: list[Vector] = []
     for start, truncated in _budgeted_batches(texts):
-        try:
-            payload = _post_embeddings(entry, truncated)
-        except EmbeddingPreflightError as e:
-            raise EmbeddingPreflightError(
-                f"{e} (batch indices {start}..{start + len(truncated) - 1})",
-            ) from e
-        vectors.extend(_parse_batch_vectors(payload, truncated, entry))
+        batch_vectors, lease = _embed_batch(truncated, entry, start, lease)
+        vectors.extend(batch_vectors)
 
     return vectors
