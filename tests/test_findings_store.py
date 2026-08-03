@@ -220,6 +220,103 @@ def test_prune_across_all_corpora_deletes_ordinary_rows_but_exempts_findings(tmp
     )
 
 
+# --- status: findings exemption (regression guard for ordinary corpora) ---
+
+
+def test_status_never_counts_findings_rows_as_dead_even_when_source_file_is_missing(tmp_path):
+    store = open_store(tmp_path / "engram.db")
+    vector = Vector([0.1, 0.2, 0.3, 0.4], "m1", 4)
+    missing_path = tmp_path / "reviews" / "gone.md"
+    finding_chunk = _chunk(
+        corpus="findings", repo="repoA", path=str(missing_path),
+        content_hash="hf", body="finding-marker-token",
+    )
+    store.upsert_chunks([ChunkWithVector(chunk=finding_chunk, vector=vector)])
+
+    report = store.status(Scope("portfolio", None))
+
+    assert report.per_corpus["findings"].dead_rows == 0
+
+
+def test_status_never_reports_findings_rows_as_stale_even_when_content_hash_mismatches_file(
+    tmp_path,
+):
+    store = open_store(tmp_path / "engram.db")
+    vector = Vector([0.1, 0.2, 0.3, 0.4], "m1", 4)
+    source_path = tmp_path / "review.md"
+    source_path.write_text("some review markdown content, unrelated to the record body")
+    body_hash = hashlib.sha1(b"finding-marker-token").hexdigest()
+    finding_chunk = _chunk(
+        corpus="findings", repo="repoA", path=str(source_path),
+        content_hash=body_hash, body="finding-marker-token",
+    )
+    store.upsert_chunks([ChunkWithVector(chunk=finding_chunk, vector=vector)])
+
+    report = store.status(Scope("portfolio", None))
+
+    assert report.per_corpus["findings"].stale_files == []
+
+
+def test_status_still_counts_findings_rows_in_row_count_despite_staleness_exemption(tmp_path):
+    store = open_store(tmp_path / "engram.db")
+    vector = Vector([0.1, 0.2, 0.3, 0.4], "m1", 4)
+    finding_a = _chunk(
+        corpus="findings", repo="repoA", path=str(tmp_path / "gone-a.md"),
+        content_hash="ha", body="finding-a-token", chunk_ordinal=0,
+    )
+    finding_b = _chunk(
+        corpus="findings", repo="repoA", path=str(tmp_path / "gone-b.md"),
+        content_hash="hb", body="finding-b-token", chunk_ordinal=1,
+    )
+    store.upsert_chunks(
+        [
+            ChunkWithVector(chunk=finding_a, vector=vector),
+            ChunkWithVector(chunk=finding_b, vector=vector),
+        ]
+    )
+
+    report = store.status(Scope("portfolio", None))
+
+    assert report.per_corpus["findings"].row_count == 2
+
+
+def test_status_across_all_corpora_reports_dead_rows_and_stale_files_for_ordinary_corpus_but_exempts_findings(
+    tmp_path,
+):
+    store = open_store(tmp_path / "engram.db")
+    vector = Vector([0.1, 0.2, 0.3, 0.4], "m1", 4)
+    missing_docs_path = tmp_path / "gone-doc.md"
+    stale_docs_path = tmp_path / "changed-doc.md"
+    stale_docs_path.write_text("current on-disk content")
+    missing_finding_path = tmp_path / "gone-review.md"
+
+    dead_doc_chunk = _chunk(
+        corpus="docs", doc_type="markdown", repo="repoA", path=str(missing_docs_path),
+        content_hash="hd-dead", body="dead-doc-token",
+    )
+    stale_doc_chunk = _chunk(
+        corpus="docs", doc_type="markdown", repo="repoA", path=str(stale_docs_path),
+        content_hash="hd-stale-old", body="stale-doc-token",
+    )
+    finding_chunk = _chunk(
+        corpus="findings", repo="repoA", path=str(missing_finding_path),
+        content_hash="hf", body="finding-marker-token",
+    )
+    store.upsert_chunks(
+        [
+            ChunkWithVector(chunk=dead_doc_chunk, vector=vector),
+            ChunkWithVector(chunk=stale_doc_chunk, vector=vector),
+            ChunkWithVector(chunk=finding_chunk, vector=vector),
+        ]
+    )
+
+    report = store.status(Scope("portfolio", None))
+
+    assert report.per_corpus["docs"].dead_rows == 1
+    assert report.per_corpus["docs"].stale_files == [str(stale_docs_path)]
+    assert report.per_corpus["findings"].dead_rows == 0
+
+
 # --- findings.upsert: field mapping, embed text convention, return value ---
 
 
