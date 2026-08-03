@@ -382,3 +382,187 @@ def test_non_findings_corpus_hit_leaves_body_none(tmp_path, monkeypatch):
 
     assert results[0].corpus == "docs"
     assert results[0].body is None
+
+
+# --- vector param ---
+
+
+def test_vector_param_suppresses_embedding_and_is_used_as_knn_query_vector(
+    tmp_path, monkeypatch
+):
+    store = open_store(tmp_path / "engram.db")
+    lexical_chunk = _chunk(
+        path="lexical.md",
+        heading="Lexical Heading",
+        body="distinctive-lexical-marker appears here",
+        content_hash="h-lex-vec",
+    )
+    semantic_chunk = _chunk(
+        path="semantic.md",
+        heading="Semantic Heading",
+        body="unrelated vocabulary entirely",
+        content_hash="h-sem-vec",
+    )
+    store.upsert_chunks(
+        [
+            ChunkWithVector(chunk=lexical_chunk, vector=Vector([1.0, 0.0, 0.0, 0.0], "m1", 4)),
+            ChunkWithVector(chunk=semantic_chunk, vector=Vector([0.0, 1.0, 0.0, 0.0], "m1", 4)),
+        ]
+    )
+    config = _config(tmp_path, _entry())
+
+    def _fail_if_called(texts, entry):
+        raise AssertionError("embed() must not be called when vector= is supplied")
+
+    monkeypatch.setattr("engram.query.embed", _fail_if_called)
+
+    # query text shares no tokens with either stored body, so the BM25 leg contributes
+    # nothing; the passed vector matches the semantic doc's stored vector exactly, so
+    # it can only be found via the KNN leg using the passed vector.
+    results = query(
+        store,
+        config,
+        "totally different synonym phrase",
+        Scope("portfolio", None),
+        vector=Vector([0.0, 1.0, 0.0, 0.0], "m1", 4),
+    )
+
+    assert results[0].path == "semantic.md"
+    assert results[0].heading == "Semantic Heading"
+
+
+def test_vector_param_matches_default_path_when_vector_equals_embedding_output(
+    tmp_path, monkeypatch
+):
+    store = open_store(tmp_path / "engram.db")
+    chunk_one = _chunk(
+        path="notes/file.md",
+        heading="Section One",
+        body="identical-path-marker identical-path-marker repeated body text",
+        line_start=10,
+        line_end=14,
+        content_hash="h-identical-1",
+    )
+    chunk_two = _chunk(
+        path="notes/other.md",
+        heading="Section Two",
+        body="identical-path-marker other text",
+        line_start=20,
+        line_end=24,
+        content_hash="h-identical-2",
+    )
+    store.upsert_chunks(
+        [
+            ChunkWithVector(chunk=chunk_one, vector=Vector([1.0, 0.0, 0.0, 0.0], "m1", 4)),
+            ChunkWithVector(chunk=chunk_two, vector=Vector([0.0, 1.0, 0.0, 0.0], "m1", 4)),
+        ]
+    )
+    config = _config(tmp_path, _entry())
+    fixed_vector = Vector([1.0, 0.0, 0.0, 0.0], "m1", 4)
+
+    monkeypatch.setattr("engram.query.embed", lambda texts, entry: [fixed_vector])
+
+    baseline = query(store, config, "identical-path-marker", Scope("portfolio", None))
+    results = query(
+        store,
+        config,
+        "identical-path-marker",
+        Scope("portfolio", None),
+        vector=fixed_vector,
+    )
+
+    assert results == baseline
+    assert [p.path for p in results] == ["notes/file.md", "notes/other.md"]
+
+
+# --- include_body param ---
+
+
+def test_omitting_include_body_leaves_non_findings_corpus_hit_body_none(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+    code_chunk = _chunk(
+        corpus="code",
+        path="module.py",
+        heading="Code Heading",
+        body="include-body-marker stored code text",
+        content_hash="h-code-body",
+    )
+    store.upsert_chunks(
+        [ChunkWithVector(chunk=code_chunk, vector=Vector([1.0, 0.0, 0.0, 0.0], "m1", 4))]
+    )
+    config = _config(tmp_path, _entry())
+
+    monkeypatch.setattr(
+        "engram.query.embed",
+        lambda texts, entry: [Vector([1.0, 0.0, 0.0, 0.0], "m1", 4)],
+    )
+
+    results = query(store, config, "include-body-marker", Scope("portfolio", None))
+
+    assert results[0].corpus == "code"
+    assert results[0].body is None
+
+
+def test_include_body_true_populates_non_findings_corpus_hit_body(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+    code_chunk = _chunk(
+        corpus="code",
+        path="module.py",
+        heading="Code Heading",
+        body="include-body-marker stored code text",
+        content_hash="h-code-body-2",
+    )
+    store.upsert_chunks(
+        [ChunkWithVector(chunk=code_chunk, vector=Vector([1.0, 0.0, 0.0, 0.0], "m1", 4))]
+    )
+    config = _config(tmp_path, _entry())
+
+    monkeypatch.setattr(
+        "engram.query.embed",
+        lambda texts, entry: [Vector([1.0, 0.0, 0.0, 0.0], "m1", 4)],
+    )
+
+    results = query(
+        store, config, "include-body-marker", Scope("portfolio", None), include_body=True
+    )
+
+    assert results[0].corpus == "code"
+    assert results[0].body == "include-body-marker stored code text"
+
+
+def test_include_body_true_leaves_findings_corpus_hit_body_populated(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+    findings_chunk = _chunk(
+        corpus=FINDINGS_CORPUS,
+        path="findings/finding-2.md",
+        heading="Finding Two",
+        body="additive-marker stored finding text",
+        content_hash="h-additive-finding",
+    )
+    code_chunk = _chunk(
+        corpus="code",
+        path="module2.py",
+        heading="Code Heading Two",
+        body="additive-marker stored code text",
+        content_hash="h-additive-code",
+    )
+    store.upsert_chunks(
+        [
+            ChunkWithVector(chunk=findings_chunk, vector=Vector([1.0, 0.0, 0.0, 0.0], "m1", 4)),
+            ChunkWithVector(chunk=code_chunk, vector=Vector([0.0, 1.0, 0.0, 0.0], "m1", 4)),
+        ]
+    )
+    config = _config(tmp_path, _entry())
+
+    monkeypatch.setattr(
+        "engram.query.embed",
+        lambda texts, entry: [Vector([1.0, 0.0, 0.0, 0.0], "m1", 4)],
+    )
+
+    results = query(
+        store, config, "additive-marker", Scope("portfolio", None), include_body=True
+    )
+
+    by_corpus = {p.corpus: p for p in results}
+    assert by_corpus[FINDINGS_CORPUS].body == "additive-marker stored finding text"
+    assert by_corpus["code"].body == "additive-marker stored code text"
