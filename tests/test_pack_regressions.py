@@ -1,5 +1,5 @@
 from engram.indexer import IndexReport
-from engram.pack import _task_prose_entries, build
+from engram.pack import _FRESHNESS_LINE, _task_prose_entries, build
 from engram.store import ChunkWithVector, open_store
 
 from _pack_helpers import (
@@ -184,6 +184,213 @@ def test_oversized_capsule_does_not_crowd_out_the_prd_from_task_prose(
     assert "PRD-HEAD-MARKER" in content
     prose = next(s for s in report.sections if s.label == "Task prose")
     assert prose.estimated_tokens <= config.pack_budget.prose_cap_tokens
+
+
+# --- regression: an unreadable --prd/--capsule path must be disclosed, not swallowed ---
+
+
+def test_unreadable_prd_path_is_noted_in_the_rendered_pack(tmp_path, monkeypatch):
+    store, config, diff_path = _prose_fixture(tmp_path, monkeypatch)
+    missing_prd_path = tmp_path / "typo-00004-prd.md"
+    assert not missing_prd_path.exists()
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    report = build(
+        store,
+        config,
+        "repoA",
+        tmp_path,
+        "prose-prd-unreadable",
+        diff_path,
+        prd_path=missing_prd_path,
+        out_dir=out_dir,
+    )
+
+    content = report.path.read_text()
+    assert str(missing_prd_path) in content, (
+        "an unreadable --prd path must be named in the rendered pack, not dropped"
+    )
+
+
+def test_unreadable_capsule_path_is_noted_in_the_rendered_pack(tmp_path, monkeypatch):
+    store, config, diff_path = _prose_fixture(tmp_path, monkeypatch)
+    missing_capsule_path = tmp_path / "typo-capsule.md"
+    assert not missing_capsule_path.exists()
+    prd_path = tmp_path / "00004-prd.md"
+    prd_path.write_text("# Some PRD\n\nPRD-BODY-MARKER\n")
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    report = build(
+        store,
+        config,
+        "repoA",
+        tmp_path,
+        "prose-capsule-unreadable",
+        diff_path,
+        prd_path=prd_path,
+        capsule_path=missing_capsule_path,
+        out_dir=out_dir,
+    )
+
+    content = report.path.read_text()
+    assert str(missing_capsule_path) in content, (
+        "an unreadable --capsule path must be named in the rendered pack, not dropped"
+    )
+    # the rest of the pack keeps rendering: the readable PRD's own content still
+    # lands in Task prose despite the capsule being unreadable
+    assert "PRD-BODY-MARKER" in content
+
+
+def test_both_unreadable_paths_are_each_noted_in_the_rendered_pack(
+    tmp_path, monkeypatch
+):
+    store, config, diff_path = _prose_fixture(tmp_path, monkeypatch)
+    missing_prd_path = tmp_path / "typo-prd.md"
+    missing_capsule_path = tmp_path / "typo-capsule.md"
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    report = build(
+        store,
+        config,
+        "repoA",
+        tmp_path,
+        "prose-both-unreadable",
+        diff_path,
+        prd_path=missing_prd_path,
+        capsule_path=missing_capsule_path,
+        out_dir=out_dir,
+    )
+
+    content = report.path.read_text()
+    assert str(missing_prd_path) in content
+    assert str(missing_capsule_path) in content
+
+
+def test_omission_note_is_a_top_of_pack_disclosure_not_inside_task_prose_section(
+    tmp_path, monkeypatch
+):
+    store, config, diff_path = _prose_fixture(tmp_path, monkeypatch)
+    missing_prd_path = tmp_path / "typo-prd.md"
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    report = build(
+        store,
+        config,
+        "repoA",
+        tmp_path,
+        "prose-note-placement",
+        diff_path,
+        prd_path=missing_prd_path,
+        out_dir=out_dir,
+    )
+
+    content = report.path.read_text()
+    # "## Similar code" is always the first rendered section heading (it is
+    # first in _SECTION_ORDER and is emitted whether or not it has items), so
+    # everything before it is the top-of-pack disclosure block that also holds
+    # the "n changed symbol(s) omitted" line.
+    top_of_pack, _, _rest = content.partition("## Similar code")
+    assert str(missing_prd_path) in top_of_pack, (
+        "the omission note must render above the section headings, in the same "
+        "disclosure block as the symbols-omitted line"
+    )
+
+    prose_section = next(s for s in report.sections if s.label == "Task prose")
+    assert str(missing_prd_path) not in prose_section.body, (
+        "a note placed inside a capped section can be trimmed away by that "
+        "section's own cap, which is not a disclosure"
+    )
+
+
+def test_omission_note_survives_task_prose_truncation_under_budget_pressure(
+    tmp_path, monkeypatch
+):
+    # Pair an unreadable capsule with a PRD large enough to force Task-prose
+    # truncation (see test_oversized_prd_is_truncated_into_task_prose_rather_
+    # than_dropped_whole above), so the disclosure has to survive the same
+    # budget pressure that trims the section it is not part of.
+    store, config, diff_path = _prose_fixture(tmp_path, monkeypatch)
+    missing_capsule_path = tmp_path / "typo-capsule.md"
+    prd_path = tmp_path / "00004-prd.md"
+    prd_path.write_text(
+        "PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500)
+    )
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    report = build(
+        store,
+        config,
+        "repoA",
+        tmp_path,
+        "prose-note-survives-trim",
+        diff_path,
+        prd_path=prd_path,
+        capsule_path=missing_capsule_path,
+        out_dir=out_dir,
+    )
+
+    content = report.path.read_text()
+    prose = next(s for s in report.sections if s.label == "Task prose")
+    # confirm truncation pressure was actually exercised, not sidestepped
+    assert prose.estimated_tokens <= config.pack_budget.prose_cap_tokens
+    assert "PRD-HEAD-MARKER" in content
+    assert str(missing_capsule_path) in content
+
+
+def test_capsule_with_no_active_work_section_produces_no_omission_note(
+    tmp_path, monkeypatch
+):
+    # A capsule that reads fine but has no "## Active Work" heading is absence
+    # of content, not an unreadable path -- existing documented behavior that
+    # must not start emitting a disclosure line.
+    store, config, diff_path = _prose_fixture(tmp_path, monkeypatch)
+    capsule_path = tmp_path / "project-capsule.md"
+    capsule_path.write_text("# Capsule\n\n## Key Invariants\n- something unrelated\n")
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    report = build(
+        store,
+        config,
+        "repoA",
+        tmp_path,
+        "prose-capsule-no-heading",
+        diff_path,
+        capsule_path=capsule_path,
+        out_dir=out_dir,
+    )
+
+    content = report.path.read_text()
+    assert str(capsule_path) not in content
+
+
+def test_absent_prd_and_capsule_paths_produce_no_omission_note(tmp_path, monkeypatch):
+    # Neither flag was supplied at all (both None) -- nothing failed to read,
+    # so nothing should be disclosed. The top-of-pack block must be exactly
+    # the freshness line, unchanged from today's baseline.
+    store, config, diff_path = _prose_fixture(tmp_path, monkeypatch)
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    report = build(
+        store,
+        config,
+        "repoA",
+        tmp_path,
+        "prose-no-paths",
+        diff_path,
+        out_dir=out_dir,
+    )
+
+    assert report.symbols_omitted == 0
+    content = report.path.read_text()
+    top_of_pack, _, _rest = content.partition("## Similar code")
+    assert top_of_pack == f"{_FRESHNESS_LINE}\n\n"
 
 
 # --- regression: build() must not require its out_dir to exist ---
