@@ -263,6 +263,9 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
 
     if args.cycle is not None:
         diff_path = out_dir / f"review-diff-{args.cycle}.diff"
+        if not diff_path.exists():
+            print(f"no staged diff found at {diff_path}", file=sys.stderr)
+            return 1
         id_ = args.cycle
         source_ref = None
     else:

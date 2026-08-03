@@ -1153,6 +1153,13 @@ def _make_fake_git_diff_run(stdout, returncode=0):
     return calls, fake_run
 
 
+def _stage_diff(toplevel, cycle_id="cyc1"):
+    diff_path = toplevel / "dev" / "local" / "tmp" / f"review-diff-{cycle_id}.diff"
+    diff_path.parent.mkdir(parents=True, exist_ok=True)
+    diff_path.write_text("diff --git a/foo b/foo\n+added line\n")
+    return diff_path
+
+
 # --- pack: --cycle/--diff mutual exclusivity ---
 
 
@@ -1187,6 +1194,7 @@ def test_pack_resolves_repo_root_to_git_toplevel_when_run_from_a_subdirectory(
     repo_dir.mkdir()
     toplevel = _init_git_repo(repo_dir)
     _register_repo(monkeypatch, tmp_path, toplevel)
+    _stage_diff(toplevel)
 
     subdir = toplevel / "sub"
     subdir.mkdir()
@@ -1325,6 +1333,7 @@ def test_pack_out_dir_default_anchors_to_repo_root_when_invoked_from_a_subdirect
     repo_dir.mkdir()
     toplevel = _init_git_repo(repo_dir)
     _register_repo(monkeypatch, tmp_path, toplevel)
+    _stage_diff(toplevel)
 
     subdir = toplevel / "sub"
     subdir.mkdir()
@@ -1385,6 +1394,7 @@ def test_pack_cycle_success_passes_expected_build_args_and_prints_summary_to_std
     toplevel = _init_git_repo(repo_dir)
     _register_repo(monkeypatch, tmp_path, toplevel)
     monkeypatch.chdir(toplevel)
+    _stage_diff(toplevel)
 
     monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
     monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
@@ -1582,6 +1592,7 @@ def test_pack_prd_omitted_defaults_to_none_when_wip_dir_has_zero_prds(
     toplevel = _init_git_repo(repo_dir)
     _register_repo(monkeypatch, tmp_path, toplevel)
     monkeypatch.chdir(toplevel)
+    _stage_diff(toplevel)
 
     monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
     monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
@@ -1606,6 +1617,7 @@ def test_pack_prd_omitted_defaults_to_single_wip_prd_when_exactly_one_exists(
     toplevel = _init_git_repo(repo_dir)
     _register_repo(monkeypatch, tmp_path, toplevel)
     monkeypatch.chdir(toplevel)
+    _stage_diff(toplevel)
 
     wip_dir = toplevel / "dev" / "local" / "prds" / "wip"
     wip_dir.mkdir(parents=True)
@@ -1635,6 +1647,7 @@ def test_pack_prd_omitted_defaults_to_none_when_wip_dir_has_two_prds(
     toplevel = _init_git_repo(repo_dir)
     _register_repo(monkeypatch, tmp_path, toplevel)
     monkeypatch.chdir(toplevel)
+    _stage_diff(toplevel)
 
     wip_dir = toplevel / "dev" / "local" / "prds" / "wip"
     wip_dir.mkdir(parents=True)
@@ -1667,6 +1680,7 @@ def test_pack_capsule_omitted_defaults_to_none_when_capsule_file_missing(
     toplevel = _init_git_repo(repo_dir)
     _register_repo(monkeypatch, tmp_path, toplevel)
     monkeypatch.chdir(toplevel)
+    _stage_diff(toplevel)
 
     monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
     monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
@@ -1696,6 +1710,7 @@ def test_pack_capsule_omitted_defaults_to_repo_root_capsule_when_file_exists(
     capsule_dir.mkdir(parents=True)
     capsule_file = capsule_dir / "project-capsule.md"
     capsule_file.write_text("# Capsule\n")
+    _stage_diff(toplevel)
 
     monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
     monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
@@ -1747,6 +1762,7 @@ def test_pack_store_model_mismatch_returns_nonzero_and_mentions_rebuild(
     toplevel = _init_git_repo(repo_dir)
     _register_repo(monkeypatch, tmp_path, toplevel)
     monkeypatch.chdir(toplevel)
+    _stage_diff(toplevel)
 
     monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
     monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
