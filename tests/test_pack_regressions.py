@@ -1,7 +1,3 @@
-from engram.indexer import IndexReport
-from engram.pack import _FRESHNESS_LINE, _task_prose_entries, build
-from engram.store import ChunkWithVector, open_store
-
 from _pack_helpers import (
     _chunk,
     _config,
@@ -10,6 +6,9 @@ from _pack_helpers import (
     _write_single_function_diff,
 )
 
+from engram.indexer import IndexReport
+from engram.pack import _FRESHNESS_LINE, _task_prose_entries, build
+from engram.store import ChunkWithVector, open_store
 
 # --- regression: the Task-prose branch, which the contract tests never exercised ---
 
@@ -20,7 +19,8 @@ def _prose_fixture(tmp_path, monkeypatch):
     store = open_store(tmp_path / "engram.db")
     config = _config(tmp_path, _small_budget())
     monkeypatch.setattr(
-        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+        "engram.pack.index",
+        lambda *a, **k: IndexReport(0, 0, 0, 0, []),
     )
     monkeypatch.setattr(
         "engram.pack.embed",
@@ -83,7 +83,7 @@ def test_oversized_prd_is_truncated_into_task_prose_rather_than_dropped_whole(
     # far beyond prose_cap_tokens (200 tokens == 800 chars) so whole-entry
     # dropping would make the PRD vanish entirely instead of contributing.
     prd_path.write_text(
-        "PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500)
+        "PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500),
     )
     out_dir = tmp_path / "out"
     out_dir.mkdir()
@@ -121,7 +121,7 @@ def test_prd_survives_truncation_when_an_earlier_prose_entry_precedes_it(
 
     prd_path = tmp_path / "00004-prd.md"
     prd_path.write_text(
-        "PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500)
+        "PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500),
     )
     out_dir = tmp_path / "out"
     out_dir.mkdir()
@@ -162,7 +162,7 @@ def test_oversized_capsule_does_not_crowd_out_the_prd_from_task_prose(
     )
     prd_path = tmp_path / "00004-prd.md"
     prd_path.write_text(
-        "PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500)
+        "PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500),
     )
     out_dir = tmp_path / "out"
     out_dir.mkdir()
@@ -244,7 +244,8 @@ def test_unreadable_capsule_path_is_noted_in_the_rendered_pack(tmp_path, monkeyp
 
 
 def test_both_unreadable_paths_are_each_noted_in_the_rendered_pack(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     store, config, diff_path = _prose_fixture(tmp_path, monkeypatch)
     missing_prd_path = tmp_path / "typo-prd.md"
@@ -270,7 +271,8 @@ def test_both_unreadable_paths_are_each_noted_in_the_rendered_pack(
 
 
 def test_omission_note_is_a_top_of_pack_disclosure_not_inside_task_prose_section(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     store, config, diff_path = _prose_fixture(tmp_path, monkeypatch)
     missing_prd_path = tmp_path / "typo-prd.md"
@@ -307,7 +309,8 @@ def test_omission_note_is_a_top_of_pack_disclosure_not_inside_task_prose_section
 
 
 def test_omission_note_survives_task_prose_truncation_under_budget_pressure(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     # Pair an unreadable capsule with a PRD large enough to force Task-prose
     # truncation (see test_oversized_prd_is_truncated_into_task_prose_rather_
@@ -317,7 +320,7 @@ def test_omission_note_survives_task_prose_truncation_under_budget_pressure(
     missing_capsule_path = tmp_path / "typo-capsule.md"
     prd_path = tmp_path / "00004-prd.md"
     prd_path.write_text(
-        "PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500)
+        "PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500),
     )
     out_dir = tmp_path / "out"
     out_dir.mkdir()
@@ -343,7 +346,8 @@ def test_omission_note_survives_task_prose_truncation_under_budget_pressure(
 
 
 def test_capsule_with_no_active_work_section_produces_no_omission_note(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     # A capsule that reads fine but has no "## Active Work" heading is absence
     # of content, not an unreadable path -- existing documented behavior that
@@ -430,7 +434,8 @@ def test_a_high_scoring_foreign_repo_chunk_never_reaches_the_similar_code_sectio
 
     query_vector = _vec([1.0, 0.0, 0.0, 0.0])
     monkeypatch.setattr(
-        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+        "engram.pack.index",
+        lambda *a, **k: IndexReport(0, 0, 0, 0, []),
     )
     monkeypatch.setattr(
         "engram.pack.embed",
@@ -533,7 +538,8 @@ def test_memory_query_text_falls_back_to_the_prd_filename_stem_when_no_heading_e
 
 
 def test_memory_query_is_skipped_entirely_when_no_prd_path_is_resolved(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     store = open_store(tmp_path / "engram.db")
     config = _config(tmp_path, _small_budget())
