@@ -1125,6 +1125,7 @@ def _capturing_pack_build(calls, report):
                 "source_ref": source_ref,
                 "prd_path": prd_path,
                 "capsule_path": capsule_path,
+                "out_dir": out_dir,
             },
         )
         return report
@@ -1224,6 +1225,123 @@ def test_pack_fails_loud_when_cwd_is_not_a_git_worktree_despite_a_resolved_scope
     captured = capsys.readouterr()
     assert exit_code == 1
     assert captured.err != ""
+
+
+# --- pack: diff_path/out_dir anchored to repo_root, not invocation cwd ---
+
+
+def test_pack_cycle_reads_staged_diff_from_repo_root_when_invoked_from_a_subdirectory(
+    monkeypatch,
+    tmp_path,
+):
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    toplevel = _init_git_repo(repo_dir)
+    _register_repo(monkeypatch, tmp_path, toplevel)
+
+    subdir = toplevel / "sub"
+    subdir.mkdir()
+
+    root_tmp_dir = toplevel / "dev" / "local" / "tmp"
+    root_tmp_dir.mkdir(parents=True)
+    staged_diff = root_tmp_dir / "review-diff-cyc1.diff"
+    staged_diff.write_text("real staged diff\n")
+
+    monkeypatch.chdir(subdir)
+
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+
+    read_contents = []
+
+    def fake_build(
+        store,
+        config,
+        repo,
+        repo_root,
+        id_,
+        diff_path,
+        source_ref=None,
+        prd_path=None,
+        capsule_path=None,
+        out_dir=Path("dev/local/tmp"),
+    ):
+        read_contents.append(Path(diff_path).read_text())
+        return _make_pack_report(toplevel / "dev/local/tmp/engram-pack-cyc1.md")
+
+    monkeypatch.setattr("engram.cli.build", fake_build)
+
+    exit_code = main(["pack", "--cycle", "cyc1"])
+
+    assert exit_code == 0
+    assert read_contents == ["real staged diff\n"]
+
+
+def test_pack_diff_materializes_diff_under_repo_root_when_invoked_from_a_subdirectory(
+    monkeypatch,
+    tmp_path,
+):
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    toplevel = _init_git_repo(repo_dir)
+    _register_repo(monkeypatch, tmp_path, toplevel)
+
+    subdir = toplevel / "sub"
+    subdir.mkdir()
+    monkeypatch.chdir(subdir)
+
+    fake_stdout = "diff --git a/foo b/foo\n+added line\n"
+    diff_calls, fake_run = _make_fake_git_diff_run(fake_stdout, returncode=0)
+    monkeypatch.setattr("engram.cli.subprocess.run", fake_run)
+
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+
+    calls = []
+    report = _make_pack_report(
+        toplevel / "dev/local/tmp/engram-pack-abc123--def456.md",
+    )
+    monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
+
+    exit_code = main(["pack", "--diff", "abc123..def456"])
+
+    assert exit_code == 0
+    assert len(diff_calls) == 1
+    assert len(calls) == 1
+    written_at_repo_root = (
+        toplevel / "dev/local/tmp/engram-pack-diff-abc123--def456.diff"
+    )
+    assert written_at_repo_root.read_text() == fake_stdout
+    assert not (
+        subdir / "dev/local/tmp/engram-pack-diff-abc123--def456.diff"
+    ).exists()
+
+
+def test_pack_out_dir_default_anchors_to_repo_root_when_invoked_from_a_subdirectory(
+    monkeypatch,
+    tmp_path,
+):
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    toplevel = _init_git_repo(repo_dir)
+    _register_repo(monkeypatch, tmp_path, toplevel)
+
+    subdir = toplevel / "sub"
+    subdir.mkdir()
+    monkeypatch.chdir(subdir)
+
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+
+    calls = []
+    report = _make_pack_report(toplevel / "dev/local/tmp/engram-pack-cyc1.md")
+    monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
+
+    exit_code = main(["pack", "--cycle", "cyc1"])
+
+    assert exit_code == 0
+    assert len(calls) == 1
+    assert calls[0]["out_dir"].resolve() == (toplevel / "dev/local/tmp").resolve()
 
 
 # --- pack: --cycle derives diff_path/id_/source_ref and prints summary ---
