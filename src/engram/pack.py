@@ -258,44 +258,25 @@ def _query_hits_for_symbol(
     text: str,
     vector,
 ) -> tuple[list[Pointer], list[Pointer], list[Pointer]]:
-    similar = query(
-        store,
-        config,
-        text,
-        Scope("repo", repo),
-        corpus="code",
-        k=RETRIEVAL_K,
-        vector=vector,
-        include_body=True,
-    )
-    reuse = query(
-        store,
-        config,
-        text,
-        Scope("portfolio", None),
-        corpus="code",
-        k=RETRIEVAL_K,
-        vector=vector,
-        include_body=True,
-    )
-    findings = query(
-        store,
-        config,
-        text,
-        Scope("repo", repo),
-        corpus=FINDINGS_CORPUS,
-        k=RETRIEVAL_K,
-        vector=vector,
-        include_body=True,
-    ) + query(
-        store,
-        config,
-        text,
-        Scope("portfolio", None),
-        corpus=FINDINGS_CORPUS,
-        k=RETRIEVAL_K,
-        vector=vector,
-        include_body=True,
+    def hits_for(scope: Scope, corpus: str) -> list[Pointer]:
+        return query(
+            store,
+            config,
+            text,
+            scope,
+            corpus=corpus,
+            k=RETRIEVAL_K,
+            vector=vector,
+            include_body=True,
+        )
+
+    repo_scope = Scope("repo", repo)
+    portfolio_scope = Scope("portfolio", None)
+
+    similar = hits_for(repo_scope, "code")
+    reuse = hits_for(portfolio_scope, "code")
+    findings = hits_for(repo_scope, FINDINGS_CORPUS) + hits_for(
+        portfolio_scope, FINDINGS_CORPUS
     )
     return similar, reuse, findings
 
