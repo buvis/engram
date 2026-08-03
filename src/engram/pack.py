@@ -393,6 +393,17 @@ def _build_pack_sections(
     return sections, trimmed_sections, unreadable_paths
 
 
+def _publish_pack(out_dir: Path, id_: str, rendered_text: str) -> Path:
+    target_path = Path(out_dir) / f"engram-pack-{id_}.md"
+    if not target_path.is_absolute():
+        target_path = target_path.absolute()
+    tmp_file = target_path.with_name(f".{target_path.name}.tmp")
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_file.write_text(rendered_text)
+    os.replace(tmp_file, target_path)
+    return target_path
+
+
 def _finalize_pack(
     sections: dict,
     trimmed_sections: list[str],
@@ -428,13 +439,7 @@ def _finalize_pack(
 
     total_estimated_tokens = _estimate_tokens(rendered_text)
 
-    target_path = Path(out_dir) / f"engram-pack-{id_}.md"
-    if not target_path.is_absolute():
-        target_path = target_path.absolute()
-    tmp_file = target_path.with_name(f".{target_path.name}.tmp")
-    target_path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_file.write_text(rendered_text)
-    os.replace(tmp_file, target_path)
+    target_path = _publish_pack(out_dir, id_, rendered_text)
 
     return PackReport(
         path=target_path,
