@@ -576,3 +576,103 @@ def test_two_builds_over_identical_fixture_state_produce_byte_identical_output(
     second_bytes = second.path.read_bytes()
 
     assert first_bytes == second_bytes
+
+
+# --- regression: the Task-prose branch, which the contract tests never exercised ---
+
+
+def _prose_fixture(tmp_path, monkeypatch):
+    """Shared setup for the Task-prose regression tests below."""
+    _, diff_path = _write_single_function_diff(tmp_path)
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path, _small_budget())
+    monkeypatch.setattr("engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, []))
+    monkeypatch.setattr(
+        "engram.pack.embed", lambda texts, entry: [_vec([1.0, 0.0, 0.0, 0.0]) for _ in texts]
+    )
+    monkeypatch.setattr(
+        "engram.query.embed", lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts]
+    )
+    return store, config, diff_path
+
+
+def test_capsule_entry_carries_the_prose_under_the_active_work_heading_not_the_heading(
+    tmp_path, monkeypatch
+):
+    store, config, diff_path = _prose_fixture(tmp_path, monkeypatch)
+    capsule_path = tmp_path / "project-capsule.md"
+    capsule_path.write_text(
+        "# Capsule\n"
+        "\n"
+        "## Key Invariants\n"
+        "- something unrelated\n"
+        "\n"
+        "## Active Work\n"
+        "- PRD 00004 in wip: review packs\n"
+        "- next up: the CLI verb\n"
+        "\n"
+        "## Project Health\n"
+        "- green\n"
+    )
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    report = build(
+        store,
+        config,
+        "repoA",
+        tmp_path,
+        "prose-capsule",
+        diff_path,
+        capsule_path=capsule_path,
+        out_dir=out_dir,
+    )
+
+    content = report.path.read_text()
+    # the heading is a locator, not the payload: the prose beneath it is what a
+    # reviewer needs, and it lives on the following lines.
+    assert "PRD 00004 in wip: review packs" in content
+    # and it must not bleed past the section into the next heading's content
+    assert "green" not in content
+
+
+def test_oversized_prd_is_truncated_into_task_prose_rather_than_dropped_whole(
+    tmp_path, monkeypatch
+):
+    store, config, diff_path = _prose_fixture(tmp_path, monkeypatch)
+    prd_path = tmp_path / "00004-prd.md"
+    # far beyond prose_cap_tokens (200 tokens == 800 chars) so whole-entry
+    # dropping would make the PRD vanish entirely instead of contributing.
+    prd_path.write_text("PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500))
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    report = build(
+        store,
+        config,
+        "repoA",
+        tmp_path,
+        "prose-prd",
+        diff_path,
+        prd_path=prd_path,
+        out_dir=out_dir,
+    )
+
+    content = report.path.read_text()
+    assert "PRD-HEAD-MARKER" in content
+    assert report.total_estimated_tokens <= config.pack_budget.hard_cap_tokens
+
+
+# --- regression: build() must not require its out_dir to exist ---
+
+
+def test_build_creates_a_missing_out_dir_instead_of_crashing(tmp_path, monkeypatch):
+    store, config, diff_path = _prose_fixture(tmp_path, monkeypatch)
+    missing_out_dir = tmp_path / "never" / "created"
+
+    report = build(
+        store, config, "repoA", tmp_path, "mkdir", diff_path, out_dir=missing_out_dir
+    )
+
+    assert report.path.exists()
+    assert report.path.parent == missing_out_dir
