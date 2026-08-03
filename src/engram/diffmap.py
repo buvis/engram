@@ -68,7 +68,8 @@ def _file_symbol(path: str, name: str, line: int) -> Symbol:
 
 
 def _section_file_identity(
-    section: list[str], repo_root: Path
+    section: list[str],
+    repo_root: Path,
 ) -> tuple[str, str, str, bool] | None:
     # ponytail: paths with spaces handled via the +++/--- lines; git's C-quoted
     # form ("b/caf\303\251.py") is not unquoted - decode it here if non-ASCII
@@ -79,7 +80,8 @@ def _section_file_identity(
     is_deletion = plus_line == "+++ /dev/null"
     if is_deletion:
         minus_line = next(
-            (line for line in section if line.startswith("--- ")), None
+            (line for line in section if line.startswith("--- ")),
+            None,
         )
         if minus_line is None:
             return None

@@ -233,7 +233,12 @@ def _largest_section(sections: dict) -> str | None:
 
 
 def _reindex_and_resolve_symbols(
-    store, config, repo: str, repo_root: Path, diff_path: Path, source_ref: str | None
+    store,
+    config,
+    repo: str,
+    repo_root: Path,
+    diff_path: Path,
+    source_ref: str | None,
 ) -> tuple[IndexReport, set[tuple[str, int, int]], list[Symbol], int]:
     index_report = index(store, config, Scope("repo", repo))
 
@@ -247,7 +252,11 @@ def _reindex_and_resolve_symbols(
 
 
 def _query_hits_for_symbol(
-    store, config, repo: str, text: str, vector
+    store,
+    config,
+    repo: str,
+    text: str,
+    vector,
 ) -> tuple[list[Pointer], list[Pointer], list[Pointer]]:
     similar = query(
         store,
@@ -308,7 +317,9 @@ def _retrieve_pack_hits(
     findings_hits: list[Pointer] = []
 
     for text, vector in zip(query_texts, vectors):
-        similar, reuse, findings = _query_hits_for_symbol(store, config, repo, text, vector)
+        similar, reuse, findings = _query_hits_for_symbol(
+            store, config, repo, text, vector
+        )
         similar_hits.extend(similar)
         reuse_hits.extend(reuse)
         findings_hits.extend(findings)
@@ -319,7 +330,9 @@ def _retrieve_pack_hits(
 
 
 def _prepare_section_items(
-    hits: list[Pointer], changed_spans: set[tuple[str, int, int]], cap_tokens: int
+    hits: list[Pointer],
+    changed_spans: set[tuple[str, int, int]],
+    cap_tokens: int,
 ) -> tuple[list, bool]:
     items = _sort_pointers(_dedup(_exclude(hits, changed_spans)))
     return _cap_items(items, _render_pointer, cap_tokens)
@@ -338,20 +351,33 @@ def _build_pack_sections(
     budget,
 ) -> tuple[dict, list[str]]:
     similar_items, similar_trimmed = _prepare_section_items(
-        similar_hits, changed_spans, budget.similar_cap_tokens
+        similar_hits,
+        changed_spans,
+        budget.similar_cap_tokens,
     )
     reuse_items, reuse_trimmed = _prepare_section_items(
-        reuse_hits, changed_spans, budget.reuse_cap_tokens
+        reuse_hits,
+        changed_spans,
+        budget.reuse_cap_tokens,
     )
     findings_items, findings_trimmed = _prepare_section_items(
-        findings_hits, changed_spans, budget.findings_cap_tokens
+        findings_hits,
+        changed_spans,
+        budget.findings_cap_tokens,
     )
 
     prose_entries = _task_prose_entries(
-        store, config, id_, prd_path, capsule_path, budget.prose_cap_tokens
+        store,
+        config,
+        id_,
+        prd_path,
+        capsule_path,
+        budget.prose_cap_tokens,
     )
     prose_entries, prose_trimmed = _cap_items(
-        prose_entries, lambda text: text, budget.prose_cap_tokens
+        prose_entries,
+        lambda text: text,
+        budget.prose_cap_tokens,
     )
 
     trimmed_sections = [
@@ -401,7 +427,9 @@ def _finalize_pack(
         body = "\n\n".join(render_fn(item) for item in items)
         final_sections.append(
             PackSection(
-                label=label, body=body, estimated_tokens=_estimate_tokens(body)
+                label=label,
+                body=body,
+                estimated_tokens=_estimate_tokens(body),
             ),
         )
 
@@ -438,11 +466,18 @@ def build(
     out_dir: Path = Path("dev/local/tmp"),
 ) -> PackReport:
     index_report, changed_spans, query_symbols, symbols_omitted = (
-        _reindex_and_resolve_symbols(store, config, repo, repo_root, diff_path, source_ref)
+        _reindex_and_resolve_symbols(
+            store, config, repo, repo_root, diff_path, source_ref
+        )
     )
 
     similar_hits, reuse_hits, findings_hits = _retrieve_pack_hits(
-        store, config, repo, repo_root, query_symbols, source_ref
+        store,
+        config,
+        repo,
+        repo_root,
+        query_symbols,
+        source_ref,
     )
 
     budget = config.pack_budget
@@ -460,5 +495,11 @@ def build(
     )
 
     return _finalize_pack(
-        sections, trimmed_sections, symbols_omitted, budget, id_, out_dir, index_report
+        sections,
+        trimmed_sections,
+        symbols_omitted,
+        budget,
+        id_,
+        out_dir,
+        index_report,
     )

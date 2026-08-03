@@ -259,7 +259,9 @@ def _resolve_pack_repo() -> tuple[str, Path] | None:
 
 
 def _resolve_pack_diff(
-    args: argparse.Namespace, repo_root: Path, out_dir: Path
+    args: argparse.Namespace,
+    repo_root: Path,
+    out_dir: Path,
 ) -> tuple[Path, str, str | None] | None:
     if args.cycle is not None:
         diff_path = out_dir / f"review-diff-{args.cycle}.diff"
@@ -293,7 +295,8 @@ def _resolve_pack_diff(
 
 
 def _resolve_pack_prd_and_capsule(
-    args: argparse.Namespace, repo_root: Path
+    args: argparse.Namespace,
+    repo_root: Path,
 ) -> tuple[Path | None, Path | None]:
     prd_path: Path | None = None
     if args.prd is not None:

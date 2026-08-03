@@ -59,12 +59,12 @@ class EmbeddingEntry:
         split = urllib.parse.urlsplit(self.endpoint)
         if split.hostname not in _LOOPBACK_HOSTS:
             raise ValueError(
-                f"embedding entry {self.id!r} has non-loopback endpoint {self.endpoint!r}"
+                f"embedding entry {self.id!r} has non-loopback endpoint {self.endpoint!r}",
             )
         if split.port is None:
             raise ValueError(
                 f"embedding entry {self.id!r} has endpoint {self.endpoint!r} "
-                "without an explicit port"
+                "without an explicit port",
             )
 
 
@@ -122,7 +122,11 @@ class _LoopbackRedirectHandler(urllib.request.HTTPRedirectHandler):
         host = urllib.parse.urlsplit(newurl).hostname
         if host not in _LOOPBACK_HOSTS:
             raise urllib.error.HTTPError(
-                newurl, code, f"refusing off-machine redirect to {newurl!r}", headers, fp
+                newurl,
+                code,
+                f"refusing off-machine redirect to {newurl!r}",
+                headers,
+                fp,
             )
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 
@@ -139,9 +143,13 @@ def _build_pack_budget(pack_raw: dict, path: Path) -> PackBudget:
     defaults = PackBudget()
     pack_budget = PackBudget(
         hard_cap_tokens=pack_raw.get("hard_cap_tokens", defaults.hard_cap_tokens),
-        similar_cap_tokens=pack_raw.get("similar_cap_tokens", defaults.similar_cap_tokens),
+        similar_cap_tokens=pack_raw.get(
+            "similar_cap_tokens", defaults.similar_cap_tokens
+        ),
         reuse_cap_tokens=pack_raw.get("reuse_cap_tokens", defaults.reuse_cap_tokens),
-        findings_cap_tokens=pack_raw.get("findings_cap_tokens", defaults.findings_cap_tokens),
+        findings_cap_tokens=pack_raw.get(
+            "findings_cap_tokens", defaults.findings_cap_tokens
+        ),
         prose_cap_tokens=pack_raw.get("prose_cap_tokens", defaults.prose_cap_tokens),
     )
     for field_name, value in (
@@ -154,7 +162,7 @@ def _build_pack_budget(pack_raw: dict, path: Path) -> PackBudget:
         if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
             raise ValueError(
                 f"config {path} has invalid [pack] {field_name} {value!r}; "
-                "must be a positive integer"
+                "must be a positive integer",
             )
 
     section_sum = (
@@ -167,7 +175,7 @@ def _build_pack_budget(pack_raw: dict, path: Path) -> PackBudget:
     if section_sum > pack_budget.hard_cap_tokens:
         raise ValueError(
             f"config {path} [pack] section caps plus framing overhead ({section_sum}) "
-            f"exceed hard_cap_tokens ({pack_budget.hard_cap_tokens})"
+            f"exceed hard_cap_tokens ({pack_budget.hard_cap_tokens})",
         )
 
     return pack_budget
@@ -191,7 +199,7 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> EngramConfig:
         raise ValueError(f"config {path} has no [[embedding]] entries")
     if pinned_id is not None and pinned_id not in {e.id for e in embeddings}:
         raise ValueError(
-            f"config {path} pins id {pinned_id!r} which is not in the embedding shortlist"
+            f"config {path} pins id {pinned_id!r} which is not in the embedding shortlist",
         )
 
     pack_budget = _build_pack_budget(raw.get("pack", {}), path)
@@ -210,7 +218,9 @@ def resolve_pinned_entry(config: EngramConfig) -> EmbeddingEntry:
     if config.pinned_id is not None:
         entry = next((e for e in config.embeddings if e.id == config.pinned_id), None)
         if entry is None:
-            raise ValueError(f"pinned id {config.pinned_id!r} is not in the embedding shortlist")
+            raise ValueError(
+                f"pinned id {config.pinned_id!r} is not in the embedding shortlist"
+            )
         return entry
     return config.embeddings[0]
 
@@ -219,7 +229,10 @@ def _post_embeddings(entry: EmbeddingEntry, inputs) -> dict:
     url = f"{entry.endpoint}/embeddings"
     body = json.dumps({"model": entry.id, "input": inputs}).encode()
     request = urllib.request.Request(
-        url, data=body, headers={"Content-Type": "application/json"}, method="POST"
+        url,
+        data=body,
+        headers={"Content-Type": "application/json"},
+        method="POST",
     )
     try:
         with _OPENER.open(request, timeout=EMBED_REQUEST_TIMEOUT_S) as response:
@@ -232,12 +245,12 @@ def _post_embeddings(entry: EmbeddingEntry, inputs) -> dict:
         http.client.HTTPException,
     ) as e:
         raise EmbeddingPreflightError(
-            f"embedding request to {entry.endpoint} for model {entry.id} failed: {e}"
+            f"embedding request to {entry.endpoint} for model {entry.id} failed: {e}",
         ) from e
 
     if not isinstance(payload, dict):
         raise EmbeddingPreflightError(
-            f"embedding response from {entry.endpoint} for {entry.id} was not a JSON object"
+            f"embedding response from {entry.endpoint} for {entry.id} was not a JSON object",
         )
     return payload
 
@@ -248,7 +261,7 @@ def preflight(entry: EmbeddingEntry) -> None:
     if actual_model != entry.id:
         raise EmbeddingModelIdentityError(
             f"expected model {entry.id!r} but endpoint {entry.endpoint} reported "
-            f"{actual_model!r}"
+            f"{actual_model!r}",
         )
 
 
@@ -271,7 +284,7 @@ def ensure_served(entry: EmbeddingEntry) -> ServerLease:
     binary = shutil.which("llama-server")
     if binary is None:
         raise EmbeddingServerError(
-            "llama-server not found on PATH; install it with `brew install llama.cpp`"
+            "llama-server not found on PATH; install it with `brew install llama.cpp`",
         )
 
     port = urllib.parse.urlsplit(entry.endpoint).port
@@ -317,7 +330,7 @@ def ensure_served(entry: EmbeddingEntry) -> ServerLease:
     _reap(process)
 
     raise EmbeddingServerError(
-        f"llama-server for {entry.id} did not become ready at {entry.endpoint}: {last_error}"
+        f"llama-server for {entry.id} did not become ready at {entry.endpoint}: {last_error}",
     )
 
 
@@ -346,23 +359,26 @@ def stop_served(lease: ServerLease) -> None:
 
 
 def _parse_vector_item(
-    item, batch: list[str], entry: EmbeddingEntry, seen_idx: set[int], dim: int | None
+    item,
+    batch: list[str],
+    entry: EmbeddingEntry,
+    seen_idx: set[int],
+    dim: int | None,
 ) -> tuple[int, Vector, int]:
     if not isinstance(item, dict):
         raise EmbeddingPreflightError(
             f"invalid data element in embedding response from {entry.endpoint} "
-            f"for {entry.id}"
+            f"for {entry.id}",
         )
     idx = item.get("index")
     if not isinstance(idx, int) or idx < 0 or idx >= len(batch):
         raise EmbeddingPreflightError(
-            f"invalid index in embedding response from {entry.endpoint} "
-            f"for {entry.id}"
+            f"invalid index in embedding response from {entry.endpoint} for {entry.id}",
         )
     if idx in seen_idx:
         raise EmbeddingPreflightError(
             f"duplicate index {idx} in embedding response from "
-            f"{entry.endpoint} for {entry.id}"
+            f"{entry.endpoint} for {entry.id}",
         )
     seen_idx.add(idx)
     values = item.get("embedding")
@@ -373,25 +389,27 @@ def _parse_vector_item(
     ):
         raise EmbeddingPreflightError(
             f"invalid embedding vector at index {idx} in response from "
-            f"{entry.endpoint} for {entry.id}"
+            f"{entry.endpoint} for {entry.id}",
         )
     if dim is None:
         dim = len(values)
     elif len(values) != dim:
         raise EmbeddingPreflightError(
             f"inconsistent embedding dimension in response from "
-            f"{entry.endpoint} for {entry.id}"
+            f"{entry.endpoint} for {entry.id}",
         )
     return idx, Vector(values=values, model_id=entry.id, dim=len(values)), dim
 
 
 def _parse_batch_vectors(
-    payload: dict, batch: list[str], entry: EmbeddingEntry
+    payload: dict,
+    batch: list[str],
+    entry: EmbeddingEntry,
 ) -> list[Vector]:
     data = payload.get("data", [])
     if not isinstance(data, list):
         raise EmbeddingPreflightError(
-            f"embedding response from {entry.endpoint} for {entry.id} had a non-list data field"
+            f"embedding response from {entry.endpoint} for {entry.id} had a non-list data field",
         )
 
     batch_vectors: list[Vector | None] = [None] * len(batch)
@@ -403,7 +421,7 @@ def _parse_batch_vectors(
 
     if any(v is None for v in batch_vectors):
         raise EmbeddingPreflightError(
-            f"missing index in embedding response from {entry.endpoint} for {entry.id}"
+            f"missing index in embedding response from {entry.endpoint} for {entry.id}",
         )
 
     return [v for v in batch_vectors if v is not None]
@@ -442,7 +460,7 @@ def embed(texts: list[str], entry: EmbeddingEntry) -> list[Vector]:
             payload = _post_embeddings(entry, truncated)
         except EmbeddingPreflightError as e:
             raise EmbeddingPreflightError(
-                f"{e} (batch indices {start}..{start + len(truncated) - 1})"
+                f"{e} (batch indices {start}..{start + len(truncated) - 1})",
             ) from e
         vectors.extend(_parse_batch_vectors(payload, truncated, entry))
 
