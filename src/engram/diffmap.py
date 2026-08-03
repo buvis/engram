@@ -30,6 +30,7 @@ def changed_symbols(
     sections = _split_sections(lines)
 
     seen: set[tuple[str, str, int, int]] = set()
+    file_symbol_seen: set[str] = set()
     results: list[Symbol] = []
 
     def _add(symbol: Symbol) -> None:
@@ -38,6 +39,12 @@ def changed_symbols(
             seen.add(key)
             results.append(symbol)
 
+    def _add_file_symbol(path: str, name: str, line: int) -> None:
+        if path in file_symbol_seen:
+            return
+        file_symbol_seen.add(path)
+        _add(_file_symbol(path, name, line))
+
     for section in sections:
         identity = _section_file_identity(section, repo_root)
         if identity is None:
@@ -45,7 +52,7 @@ def changed_symbols(
         abs_path, name, rel_path, is_deletion = identity
 
         if is_deletion:
-            _add(_file_symbol(abs_path, name, 1))
+            _add_file_symbol(abs_path, name, 1)
             continue
 
         language = detect_language_from_path(abs_path)
@@ -58,7 +65,7 @@ def changed_symbols(
                     ProcessConfig(language, structure=True),
                 ).structure
 
-        _add_hunk_symbols(section, abs_path, name, structure, _add)
+        _add_hunk_symbols(section, abs_path, name, structure, _add, _add_file_symbol)
 
     return results
 
@@ -138,11 +145,18 @@ def _smallest_enclosing(items, line: int):
     return None
 
 
-def _add_hunk_symbols(section, abs_path: str, name: str, structure, add) -> None:
+def _add_hunk_symbols(
+    section,
+    abs_path: str,
+    name: str,
+    structure,
+    add,
+    add_file_symbol,
+) -> None:
     for c, body in _hunks(section):
         changed = _changed_lines(body, c)
         if not changed:
-            add(_file_symbol(abs_path, name, c))
+            add_file_symbol(abs_path, name, c)
             continue
         for line in changed:
             item = _smallest_enclosing(structure, line) if structure else None
@@ -157,7 +171,7 @@ def _add_hunk_symbols(section, abs_path: str, name: str, structure, add) -> None
                     ),
                 )
             else:
-                add(_file_symbol(abs_path, name, line))
+                add_file_symbol(abs_path, name, line)
 
 
 def _read_content(repo_root: Path, rel_path: str, source_ref: str | None) -> str | None:
