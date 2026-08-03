@@ -26,7 +26,7 @@ def changed_symbols(
     repo_root: Path,
     source_ref: str | None = None,
 ) -> list[Symbol]:
-    lines = diff_path.read_text().splitlines()
+    lines = diff_path.read_text(errors="replace").splitlines()
     sections = _split_sections(lines)
 
     seen: set[tuple[str, str, int, int]] = set()
@@ -47,7 +47,9 @@ def changed_symbols(
             continue
         is_deletion = plus_line == "+++ /dev/null"
         if is_deletion:
-            minus_line = next((line for line in section if line.startswith("--- ")), None)
+            minus_line = next(
+                (line for line in section if line.startswith("--- ")), None
+            )
             if minus_line is None:
                 continue
             rel_path = minus_line[4:]
