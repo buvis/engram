@@ -18,7 +18,6 @@ from engram.client import (
     EmbeddingPreflightError,
     EmbeddingServerError,
     EngramConfig,
-    FRAMING_OVERHEAD_TOKENS,
     PackBudget,
     ServerLease,
     embed,

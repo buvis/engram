@@ -82,9 +82,10 @@ class ServerLease:
     pid: int | None
 
 
-FRAMING_OVERHEAD_TOKENS = 100  # reserved for the markdown headings/separators
-                               # a rendered pack adds on top of its four
-                               # section bodies
+# Reserved for the markdown headings and separators a rendered pack adds on top
+# of its four section bodies, so the section caps cannot spend the whole hard
+# cap and leave the framing to overflow it.
+FRAMING_OVERHEAD_TOKENS = 100
 
 
 @dataclass(frozen=True)
