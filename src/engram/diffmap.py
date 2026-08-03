@@ -39,26 +39,10 @@ def changed_symbols(
             results.append(symbol)
 
     for section in sections:
-        # ponytail: paths with spaces handled via the +++/--- lines; git's C-quoted
-        # form ("b/caf\303\251.py") is not unquoted - decode it here if non-ASCII
-        # paths ever show up in a reviewed diff.
-        plus_line = next((line for line in section if line.startswith("+++ ")), None)
-        if plus_line is None:
+        identity = _section_file_identity(section, repo_root)
+        if identity is None:
             continue
-        is_deletion = plus_line == "+++ /dev/null"
-        if is_deletion:
-            minus_line = next(
-                (line for line in section if line.startswith("--- ")), None
-            )
-            if minus_line is None:
-                continue
-            rel_path = minus_line[4:]
-            rel_path = rel_path.removeprefix("a/")
-        else:
-            rel_path = plus_line[4:]
-            rel_path = rel_path.removeprefix("b/")
-        abs_path = str(repo_root / rel_path)
-        name = Path(rel_path).name
+        abs_path, name, rel_path, is_deletion = identity
 
         if is_deletion:
             _add(_file_symbol(abs_path, name, 1))
@@ -74,31 +58,39 @@ def changed_symbols(
                     ProcessConfig(language, structure=True),
                 ).structure
 
-        for c, body in _hunks(section):
-            changed = _changed_lines(body, c)
-            if not changed:
-                _add(_file_symbol(abs_path, name, c))
-                continue
-            for line in changed:
-                item = _smallest_enclosing(structure, line) if structure else None
-                if item is not None:
-                    _add(
-                        Symbol(
-                            path=abs_path,
-                            name=item.name,
-                            kind=str(item.kind).lower(),
-                            line_start=item.span.start_line + 1,
-                            line_end=item.span.end_line + 1,
-                        ),
-                    )
-                else:
-                    _add(_file_symbol(abs_path, name, line))
+        _add_hunk_symbols(section, abs_path, name, structure, _add)
 
     return results
 
 
 def _file_symbol(path: str, name: str, line: int) -> Symbol:
     return Symbol(path=path, name=name, kind="file", line_start=line, line_end=line)
+
+
+def _section_file_identity(
+    section: list[str], repo_root: Path
+) -> tuple[str, str, str, bool] | None:
+    # ponytail: paths with spaces handled via the +++/--- lines; git's C-quoted
+    # form ("b/caf\303\251.py") is not unquoted - decode it here if non-ASCII
+    # paths ever show up in a reviewed diff.
+    plus_line = next((line for line in section if line.startswith("+++ ")), None)
+    if plus_line is None:
+        return None
+    is_deletion = plus_line == "+++ /dev/null"
+    if is_deletion:
+        minus_line = next(
+            (line for line in section if line.startswith("--- ")), None
+        )
+        if minus_line is None:
+            return None
+        rel_path = minus_line[4:]
+        rel_path = rel_path.removeprefix("a/")
+    else:
+        rel_path = plus_line[4:]
+        rel_path = rel_path.removeprefix("b/")
+    abs_path = str(repo_root / rel_path)
+    name = Path(rel_path).name
+    return abs_path, name, rel_path, is_deletion
 
 
 def _split_sections(lines: list[str]) -> list[list[str]]:
@@ -142,6 +134,28 @@ def _smallest_enclosing(items, line: int):
         if start <= line <= end:
             return _smallest_enclosing(item.children, line) or item
     return None
+
+
+def _add_hunk_symbols(section, abs_path: str, name: str, structure, add) -> None:
+    for c, body in _hunks(section):
+        changed = _changed_lines(body, c)
+        if not changed:
+            add(_file_symbol(abs_path, name, c))
+            continue
+        for line in changed:
+            item = _smallest_enclosing(structure, line) if structure else None
+            if item is not None:
+                add(
+                    Symbol(
+                        path=abs_path,
+                        name=item.name,
+                        kind=str(item.kind).lower(),
+                        line_start=item.span.start_line + 1,
+                        line_end=item.span.end_line + 1,
+                    ),
+                )
+            else:
+                add(_file_symbol(abs_path, name, line))
 
 
 def _read_content(repo_root: Path, rel_path: str, source_ref: str | None) -> str | None:

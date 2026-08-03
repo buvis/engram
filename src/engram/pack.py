@@ -232,18 +232,9 @@ def _largest_section(sections: dict) -> str | None:
     return best_label
 
 
-def build(
-    store,
-    config,
-    repo: str,
-    repo_root: Path,
-    id_: str,
-    diff_path: Path,
-    source_ref: str | None = None,
-    prd_path: Path | None = None,
-    capsule_path: Path | None = None,
-    out_dir: Path = Path("dev/local/tmp"),
-) -> PackReport:
+def _reindex_and_resolve_symbols(
+    store, config, repo: str, repo_root: Path, diff_path: Path, source_ref: str | None
+) -> tuple[IndexReport, set[tuple[str, int, int]], list[Symbol], int]:
     index_report = index(store, config, Scope("repo", repo))
 
     all_symbols = changed_symbols(diff_path, repo_root, source_ref)
@@ -252,6 +243,62 @@ def build(
     query_symbols = all_symbols[:MAX_SYMBOLS_PER_PACK]
     symbols_omitted = max(0, len(all_symbols) - MAX_SYMBOLS_PER_PACK)
 
+    return index_report, changed_spans, query_symbols, symbols_omitted
+
+
+def _query_hits_for_symbol(
+    store, config, repo: str, text: str, vector
+) -> tuple[list[Pointer], list[Pointer], list[Pointer]]:
+    similar = query(
+        store,
+        config,
+        text,
+        Scope("repo", repo),
+        corpus="code",
+        k=RETRIEVAL_K,
+        vector=vector,
+        include_body=True,
+    )
+    reuse = query(
+        store,
+        config,
+        text,
+        Scope("portfolio", None),
+        corpus="code",
+        k=RETRIEVAL_K,
+        vector=vector,
+        include_body=True,
+    )
+    findings = query(
+        store,
+        config,
+        text,
+        Scope("repo", repo),
+        corpus=FINDINGS_CORPUS,
+        k=RETRIEVAL_K,
+        vector=vector,
+        include_body=True,
+    ) + query(
+        store,
+        config,
+        text,
+        Scope("portfolio", None),
+        corpus=FINDINGS_CORPUS,
+        k=RETRIEVAL_K,
+        vector=vector,
+        include_body=True,
+    )
+    return similar, reuse, findings
+
+
+def _retrieve_pack_hits(
+    store,
+    config,
+    repo: str,
+    repo_root: Path,
+    query_symbols: list[Symbol],
+    source_ref: str | None,
+) -> tuple[list[Pointer], list[Pointer], list[Pointer]]:
     query_texts = [_symbol_query_text(s, repo_root, source_ref) for s in query_symbols]
     entry = resolve_pinned_entry(config)
     vectors = embed(query_texts, entry)
@@ -261,88 +308,50 @@ def build(
     findings_hits: list[Pointer] = []
 
     for text, vector in zip(query_texts, vectors):
-        similar_hits.extend(
-            query(
-                store,
-                config,
-                text,
-                Scope("repo", repo),
-                corpus="code",
-                k=RETRIEVAL_K,
-                vector=vector,
-                include_body=True,
-            ),
-        )
-        reuse_hits.extend(
-            query(
-                store,
-                config,
-                text,
-                Scope("portfolio", None),
-                corpus="code",
-                k=RETRIEVAL_K,
-                vector=vector,
-                include_body=True,
-            ),
-        )
-        findings_hits.extend(
-            query(
-                store,
-                config,
-                text,
-                Scope("repo", repo),
-                corpus=FINDINGS_CORPUS,
-                k=RETRIEVAL_K,
-                vector=vector,
-                include_body=True,
-            ),
-        )
-        findings_hits.extend(
-            query(
-                store,
-                config,
-                text,
-                Scope("portfolio", None),
-                corpus=FINDINGS_CORPUS,
-                k=RETRIEVAL_K,
-                vector=vector,
-                include_body=True,
-            ),
-        )
+        similar, reuse, findings = _query_hits_for_symbol(store, config, repo, text, vector)
+        similar_hits.extend(similar)
+        reuse_hits.extend(reuse)
+        findings_hits.extend(findings)
 
     reuse_hits = [hit for hit in reuse_hits if hit.repo != repo]
 
-    budget = config.pack_budget
+    return similar_hits, reuse_hits, findings_hits
 
-    similar_items = _sort_pointers(_dedup(_exclude(similar_hits, changed_spans)))
-    reuse_items = _sort_pointers(_dedup(_exclude(reuse_hits, changed_spans)))
-    findings_items = _sort_pointers(_dedup(_exclude(findings_hits, changed_spans)))
+
+def _prepare_section_items(
+    hits: list[Pointer], changed_spans: set[tuple[str, int, int]], cap_tokens: int
+) -> tuple[list, bool]:
+    items = _sort_pointers(_dedup(_exclude(hits, changed_spans)))
+    return _cap_items(items, _render_pointer, cap_tokens)
+
+
+def _build_pack_sections(
+    store,
+    config,
+    id_: str,
+    similar_hits: list[Pointer],
+    reuse_hits: list[Pointer],
+    findings_hits: list[Pointer],
+    changed_spans: set[tuple[str, int, int]],
+    prd_path: Path | None,
+    capsule_path: Path | None,
+    budget,
+) -> tuple[dict, list[str]]:
+    similar_items, similar_trimmed = _prepare_section_items(
+        similar_hits, changed_spans, budget.similar_cap_tokens
+    )
+    reuse_items, reuse_trimmed = _prepare_section_items(
+        reuse_hits, changed_spans, budget.reuse_cap_tokens
+    )
+    findings_items, findings_trimmed = _prepare_section_items(
+        findings_hits, changed_spans, budget.findings_cap_tokens
+    )
+
     prose_entries = _task_prose_entries(
-        store,
-        config,
-        id_,
-        prd_path,
-        capsule_path,
-        budget.prose_cap_tokens,
-    )
-
-    similar_items, similar_trimmed = _cap_items(
-        similar_items,
-        _render_pointer,
-        budget.similar_cap_tokens,
-    )
-    reuse_items, reuse_trimmed = _cap_items(
-        reuse_items, _render_pointer, budget.reuse_cap_tokens
-    )
-    findings_items, findings_trimmed = _cap_items(
-        findings_items,
-        _render_pointer,
-        budget.findings_cap_tokens,
+        store, config, id_, prd_path, capsule_path, budget.prose_cap_tokens
     )
     prose_entries, prose_trimmed = _cap_items(
-        prose_entries,
-        lambda text: text,
-        budget.prose_cap_tokens,
+        prose_entries, lambda text: text, budget.prose_cap_tokens
     )
 
     trimmed_sections = [
@@ -363,6 +372,18 @@ def build(
         "Task prose": (prose_entries, lambda text: text),
     }
 
+    return sections, trimmed_sections
+
+
+def _finalize_pack(
+    sections: dict,
+    trimmed_sections: list[str],
+    symbols_omitted: int,
+    budget,
+    id_: str,
+    out_dir: Path,
+    index_report: IndexReport,
+) -> PackReport:
     rendered_text = _render_full(sections, symbols_omitted)
     while _estimate_tokens(rendered_text) > budget.hard_cap_tokens:
         label = _largest_section(sections)
@@ -401,4 +422,43 @@ def build(
         trimmed_sections=trimmed_sections,
         symbols_omitted=symbols_omitted,
         index_report=index_report,
+    )
+
+
+def build(
+    store,
+    config,
+    repo: str,
+    repo_root: Path,
+    id_: str,
+    diff_path: Path,
+    source_ref: str | None = None,
+    prd_path: Path | None = None,
+    capsule_path: Path | None = None,
+    out_dir: Path = Path("dev/local/tmp"),
+) -> PackReport:
+    index_report, changed_spans, query_symbols, symbols_omitted = (
+        _reindex_and_resolve_symbols(store, config, repo, repo_root, diff_path, source_ref)
+    )
+
+    similar_hits, reuse_hits, findings_hits = _retrieve_pack_hits(
+        store, config, repo, repo_root, query_symbols, source_ref
+    )
+
+    budget = config.pack_budget
+    sections, trimmed_sections = _build_pack_sections(
+        store,
+        config,
+        id_,
+        similar_hits,
+        reuse_hits,
+        findings_hits,
+        changed_spans,
+        prd_path,
+        capsule_path,
+        budget,
+    )
+
+    return _finalize_pack(
+        sections, trimmed_sections, symbols_omitted, budget, id_, out_dir, index_report
     )

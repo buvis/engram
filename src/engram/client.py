@@ -135,29 +135,8 @@ _OPENER = urllib.request.build_opener(_LoopbackRedirectHandler)
 _spawned_processes: dict[int, subprocess.Popen] = {}
 
 
-def load_config(path: Path = DEFAULT_CONFIG_PATH) -> EngramConfig:
-    if not path.exists():
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(_DEFAULT_CONFIG_TOML)
-
-    with path.open("rb") as f:
-        raw = tomllib.load(f)
-
-    embeddings = []
-    for entry in raw.get("embedding", []):
-        embeddings.append(EmbeddingEntry(id=entry["id"], endpoint=entry["endpoint"]))
-
-    pinned_id = raw.get("pinned", {}).get("id") or None
-
-    if not embeddings:
-        raise ValueError(f"config {path} has no [[embedding]] entries")
-    if pinned_id is not None and pinned_id not in {e.id for e in embeddings}:
-        raise ValueError(
-            f"config {path} pins id {pinned_id!r} which is not in the embedding shortlist"
-        )
-
+def _build_pack_budget(pack_raw: dict, path: Path) -> PackBudget:
     defaults = PackBudget()
-    pack_raw = raw.get("pack", {})
     pack_budget = PackBudget(
         hard_cap_tokens=pack_raw.get("hard_cap_tokens", defaults.hard_cap_tokens),
         similar_cap_tokens=pack_raw.get("similar_cap_tokens", defaults.similar_cap_tokens),
@@ -190,6 +169,32 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> EngramConfig:
             f"config {path} [pack] section caps plus framing overhead ({section_sum}) "
             f"exceed hard_cap_tokens ({pack_budget.hard_cap_tokens})"
         )
+
+    return pack_budget
+
+
+def load_config(path: Path = DEFAULT_CONFIG_PATH) -> EngramConfig:
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(_DEFAULT_CONFIG_TOML)
+
+    with path.open("rb") as f:
+        raw = tomllib.load(f)
+
+    embeddings = []
+    for entry in raw.get("embedding", []):
+        embeddings.append(EmbeddingEntry(id=entry["id"], endpoint=entry["endpoint"]))
+
+    pinned_id = raw.get("pinned", {}).get("id") or None
+
+    if not embeddings:
+        raise ValueError(f"config {path} has no [[embedding]] entries")
+    if pinned_id is not None and pinned_id not in {e.id for e in embeddings}:
+        raise ValueError(
+            f"config {path} pins id {pinned_id!r} which is not in the embedding shortlist"
+        )
+
+    pack_budget = _build_pack_budget(raw.get("pack", {}), path)
 
     return EngramConfig(
         embeddings=embeddings,

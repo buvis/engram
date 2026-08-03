@@ -238,16 +238,11 @@ def _run_status(args: argparse.Namespace) -> int:
     return exit_code
 
 
-def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
-    if args.cycle is not None and args.diff is not None:
-        parser.error("--cycle and --diff are mutually exclusive")
-    if args.cycle is None and args.diff is None:
-        parser.error("exactly one of --cycle or --diff is required")
-
+def _resolve_pack_repo() -> tuple[str, Path] | None:
     scope = _resolve_scope("repo")
     if scope is None:
         print(_repo_scope_error_msg(mention_scope=False), file=sys.stderr)
-        return 1
+        return None
 
     repo_name = scope.repo
     toplevel_result = subprocess.run(
@@ -258,41 +253,48 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     )
     if toplevel_result.returncode != 0:
         print("engram pack must run inside a git worktree", file=sys.stderr)
-        return 1
+        return None
     repo_root = Path(toplevel_result.stdout.strip())
+    return repo_name, repo_root
 
-    out_dir = repo_root / "dev" / "local" / "tmp"
 
+def _resolve_pack_diff(
+    args: argparse.Namespace, repo_root: Path, out_dir: Path
+) -> tuple[Path, str, str | None] | None:
     if args.cycle is not None:
         diff_path = out_dir / f"review-diff-{args.cycle}.diff"
         if not diff_path.exists():
             print(f"no staged diff found at {diff_path}", file=sys.stderr)
-            return 1
-        id_ = args.cycle
-        source_ref = None
-    else:
-        range_str = args.diff
-        if ".." not in range_str:
-            print(
-                f"--diff must be in <base>..<head> form, got {range_str!r}",
-                file=sys.stderr,
-            )
-            return 1
-        _, head = range_str.split("..", 1)
-        id_ = re.sub(r"[^A-Za-z0-9_-]", "-", range_str)
-        source_ref = head
-        result = subprocess.run(
-            ["git", "-C", str(repo_root), "diff", range_str],
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0 or not result.stdout:
-            print(f"git diff {range_str} failed or produced no output", file=sys.stderr)
-            return 1
-        diff_path = out_dir / f"engram-pack-diff-{id_}.diff"
-        diff_path.parent.mkdir(parents=True, exist_ok=True)
-        diff_path.write_text(result.stdout)
+            return None
+        return diff_path, args.cycle, None
 
+    range_str = args.diff
+    if ".." not in range_str:
+        print(
+            f"--diff must be in <base>..<head> form, got {range_str!r}",
+            file=sys.stderr,
+        )
+        return None
+    _, head = range_str.split("..", 1)
+    id_ = re.sub(r"[^A-Za-z0-9_-]", "-", range_str)
+    source_ref = head
+    result = subprocess.run(
+        ["git", "-C", str(repo_root), "diff", range_str],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0 or not result.stdout:
+        print(f"git diff {range_str} failed or produced no output", file=sys.stderr)
+        return None
+    diff_path = out_dir / f"engram-pack-diff-{id_}.diff"
+    diff_path.parent.mkdir(parents=True, exist_ok=True)
+    diff_path.write_text(result.stdout)
+    return diff_path, id_, source_ref
+
+
+def _resolve_pack_prd_and_capsule(
+    args: argparse.Namespace, repo_root: Path
+) -> tuple[Path | None, Path | None]:
     prd_path: Path | None = None
     if args.prd is not None:
         prd_path = Path(args.prd)
@@ -310,6 +312,29 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         default_capsule = repo_root / "dev" / "local" / "project-capsule.md"
         if default_capsule.exists():
             capsule_path = default_capsule
+
+    return prd_path, capsule_path
+
+
+def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    if args.cycle is not None and args.diff is not None:
+        parser.error("--cycle and --diff are mutually exclusive")
+    if args.cycle is None and args.diff is None:
+        parser.error("exactly one of --cycle or --diff is required")
+
+    repo = _resolve_pack_repo()
+    if repo is None:
+        return 1
+    repo_name, repo_root = repo
+
+    out_dir = repo_root / "dev" / "local" / "tmp"
+
+    diff_resolved = _resolve_pack_diff(args, repo_root, out_dir)
+    if diff_resolved is None:
+        return 1
+    diff_path, id_, source_ref = diff_resolved
+
+    prd_path, capsule_path = _resolve_pack_prd_and_capsule(args, repo_root)
 
     config = load_config()
     store = open_store()
