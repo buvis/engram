@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import engram.corpora as corpora
 from engram import symbols, transcripts
 from engram.chunker import chunk_markdown
-from engram.client import EmbeddingEntry, EngramConfig, embed, resolve_pinned_entry
+from engram.client import EngramConfig, embed, resolve_pinned_entry
 from engram.corpora import CorpusFile, enumerate_corpora, hash_source
 from engram.store import Chunk, ChunkWithVector, Scope, Store
 
@@ -80,34 +80,3 @@ def _chunk_file(file: CorpusFile, content_hash: str) -> list[Chunk]:
     if file.corpus == "code":
         return symbols.chunk(file.path, file.repo, content_hash)
     return chunk_markdown(file.path, file.corpus, file.repo, content_hash)
-
-
-def _diff_and_embed(
-    files: list[CorpusFile],
-    known: set[tuple[str, str, str]],
-    entry: EmbeddingEntry,
-) -> tuple[list[ChunkWithVector], int, set[tuple[str, str, str]]]:
-    chunks_added = 0
-    all_chunks: list[ChunkWithVector] = []
-    active_sources: set[tuple[str, str, str]] = set()
-
-    for file in files:
-        h = hash_source(file.path)
-        key = (file.repo, str(file.path), h)
-        active_sources.add(key)
-
-        if key in known:
-            continue
-
-        chunks = _chunk_file(file, h)
-        if not chunks:
-            continue
-
-        texts = [c.text_for_embedding for c in chunks]
-        vectors = embed(texts, entry)
-        all_chunks.extend(
-            ChunkWithVector(chunk=c, vector=v) for c, v in zip(chunks, vectors)
-        )
-        chunks_added += len(chunks)
-
-    return all_chunks, chunks_added, active_sources
