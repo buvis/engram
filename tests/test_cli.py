@@ -1175,6 +1175,36 @@ def test_pack_rejects_neither_cycle_nor_diff_flag(monkeypatch):
     assert exc_info.value.code == 2
 
 
+# --- pack: repo_root resolution ---
+
+
+def test_pack_resolves_repo_root_to_git_toplevel_when_run_from_a_subdirectory(
+    monkeypatch,
+    tmp_path,
+):
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    toplevel = _init_git_repo(repo_dir)
+    _register_repo(monkeypatch, tmp_path, toplevel)
+
+    subdir = toplevel / "sub"
+    subdir.mkdir()
+    monkeypatch.chdir(subdir)
+
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+
+    calls = []
+    report = _make_pack_report(toplevel / "dev/local/tmp/engram-pack-cyc1.md")
+    monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
+
+    exit_code = main(["pack", "--cycle", "cyc1"])
+
+    assert exit_code == 0
+    assert len(calls) == 1
+    assert calls[0]["repo_root"].resolve() == toplevel.resolve()
+
+
 # --- pack: --cycle derives diff_path/id_/source_ref and prints summary ---
 
 

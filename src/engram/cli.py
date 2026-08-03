@@ -248,14 +248,26 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         return 1
 
     repo_name = scope.repo
-    repo_root = Path.cwd()
+    toplevel_result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        cwd=Path.cwd(),
+        capture_output=True,
+        text=True,
+    )
+    repo_root = Path(toplevel_result.stdout.strip())
 
     if args.cycle is not None:
-        diff_path = Path("dev/local/tmp/review-diff-{}.diff".format(args.cycle))
+        diff_path = Path(f"dev/local/tmp/review-diff-{args.cycle}.diff")
         id_ = args.cycle
         source_ref = None
     else:
         range_str = args.diff
+        if ".." not in range_str:
+            print(
+                f"--diff must be in <base>..<head> form, got {range_str!r}",
+                file=sys.stderr,
+            )
+            return 1
         _, head = range_str.split("..", 1)
         id_ = re.sub(r"[^A-Za-z0-9_-]", "-", range_str)
         source_ref = head
@@ -265,9 +277,9 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
             text=True,
         )
         if result.returncode != 0 or not result.stdout:
-            print("git diff {} failed or produced no output".format(range_str), file=sys.stderr)
+            print(f"git diff {range_str} failed or produced no output", file=sys.stderr)
             return 1
-        diff_path = Path("dev/local/tmp/engram-pack-diff-{}.diff".format(id_))
+        diff_path = Path(f"dev/local/tmp/engram-pack-diff-{id_}.diff")
         diff_path.parent.mkdir(parents=True, exist_ok=True)
         diff_path.write_text(result.stdout)
 
