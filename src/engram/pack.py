@@ -95,7 +95,7 @@ def _render_pointer(pointer: Pointer) -> str:
         origin = f"{pointer.corpus}:{pointer.path}"
     else:
         origin = f"{pointer.repo}:{pointer.path}:{pointer.line_start}-{pointer.line_end}"
-    return f"- {origin}\n  {pointer.body or ''}"
+    return f"- {origin}\n  {pointer.body}"
 
 
 def _capsule_active_work_line(capsule_path: Path) -> str | None:
