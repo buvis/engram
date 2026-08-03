@@ -103,10 +103,7 @@ def _render_pointer(pointer: Pointer) -> str:
 
 
 def _capsule_active_work_section(capsule_path: Path) -> str | None:
-    try:
-        text = capsule_path.read_text(errors="replace")
-    except OSError:
-        return None
+    text = capsule_path.read_text(errors="replace")
     lines = text.splitlines()
     for i, line in enumerate(lines):
         if line.startswith("## ") and "Active Work" in line:
@@ -141,6 +138,29 @@ def _prd_query_text(prd_text: str | None, prd_path: Path) -> str:
     return prd_path.stem
 
 
+def _add_capsule_entry(
+    capsule_path: Path,
+    entries: list[str],
+    unreadable_paths: list[Path],
+    cap_chars: int,
+) -> None:
+    try:
+        section = _capsule_active_work_section(capsule_path)
+    except OSError:
+        unreadable_paths.append(capsule_path)
+        return
+    if section:
+        _append_prose_entry(entries, section, cap_chars)
+
+
+def _read_prd_text(prd_path: Path, unreadable_paths: list[Path]) -> str | None:
+    try:
+        return prd_path.read_text(errors="replace")
+    except OSError:
+        unreadable_paths.append(prd_path)
+        return None
+
+
 def _task_prose_entries(
     store,
     config,
@@ -148,8 +168,9 @@ def _task_prose_entries(
     prd_path: Path | None,
     capsule_path: Path | None,
     prose_cap_tokens: int,
-) -> list[str]:
+) -> tuple[list[str], list[Path]]:
     entries: list[str] = []
+    unreadable_paths: list[Path] = []
     total_cap_chars = 4 * prose_cap_tokens
     # When a PRD is present, the capsule and memory hits ahead of it may only
     # spend half the budget between them, so the PRD always has room left.
@@ -158,15 +179,10 @@ def _task_prose_entries(
     )
 
     if capsule_path is not None:
-        section = _capsule_active_work_section(capsule_path)
-        if section:
-            _append_prose_entry(entries, section, leading_cap_chars)
+        _add_capsule_entry(capsule_path, entries, unreadable_paths, leading_cap_chars)
 
     if prd_path is not None:
-        try:
-            prd_text = prd_path.read_text(errors="replace")
-        except OSError:
-            prd_text = None
+        prd_text = _read_prd_text(prd_path, unreadable_paths)
 
         memory_hits = query(
             store,
@@ -184,7 +200,7 @@ def _task_prose_entries(
         if prd_text is not None:
             _append_prose_entry(entries, prd_text, total_cap_chars)
 
-    return entries
+    return entries, unreadable_paths
 
 
 def _cap_items(items: list, render, cap_tokens: int) -> tuple[list, bool]:
@@ -199,13 +215,20 @@ def _cap_items(items: list, render, cap_tokens: int) -> tuple[list, bool]:
     return items, trimmed
 
 
-def _render_full(sections: dict, symbols_omitted: int) -> str:
+def _render_full(
+    sections: dict,
+    symbols_omitted: int,
+    unreadable_paths: list[Path],
+) -> str:
     lines = [_FRESHNESS_LINE, ""]
     if symbols_omitted > 0:
         lines.append(
             f"{symbols_omitted} changed symbol(s) omitted "
             f"(beyond the {MAX_SYMBOLS_PER_PACK}-symbol cap).",
         )
+        lines.append("")
+    for path in unreadable_paths:
+        lines.append(f"{path} could not be read; omitted from Task prose.")
         lines.append("")
     for label in _SECTION_ORDER:
         items, render_fn = sections[label]
@@ -333,7 +356,7 @@ def _build_pack_sections(
     prd_path: Path | None,
     capsule_path: Path | None,
     budget,
-) -> tuple[dict, list[str]]:
+) -> tuple[dict, list[str], list[Path]]:
     similar_hits, reuse_hits, findings_hits = hits
     sections: dict = {}
     trimmed_sections: list[str] = []
@@ -350,7 +373,7 @@ def _build_pack_sections(
         if was_trimmed:
             trimmed_sections.append(label)
 
-    prose_entries = _task_prose_entries(
+    prose_entries, unreadable_paths = _task_prose_entries(
         store,
         config,
         id_,
@@ -367,19 +390,20 @@ def _build_pack_sections(
     if prose_trimmed:
         trimmed_sections.append("Task prose")
 
-    return sections, trimmed_sections
+    return sections, trimmed_sections, unreadable_paths
 
 
 def _finalize_pack(
     sections: dict,
     trimmed_sections: list[str],
     symbols_omitted: int,
+    unreadable_paths: list[Path],
     budget,
     id_: str,
     out_dir: Path,
     index_report: IndexReport,
 ) -> PackReport:
-    rendered_text = _render_full(sections, symbols_omitted)
+    rendered_text = _render_full(sections, symbols_omitted, unreadable_paths)
     while _estimate_tokens(rendered_text) > budget.hard_cap_tokens:
         label = _largest_section(sections)
         if label is None:
@@ -388,7 +412,7 @@ def _finalize_pack(
         items.pop()
         if label not in trimmed_sections:
             trimmed_sections.append(label)
-        rendered_text = _render_full(sections, symbols_omitted)
+        rendered_text = _render_full(sections, symbols_omitted, unreadable_paths)
 
     final_sections = []
     for label in _SECTION_ORDER:
@@ -455,7 +479,7 @@ def build(
     )
 
     budget = config.pack_budget
-    sections, trimmed_sections = _build_pack_sections(
+    sections, trimmed_sections, unreadable_paths = _build_pack_sections(
         store,
         config,
         id_,
@@ -470,6 +494,7 @@ def build(
         sections,
         trimmed_sections,
         symbols_omitted,
+        unreadable_paths,
         budget,
         id_,
         out_dir,
