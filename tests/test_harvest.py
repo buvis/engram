@@ -11,6 +11,7 @@ from engram.harvest import (
 )
 
 from engram import findings
+from engram.cli import main as cli_main
 from engram.client import (
     EmbeddingEntry,
     EmbeddingServerError,
@@ -489,3 +490,43 @@ def test_harvest_report_any_failed_reflects_whether_any_result_is_not_upserted(
     report = HarvestReport(results=results)
 
     assert report.any_failed is expected
+
+
+# --- end-to-end: CLI harvest -> source deleted -> finding still queryable ---
+
+
+def test_harvest_via_cli_then_source_deleted_finding_still_queryable_via_cli_query(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    toplevel = _init_git_repo(repo_dir)
+    review_path = toplevel / "dev" / "local" / "reviews" / "feature-review-1.md"
+    review_path.parent.mkdir(parents=True)
+    _write_review_file(review_path, body_marker="zeroloss-marker-token")
+    repos_csv = tmp_path / "repos.csv"
+    _write_repos_csv(repos_csv, [(toplevel, "repoA")])
+    config = _config(tmp_path)
+    db_path = tmp_path / "engram.db"
+
+    monkeypatch.setattr("engram.harvest.GITA_REPOS_CSV", repos_csv)
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: config)
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: open_store(db_path))
+    monkeypatch.setattr("engram.findings.embed", _make_embed())
+    monkeypatch.setattr("engram.query.embed", _make_embed())
+
+    harvest_exit_code = cli_main(["harvest", str(review_path)])
+    assert harvest_exit_code == 0
+    capsys.readouterr()  # discard harvest's own output
+
+    review_path.unlink()
+
+    query_exit_code = cli_main(
+        ["query", "--scope", "portfolio", "zeroloss-marker-token"],
+    )
+
+    captured = capsys.readouterr()
+    assert query_exit_code == 0
+    assert "zeroloss-marker-token" in captured.out.splitlines()
