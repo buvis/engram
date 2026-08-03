@@ -1,6 +1,5 @@
 import os
 import types
-
 from pathlib import Path
 
 import pytest
@@ -51,7 +50,7 @@ def _write_goldset(path, entries):
     for e in entries:
         lines.append(f'- query: "{e["query"]}"')
         lines.append(f'  expected_path: "{e["expected_path"]}"')
-        lines.append(f'  corpus: {e["corpus"]}')
+        lines.append(f"  corpus: {e['corpus']}")
     path.write_text("\n".join(lines) + "\n")
 
 
@@ -61,7 +60,9 @@ def _entry(id_, port):
 
 def _harness_config(tmp_path, entries, pinned_id=None):
     return EngramConfig(
-        embeddings=entries, pinned_id=pinned_id, config_path=tmp_path / "config.toml"
+        embeddings=entries,
+        pinned_id=pinned_id,
+        config_path=tmp_path / "config.toml",
     )
 
 
@@ -92,7 +93,9 @@ def _pointer(path, rank=1, score=1.0, corpus="memory", repo="repoA"):
 
 
 def _pointers_from_paths(paths):
-    return [_pointer(path=p, rank=i + 1, score=1.0 / (i + 1)) for i, p in enumerate(paths)]
+    return [
+        _pointer(path=p, rank=i + 1, score=1.0 / (i + 1)) for i, p in enumerate(paths)
+    ]
 
 
 def _hit_or_miss_query(expected_by_query, hit_predicate):
@@ -110,7 +113,11 @@ def _hit_or_miss_query(expected_by_query, hit_predicate):
 
 def _noop_index(store, config, scope, corpus=None):
     return IndexReport(
-        files_scanned=0, chunks_added=0, chunks_updated=0, chunks_pruned=0, corpora_missing=[]
+        files_scanned=0,
+        chunks_added=0,
+        chunks_updated=0,
+        chunks_pruned=0,
+        corpora_missing=[],
     )
 
 
@@ -154,20 +161,25 @@ def _patch_common(
     stop_served_fn=None,
 ):
     monkeypatch.setattr(
-        "engram.harness.ensure_served", ensure_served_fn or _make_ensure_served()
+        "engram.harness.ensure_served",
+        ensure_served_fn or _make_ensure_served(),
     )
     monkeypatch.setattr(
-        "engram.harness.stop_served", stop_served_fn or _make_stop_served([])
+        "engram.harness.stop_served",
+        stop_served_fn or _make_stop_served([]),
     )
     monkeypatch.setattr("engram.harness.index", _noop_index)
     monkeypatch.setattr("engram.harness.query", query_fn)
     monkeypatch.setattr(
-        "engram.harness.enumerate_corpora", enumerate_fn or _harmless_enumerate_corpora(tmp_path)
+        "engram.harness.enumerate_corpora",
+        enumerate_fn or _harmless_enumerate_corpora(tmp_path),
     )
     # _baseline_hit_rate now also chains in the transcripts and symbols
     # producers; default them to no-ops so existing tests (written before
     # those producers existed) don't hit the real filesystem or spawn git.
-    monkeypatch.setattr("engram.harness.transcripts.enumerate", lambda *a, **k: iter(()))
+    monkeypatch.setattr(
+        "engram.harness.transcripts.enumerate", lambda *a, **k: iter(())
+    )
     monkeypatch.setattr("engram.harness.symbols.enumerate", lambda *a, **k: iter(()))
 
 
@@ -296,7 +308,8 @@ def test_run_harness_scores_each_configured_entry_independently(tmp_path, monkey
 
     expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
     scripted_query = _hit_or_miss_query(
-        expected_by_query, lambda c: c.embeddings[0].id == "model-a"
+        expected_by_query,
+        lambda c: c.embeddings[0].id == "model-a",
     )
 
     _patch_common(monkeypatch, tmp_path, scripted_query)
@@ -315,13 +328,18 @@ def test_run_harness_scores_each_configured_entry_independently(tmp_path, monkey
 
 
 def test_run_harness_dedup_counts_hit_when_expected_file_present_lower_in_dominated_pool(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     expected_file = tmp_path / "dedup-expected.md"
     expected_file.write_text("# Expected\ncontent\n")
 
     entries_meta = [
-        {"query": f"dedup hit query {i}", "expected_path": str(expected_file), "corpus": "memory"}
+        {
+            "query": f"dedup hit query {i}",
+            "expected_path": str(expected_file),
+            "corpus": "memory",
+        }
         for i in range(30)
     ]
     goldset_path = tmp_path / "goldset.yaml"
@@ -335,10 +353,12 @@ def test_run_harness_dedup_counts_hit_when_expected_file_present_lower_in_domina
         # top RRF_DEDUP_POOL candidates dominated by one repeated file's
         # chunks, with the expected file present lower down, followed by a
         # few more distinct filler paths.
-        paths = (
-            ["dominant.md"] * 21
-            + [str(expected_file), "filler-c.md", "filler-d.md", "filler-e.md"]
-        )
+        paths = ["dominant.md"] * 21 + [
+            str(expected_file),
+            "filler-c.md",
+            "filler-d.md",
+            "filler-e.md",
+        ]
         assert len(paths) == RRF_DEDUP_POOL
         return _pointers_from_paths(paths)
 
@@ -353,7 +373,8 @@ def test_run_harness_dedup_counts_hit_when_expected_file_present_lower_in_domina
 
 
 def test_run_harness_dedup_counts_miss_when_expected_file_beyond_fifth_distinct_path(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     expected_file = tmp_path / "dedup-miss-expected.md"
     expected_file.write_text("# Expected\ncontent\n")
@@ -394,7 +415,8 @@ def test_run_harness_dedup_counts_miss_when_expected_file_beyond_fifth_distinct_
 
 
 def test_run_harness_computes_micro_averaged_hit_rate_pooled_across_corpora(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     hit_files = _dummy_files(tmp_path, 20, prefix="memhit")
     miss_files = _dummy_files(tmp_path, 10, prefix="prdmiss")
@@ -436,7 +458,8 @@ def test_run_harness_computes_micro_averaged_hit_rate_pooled_across_corpora(
 
 
 def test_run_harness_gate_passes_when_winner_meets_threshold_and_beats_baseline(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     files = _dummy_files(tmp_path, 30, prefix="gatepass")
     entries_meta = [
@@ -484,7 +507,7 @@ def test_run_harness_gate_fails_when_winner_ties_baseline(tmp_path, monkeypatch)
                 "query": f"distinctivekeyword{i}",
                 "expected_path": str(f),
                 "corpus": _VALID_CORPORA[i % len(_VALID_CORPORA)],
-            }
+            },
         )
     goldset_path = tmp_path / "goldset.yaml"
     _write_goldset(goldset_path, entries_meta)
@@ -533,7 +556,8 @@ def test_run_harness_writes_winner_id_to_real_config_path_only(tmp_path, monkeyp
 
     expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
     scripted_query = _hit_or_miss_query(
-        expected_by_query, lambda c: c.embeddings[0].id == "winner-model"
+        expected_by_query,
+        lambda c: c.embeddings[0].id == "winner-model",
     )
 
     _patch_common(monkeypatch, tmp_path, scripted_query)
@@ -571,12 +595,16 @@ def test_run_harness_stops_every_lease_except_the_winners(tmp_path, monkeypatch)
 
     expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
     scripted_query = _hit_or_miss_query(
-        expected_by_query, lambda c: c.embeddings[0].id == "model-a"
+        expected_by_query,
+        lambda c: c.embeddings[0].id == "model-a",
     )
 
     stopped = []
     _patch_common(
-        monkeypatch, tmp_path, scripted_query, stop_served_fn=_make_stop_served(stopped)
+        monkeypatch,
+        tmp_path,
+        scripted_query,
+        stop_served_fn=_make_stop_served(stopped),
     )
 
     work_dir = tmp_path / "work"
@@ -589,7 +617,9 @@ def test_run_harness_stops_every_lease_except_the_winners(tmp_path, monkeypatch)
     assert stopped_ids == {"model-b"}
 
 
-def test_run_harness_stops_lease_of_candidate_that_raises_mid_scoring(tmp_path, monkeypatch):
+def test_run_harness_stops_lease_of_candidate_that_raises_mid_scoring(
+    tmp_path, monkeypatch
+):
     files = _dummy_files(tmp_path, 30)
     entries_meta = _valid_goldset_entries(files)
     goldset_path = tmp_path / "goldset.yaml"
@@ -609,7 +639,10 @@ def test_run_harness_stops_lease_of_candidate_that_raises_mid_scoring(tmp_path, 
 
     stopped = []
     _patch_common(
-        monkeypatch, tmp_path, scripted_query, stop_served_fn=_make_stop_served(stopped)
+        monkeypatch,
+        tmp_path,
+        scripted_query,
+        stop_served_fn=_make_stop_served(stopped),
     )
 
     work_dir = tmp_path / "work"
@@ -682,7 +715,9 @@ def test_run_harness_baseline_skips_rg_when_no_corpus_files(tmp_path, monkeypatc
 # --- rg baseline: includes files from the transcripts producer ---
 
 
-def test_baseline_hit_rate_includes_files_from_transcripts_producer(tmp_path, monkeypatch):
+def test_baseline_hit_rate_includes_files_from_transcripts_producer(
+    tmp_path, monkeypatch
+):
     files = _dummy_files(tmp_path, 30, prefix="basetranscript")
     entries_meta = _valid_goldset_entries(files)
 
@@ -693,7 +728,7 @@ def test_baseline_hit_rate_includes_files_from_transcripts_producer(tmp_path, mo
             "query": "uniquetranscripttoken",
             "expected_path": str(transcript_file),
             "corpus": "transcripts",
-        }
+        },
     )
     goldset_path = tmp_path / "goldset.yaml"
     _write_goldset(goldset_path, entries_meta)
@@ -819,7 +854,9 @@ def test_format_report_emits_per_corpus_hit_rates():
 
     report = HarnessReport(
         per_model={
-            "m1": ModelScore(hit_rate=0.8, per_corpus_hit_rate={"memory": 0.9, "prd": 0.7})
+            "m1": ModelScore(
+                hit_rate=0.8, per_corpus_hit_rate={"memory": 0.9, "prd": 0.7}
+            ),
         },
         winner_id="m1",
         baseline_hit_rate=0.5,
@@ -842,7 +879,7 @@ def test_write_pinned_fails_loud_when_no_pinned_section(tmp_path):
     entry = _entry("solo-model", 8114)
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        "[[embedding]]\n" f'id = "{entry.id}"\n' f'endpoint = "{entry.endpoint}"\n'
+        f'[[embedding]]\nid = "{entry.id}"\nendpoint = "{entry.endpoint}"\n',
     )
 
     with pytest.raises(ValueError):
@@ -852,7 +889,9 @@ def test_write_pinned_fails_loud_when_no_pinned_section(tmp_path):
 # --- rg baseline: must never build an argv that approaches the OS limit ---
 
 
-def test_baseline_hit_rate_keeps_every_rg_invocation_under_the_os_arg_max(tmp_path, monkeypatch):
+def test_baseline_hit_rate_keeps_every_rg_invocation_under_the_os_arg_max(
+    tmp_path, monkeypatch
+):
     # Regression: _baseline_hit_rate passed every corpus file as its own argv
     # entry to a single `rg` call: subprocess.run(["rg", "-il", term,
     # *corpus_files]). With ~11,400 code files and ~638 transcript files in the
@@ -873,7 +912,7 @@ def test_baseline_hit_rate_keeps_every_rg_invocation_under_the_os_arg_max(tmp_pa
             "query": "uniqueargvprobeterm",
             "expected_path": str(target_file),
             "corpus": "memory",
-        }
+        },
     ]
     goldset_path = tmp_path / "goldset.yaml"
     _write_goldset(goldset_path, entries_meta)
@@ -892,7 +931,7 @@ def test_baseline_hit_rate_keeps_every_rg_invocation_under_the_os_arg_max(tmp_pa
     huge_files = [
         Path(
             f"/synthetic/repo/src/package_{i:05d}/"
-            f"module_with_a_realistic_name_{i:05d}.py"
+            f"module_with_a_realistic_name_{i:05d}.py",
         )
         for i in range(25000)
     ]
@@ -930,7 +969,8 @@ def test_baseline_hit_rate_keeps_every_rg_invocation_under_the_os_arg_max(tmp_pa
 
 
 def test_baseline_hit_rate_matches_an_unbatched_run_when_the_hit_is_in_the_last_batch(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     # Regression: a batching fix that only searches the first chunk of
     # corpus_files (e.g. an early `break` or a loop that stops after one rg
@@ -945,7 +985,7 @@ def test_baseline_hit_rate_matches_an_unbatched_run_when_the_hit_is_in_the_last_
             "query": "endpositiontoken",
             "expected_path": str(target_file),
             "corpus": "memory",
-        }
+        },
     ]
     goldset_path = tmp_path / "goldset.yaml"
     _write_goldset(goldset_path, entries_meta)
@@ -967,7 +1007,9 @@ def test_baseline_hit_rate_matches_an_unbatched_run_when_the_hit_is_in_the_last_
         paths = [str(a) for a in args[3:]]
         hits = list(dict.fromkeys(p for p in paths if p == target_str))
         return types.SimpleNamespace(
-            returncode=0 if hits else 1, stdout="\n".join(hits), stderr=""
+            returncode=0 if hits else 1,
+            stdout="\n".join(hits),
+            stderr="",
         )
 
     monkeypatch.setattr("engram.harness.subprocess.run", faithful_rg)
@@ -990,7 +1032,7 @@ def test_baseline_hit_rate_matches_an_unbatched_run_when_the_hit_is_in_the_last_
     def large_enum(*a, **k):
         return iter(
             [CorpusFile("memory", "bigrepo", p) for p in filler]
-            + [CorpusFile("memory", "bigrepo", target_file)]
+            + [CorpusFile("memory", "bigrepo", target_file)],
         )
 
     _patch_common(monkeypatch, tmp_path, scripted_query, enumerate_fn=large_enum)
@@ -1004,7 +1046,8 @@ def test_baseline_hit_rate_matches_an_unbatched_run_when_the_hit_is_in_the_last_
 
 
 def test_baseline_hit_rate_counts_a_file_once_even_when_its_path_spans_two_batches(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     # Regression: a batching fix whose aggregation increments a file's match
     # count once per rg call it turns up in (rather than once per term) would
@@ -1021,7 +1064,7 @@ def test_baseline_hit_rate_counts_a_file_once_even_when_its_path_spans_two_batch
             "query": "racetermtarget",
             "expected_path": str(target_file),
             "corpus": "memory",
-        }
+        },
     ]
     goldset_path = tmp_path / "goldset.yaml"
     _write_goldset(goldset_path, entries_meta)
@@ -1053,7 +1096,9 @@ def test_baseline_hit_rate_counts_a_file_once_even_when_its_path_spans_two_batch
         paths = [str(a) for a in args[3:]]
         hits = list(dict.fromkeys(p for p in paths if p in matching_paths))
         return types.SimpleNamespace(
-            returncode=0 if hits else 1, stdout="\n".join(hits), stderr=""
+            returncode=0 if hits else 1,
+            stdout="\n".join(hits),
+            stderr="",
         )
 
     monkeypatch.setattr("engram.harness.subprocess.run", faithful_rg)
@@ -1065,7 +1110,7 @@ def test_baseline_hit_rate_counts_a_file_once_even_when_its_path_spans_two_batch
             + [
                 CorpusFile("memory", "smallrepo", target_file),
                 CorpusFile("memory", "smallrepo", extra_file),
-            ]
+            ],
         )
 
     _patch_common(monkeypatch, tmp_path, scripted_query, enumerate_fn=small_enum)
@@ -1093,7 +1138,7 @@ def test_baseline_hit_rate_counts_a_file_once_even_when_its_path_spans_two_batch
             + [CorpusFile("memory", "bigrepo", extra_file)]
             + [CorpusFile("memory", "bigrepo", p) for p in filler_front]
             + [CorpusFile("memory", "bigrepo", extra_file)]
-            + [CorpusFile("memory", "bigrepo", p) for p in filler_back]
+            + [CorpusFile("memory", "bigrepo", p) for p in filler_back],
         )
 
     _patch_common(monkeypatch, tmp_path, scripted_query, enumerate_fn=large_enum)
