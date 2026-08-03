@@ -1393,7 +1393,10 @@ def test_pack_cycle_success_passes_expected_build_args_and_prints_summary_to_std
     assert len(calls) == 1
     call = calls[0]
     assert call["id_"] == "cyc1"
-    assert call["diff_path"] == Path("dev/local/tmp/review-diff-cyc1.diff")
+    assert (
+        call["diff_path"].resolve()
+        == (toplevel / "dev/local/tmp/review-diff-cyc1.diff").resolve()
+    )
     assert call["source_ref"] is None
     assert call["prd_path"].resolve() == explicit_prd.resolve()
     assert call["capsule_path"].resolve() == explicit_capsule.resolve()
@@ -1441,8 +1444,11 @@ def test_pack_diff_materializes_git_diff_and_slugs_id_per_given_example(
     call = calls[0]
     assert call["id_"] == "abc123--def456"
     assert call["source_ref"] == "def456"
-    assert call["diff_path"] == Path(
-        "dev/local/tmp/engram-pack-diff-abc123--def456.diff",
+    assert (
+        call["diff_path"].resolve()
+        == (
+            toplevel / "dev/local/tmp/engram-pack-diff-abc123--def456.diff"
+        ).resolve()
     )
     written = (
         toplevel / "dev/local/tmp/engram-pack-diff-abc123--def456.diff"

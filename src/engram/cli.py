@@ -259,8 +259,10 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         return 1
     repo_root = Path(toplevel_result.stdout.strip())
 
+    out_dir = repo_root / "dev" / "local" / "tmp"
+
     if args.cycle is not None:
-        diff_path = Path(f"dev/local/tmp/review-diff-{args.cycle}.diff")
+        diff_path = repo_root / "dev" / "local" / "tmp" / f"review-diff-{args.cycle}.diff"
         id_ = args.cycle
         source_ref = None
     else:
@@ -282,7 +284,7 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         if result.returncode != 0 or not result.stdout:
             print(f"git diff {range_str} failed or produced no output", file=sys.stderr)
             return 1
-        diff_path = Path(f"dev/local/tmp/engram-pack-diff-{id_}.diff")
+        diff_path = repo_root / "dev" / "local" / "tmp" / f"engram-pack-diff-{id_}.diff"
         diff_path.parent.mkdir(parents=True, exist_ok=True)
         diff_path.write_text(result.stdout)
 
@@ -317,6 +319,7 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
             source_ref=source_ref,
             prd_path=prd_path,
             capsule_path=capsule_path,
+            out_dir=out_dir,
         )
     except StoreModelMismatchError as e:
         print(
