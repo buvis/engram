@@ -262,7 +262,7 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     out_dir = repo_root / "dev" / "local" / "tmp"
 
     if args.cycle is not None:
-        diff_path = repo_root / "dev" / "local" / "tmp" / f"review-diff-{args.cycle}.diff"
+        diff_path = out_dir / f"review-diff-{args.cycle}.diff"
         id_ = args.cycle
         source_ref = None
     else:
@@ -284,7 +284,7 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         if result.returncode != 0 or not result.stdout:
             print(f"git diff {range_str} failed or produced no output", file=sys.stderr)
             return 1
-        diff_path = repo_root / "dev" / "local" / "tmp" / f"engram-pack-diff-{id_}.diff"
+        diff_path = out_dir / f"engram-pack-diff-{id_}.diff"
         diff_path.parent.mkdir(parents=True, exist_ok=True)
         diff_path.write_text(result.stdout)
 
