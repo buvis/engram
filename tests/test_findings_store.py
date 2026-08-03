@@ -584,3 +584,112 @@ def test_index_rebuild_succeeds_with_zero_findings_when_no_existing_database(tmp
     assert exit_code == 0
     result_store = open_store(fake_db_path)
     assert result_store.chunks_for_corpus("findings") == []
+
+
+# --- engram index --rebuild: findings-preservation failure is handled, not raised ---
+
+
+def test_index_rebuild_reports_failure_when_findings_preservation_fails(
+    tmp_path, monkeypatch, capsys
+):
+    fake_db_path = tmp_path / "engram.db"
+    seed_store = open_store(fake_db_path)
+    old_vector = Vector([0.1, 0.2, 0.3, 0.4], "old-model", 4)
+    finding = _chunk(
+        corpus="findings", repo="repoA", path="reviews/a.md",
+        heading="Finding A", body="finding-a-body", content_hash="ha", chunk_ordinal=0,
+    )
+    seed_store.upsert_chunks([ChunkWithVector(chunk=finding, vector=old_vector)])
+    seed_store.conn.close()
+
+    config = _config(tmp_path, model_id="new-model")
+
+    def failing_embed(texts, entry):
+        raise RuntimeError("embedding server unreachable")
+
+    monkeypatch.setattr("engram.cli.DEFAULT_DB_PATH", fake_db_path)
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: config)
+    monkeypatch.setattr("engram.cli.embed", failing_embed)
+    monkeypatch.setattr(
+        "engram.cli.index",
+        lambda *a, **k: IndexReport(
+            files_scanned=0, chunks_added=0, chunks_updated=0, chunks_pruned=0, corpora_missing=[],
+        ),
+    )
+
+    exit_code = main(["index", "--rebuild"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert captured.err.startswith("rebuild failed: ")
+
+
+def test_index_rebuild_failure_leaves_existing_database_untouched(tmp_path, monkeypatch):
+    fake_db_path = tmp_path / "engram.db"
+    seed_store = open_store(fake_db_path)
+    old_vector = Vector([0.1, 0.2, 0.3, 0.4], "old-model", 4)
+    finding = _chunk(
+        corpus="findings", repo="repoA", path="reviews/a.md",
+        heading="Finding A", body="finding-a-body", content_hash="ha", chunk_ordinal=0,
+    )
+    seed_store.upsert_chunks([ChunkWithVector(chunk=finding, vector=old_vector)])
+    seed_store.conn.close()
+
+    config = _config(tmp_path, model_id="new-model")
+
+    def failing_embed(texts, entry):
+        raise RuntimeError("embedding server unreachable")
+
+    monkeypatch.setattr("engram.cli.DEFAULT_DB_PATH", fake_db_path)
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: config)
+    monkeypatch.setattr("engram.cli.embed", failing_embed)
+    monkeypatch.setattr(
+        "engram.cli.index",
+        lambda *a, **k: IndexReport(
+            files_scanned=0, chunks_added=0, chunks_updated=0, chunks_pruned=0, corpora_missing=[],
+        ),
+    )
+
+    main(["index", "--rebuild"])
+
+    result_store = open_store(fake_db_path)
+    chunks = result_store.chunks_for_corpus("findings")
+    assert {(c.heading, c.body, c.chunk_ordinal) for c in chunks} == {
+        ("Finding A", "finding-a-body", 0),
+    }
+    old_hits = result_store.search_knn(
+        old_vector, Scope("portfolio", None), corpus="findings", k=10
+    )
+    assert len(old_hits) == 1
+
+
+def test_index_rebuild_failure_removes_temporary_rebuild_database(tmp_path, monkeypatch):
+    fake_db_path = tmp_path / "engram.db"
+    seed_store = open_store(fake_db_path)
+    old_vector = Vector([0.1, 0.2, 0.3, 0.4], "old-model", 4)
+    finding = _chunk(
+        corpus="findings", repo="repoA", path="reviews/a.md",
+        heading="Finding A", body="finding-a-body", content_hash="ha", chunk_ordinal=0,
+    )
+    seed_store.upsert_chunks([ChunkWithVector(chunk=finding, vector=old_vector)])
+    seed_store.conn.close()
+
+    config = _config(tmp_path, model_id="new-model")
+
+    def failing_embed(texts, entry):
+        raise RuntimeError("embedding server unreachable")
+
+    monkeypatch.setattr("engram.cli.DEFAULT_DB_PATH", fake_db_path)
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: config)
+    monkeypatch.setattr("engram.cli.embed", failing_embed)
+    monkeypatch.setattr(
+        "engram.cli.index",
+        lambda *a, **k: IndexReport(
+            files_scanned=0, chunks_added=0, chunks_updated=0, chunks_pruned=0, corpora_missing=[],
+        ),
+    )
+
+    main(["index", "--rebuild"])
+
+    rebuild_tmp_path = Path(str(fake_db_path) + ".rebuild-tmp")
+    assert not rebuild_tmp_path.exists()
