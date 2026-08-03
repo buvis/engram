@@ -144,14 +144,22 @@ def _task_prose_entries(
             entries.append(hit.body)
 
     if prd_path is not None:
-        remaining_tokens = prose_cap_tokens - _estimate_tokens("\n\n".join(entries))
-        if remaining_tokens > 0:
+        # Budget in characters, and count the "\n\n" that will join the PRD to
+        # the entries above it. Going through _estimate_tokens first rounds
+        # twice, which leaves the rejoined section one token over the cap for
+        # half of all entry lengths - and _cap_items then drops the PRD whole,
+        # which is the bug this truncation exists to prevent.
+        used_chars = len("\n\n".join(entries))
+        if entries:
+            used_chars += 2
+        remaining_chars = 4 * prose_cap_tokens - used_chars
+        if remaining_chars > 0:
             try:
                 prd_text = prd_path.read_text(errors="replace")
             except OSError:
                 prd_text = None
             if prd_text is not None:
-                entries.append(prd_text[: 4 * remaining_tokens])
+                entries.append(prd_text[:remaining_chars])
 
     return entries
 

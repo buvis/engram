@@ -663,6 +663,44 @@ def test_oversized_prd_is_truncated_into_task_prose_rather_than_dropped_whole(
     assert report.total_estimated_tokens <= config.pack_budget.hard_cap_tokens
 
 
+def test_prd_survives_truncation_when_an_earlier_prose_entry_precedes_it(
+    tmp_path, monkeypatch
+):
+    # Regression for the separator off-by-one: the room left for the PRD must
+    # account for the "\n\n" that will join it to the entries already present.
+    # The capsule section below is 18 chars, so len(joined) % 4 == 2 -- the
+    # residue at which naive `cap - estimate(joined)` arithmetic overshoots the
+    # cap by exactly one token once the separator is added, and _cap_items then
+    # pops the PRD entirely, reinstating the very bug this pins.
+    store, config, diff_path = _prose_fixture(tmp_path, monkeypatch)
+    capsule_path = tmp_path / "project-capsule.md"
+    capsule_path.write_text("## Active Work\n- PRD 00004 in wip\n")
+    assert len("- PRD 00004 in wip") % 4 == 2
+
+    prd_path = tmp_path / "00004-prd.md"
+    prd_path.write_text("PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500))
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    report = build(
+        store,
+        config,
+        "repoA",
+        tmp_path,
+        "prose-sep",
+        diff_path,
+        prd_path=prd_path,
+        capsule_path=capsule_path,
+        out_dir=out_dir,
+    )
+
+    content = report.path.read_text()
+    assert "- PRD 00004 in wip" in content
+    assert "PRD-HEAD-MARKER" in content
+    prose = next(s for s in report.sections if s.label == "Task prose")
+    assert prose.estimated_tokens <= config.pack_budget.prose_cap_tokens
+
+
 # --- regression: build() must not require its out_dir to exist ---
 
 
