@@ -278,13 +278,14 @@ def _resolve_pack_diff(
             file=sys.stderr,
         )
         return None
-    if range_str.startswith("-"):
+    _, head = range_str.split("..", 1)
+    if range_str.startswith("-") or head.startswith("-"):
+        bad = range_str if range_str.startswith("-") else head
         print(
-            f"--diff range must not start with '-', got {range_str!r}",
+            f"--diff range must not start with '-', got {bad!r}",
             file=sys.stderr,
         )
         return None
-    _, head = range_str.split("..", 1)
     id_ = re.sub(r"[^A-Za-z0-9_-]", "-", range_str)
     source_ref = head
     result = subprocess.run(
