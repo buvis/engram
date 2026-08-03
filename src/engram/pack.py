@@ -98,25 +98,37 @@ def _render_pointer(pointer: Pointer) -> str:
     return f"- {origin}\n  {pointer.body}"
 
 
-def _capsule_active_work_line(capsule_path: Path) -> str | None:
+def _capsule_active_work_section(capsule_path: Path) -> str | None:
     try:
         text = capsule_path.read_text(errors="replace")
     except OSError:
         return None
-    for line in text.splitlines():
-        if "Active Work" in line:
-            return line
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if line.startswith("## ") and "Active Work" in line:
+            section_lines = []
+            for next_line in lines[i + 1 :]:
+                if next_line.startswith("## "):
+                    break
+                section_lines.append(next_line)
+            content = "\n".join(section_lines).strip()
+            return content or None
     return None
 
 
 def _task_prose_entries(
-    store, config, id_: str, prd_path: Path | None, capsule_path: Path | None
+    store,
+    config,
+    id_: str,
+    prd_path: Path | None,
+    capsule_path: Path | None,
+    prose_cap_tokens: int,
 ) -> list[str]:
     entries: list[str] = []
     if capsule_path is not None:
-        line = _capsule_active_work_line(capsule_path)
-        if line:
-            entries.append(line)
+        section = _capsule_active_work_section(capsule_path)
+        if section:
+            entries.append(section)
 
     memory_hits = query(
         store,
@@ -132,10 +144,14 @@ def _task_prose_entries(
             entries.append(hit.body)
 
     if prd_path is not None:
-        try:
-            entries.append(prd_path.read_text(errors="replace"))
-        except OSError:
-            pass
+        remaining_tokens = prose_cap_tokens - _estimate_tokens("\n\n".join(entries))
+        if remaining_tokens > 0:
+            try:
+                prd_text = prd_path.read_text(errors="replace")
+            except OSError:
+                prd_text = None
+            if prd_text is not None:
+                entries.append(prd_text[: 4 * remaining_tokens])
 
     return entries
 
@@ -241,12 +257,15 @@ def build(
 
     reuse_hits = [hit for hit in reuse_hits if hit.repo != repo]
 
+    budget = config.pack_budget
+
     similar_items = _sort_pointers(_dedup(_exclude(similar_hits, changed_spans)))
     reuse_items = _sort_pointers(_dedup(_exclude(reuse_hits, changed_spans)))
     findings_items = _sort_pointers(_dedup(_exclude(findings_hits, changed_spans)))
-    prose_entries = _task_prose_entries(store, config, id_, prd_path, capsule_path)
+    prose_entries = _task_prose_entries(
+        store, config, id_, prd_path, capsule_path, budget.prose_cap_tokens
+    )
 
-    budget = config.pack_budget
     similar_items, similar_trimmed = _cap_items(
         similar_items, _render_pointer, budget.similar_cap_tokens
     )
@@ -301,6 +320,7 @@ def build(
     if not target_path.is_absolute():
         target_path = target_path.absolute()
     tmp_file = target_path.with_name(f".{target_path.name}.tmp")
+    target_path.parent.mkdir(parents=True, exist_ok=True)
     tmp_file.write_text(rendered_text)
     os.replace(tmp_file, target_path)
 
