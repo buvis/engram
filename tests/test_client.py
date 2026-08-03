@@ -18,6 +18,8 @@ from engram.client import (
     EmbeddingPreflightError,
     EmbeddingServerError,
     EngramConfig,
+    FRAMING_OVERHEAD_TOKENS,
+    PackBudget,
     ServerLease,
     embed,
     ensure_served,
@@ -849,3 +851,243 @@ def test_resolve_pinned_entry_raises_on_unknown_pinned_id(tmp_path):
         resolve_pinned_entry(config)
 
     assert "ghost" in str(excinfo.value)
+
+
+# --- PackBudget / [pack] config ---
+
+
+def test_packbudget_defaults_are_the_five_documented_values():
+    budget = PackBudget()
+
+    assert budget.hard_cap_tokens == 4000
+    assert budget.similar_cap_tokens == 1400
+    assert budget.reuse_cap_tokens == 1000
+    assert budget.findings_cap_tokens == 1000
+    assert budget.prose_cap_tokens == 500
+
+
+def test_load_config_defaults_pack_budget_when_pack_table_absent(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        '[[embedding]]\n'
+        'id = "model-a"\n'
+        'endpoint = "http://127.0.0.1:8081/v1"\n'
+        "\n"
+        "[pinned]\n"
+        'id = ""\n'
+    )
+
+    config = load_config(path=config_path)
+
+    assert config.pack_budget == PackBudget()
+
+
+def test_load_config_accepts_pack_table_with_explicit_default_values(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        '[[embedding]]\n'
+        'id = "model-a"\n'
+        'endpoint = "http://127.0.0.1:8081/v1"\n'
+        "\n"
+        "[pinned]\n"
+        'id = ""\n'
+        "\n"
+        "[pack]\n"
+        "hard_cap_tokens = 4000\n"
+        "similar_cap_tokens = 1400\n"
+        "reuse_cap_tokens = 1000\n"
+        "findings_cap_tokens = 1000\n"
+        "prose_cap_tokens = 500\n"
+    )
+
+    config = load_config(path=config_path)  # must not raise
+
+    assert config.pack_budget == PackBudget()
+
+
+def test_load_config_reads_full_pack_table_field_by_field(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        '[[embedding]]\n'
+        'id = "model-a"\n'
+        'endpoint = "http://127.0.0.1:8081/v1"\n'
+        "\n"
+        "[pinned]\n"
+        'id = ""\n'
+        "\n"
+        "[pack]\n"
+        "hard_cap_tokens = 8000\n"
+        "similar_cap_tokens = 3000\n"
+        "reuse_cap_tokens = 2000\n"
+        "findings_cap_tokens = 1500\n"
+        "prose_cap_tokens = 1000\n"
+    )
+
+    config = load_config(path=config_path)
+
+    assert config.pack_budget.hard_cap_tokens == 8000
+    assert config.pack_budget.similar_cap_tokens == 3000
+    assert config.pack_budget.reuse_cap_tokens == 2000
+    assert config.pack_budget.findings_cap_tokens == 1500
+    assert config.pack_budget.prose_cap_tokens == 1000
+
+
+def test_load_config_fills_defaults_for_fields_absent_from_partial_pack_table(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        '[[embedding]]\n'
+        'id = "model-a"\n'
+        'endpoint = "http://127.0.0.1:8081/v1"\n'
+        "\n"
+        "[pinned]\n"
+        'id = ""\n'
+        "\n"
+        "[pack]\n"
+        "hard_cap_tokens = 5000\n"
+        "similar_cap_tokens = 2000\n"
+    )
+
+    config = load_config(path=config_path)
+
+    assert config.pack_budget.hard_cap_tokens == 5000
+    assert config.pack_budget.similar_cap_tokens == 2000
+    assert config.pack_budget.reuse_cap_tokens == PackBudget().reuse_cap_tokens
+    assert config.pack_budget.findings_cap_tokens == PackBudget().findings_cap_tokens
+    assert config.pack_budget.prose_cap_tokens == PackBudget().prose_cap_tokens
+
+
+def test_load_config_rejects_zero_value_for_pack_cap_field(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        '[[embedding]]\n'
+        'id = "model-a"\n'
+        'endpoint = "http://127.0.0.1:8081/v1"\n'
+        "\n"
+        "[pinned]\n"
+        'id = ""\n'
+        "\n"
+        "[pack]\n"
+        "reuse_cap_tokens = 0\n"
+    )
+
+    with pytest.raises(ValueError):
+        load_config(path=config_path)
+
+
+def test_load_config_rejects_negative_value_for_pack_cap_field(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        '[[embedding]]\n'
+        'id = "model-a"\n'
+        'endpoint = "http://127.0.0.1:8081/v1"\n'
+        "\n"
+        "[pinned]\n"
+        'id = ""\n'
+        "\n"
+        "[pack]\n"
+        "reuse_cap_tokens = -5\n"
+    )
+
+    with pytest.raises(ValueError):
+        load_config(path=config_path)
+
+
+def test_load_config_rejects_string_value_for_pack_cap_field(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        '[[embedding]]\n'
+        'id = "model-a"\n'
+        'endpoint = "http://127.0.0.1:8081/v1"\n'
+        "\n"
+        "[pinned]\n"
+        'id = ""\n'
+        "\n"
+        "[pack]\n"
+        'findings_cap_tokens = "1000"\n'
+    )
+
+    with pytest.raises(ValueError):
+        load_config(path=config_path)
+
+
+def test_load_config_rejects_float_value_for_pack_cap_field(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        '[[embedding]]\n'
+        'id = "model-a"\n'
+        'endpoint = "http://127.0.0.1:8081/v1"\n'
+        "\n"
+        "[pinned]\n"
+        'id = ""\n'
+        "\n"
+        "[pack]\n"
+        "findings_cap_tokens = 1000.0\n"
+    )
+
+    with pytest.raises(ValueError):
+        load_config(path=config_path)
+
+
+def test_load_config_rejects_boolean_value_for_pack_cap_field(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        '[[embedding]]\n'
+        'id = "model-a"\n'
+        'endpoint = "http://127.0.0.1:8081/v1"\n'
+        "\n"
+        "[pinned]\n"
+        'id = ""\n'
+        "\n"
+        "[pack]\n"
+        "prose_cap_tokens = true\n"
+    )
+
+    with pytest.raises(ValueError):
+        load_config(path=config_path)
+
+
+def test_load_config_rejects_pack_table_whose_section_caps_exceed_hard_cap(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        '[[embedding]]\n'
+        'id = "model-a"\n'
+        'endpoint = "http://127.0.0.1:8081/v1"\n'
+        "\n"
+        "[pinned]\n"
+        'id = ""\n'
+        "\n"
+        "[pack]\n"
+        "hard_cap_tokens = 3000\n"
+    )
+
+    with pytest.raises(ValueError) as excinfo:
+        load_config(path=config_path)
+
+    assert "3000" in str(excinfo.value)
+
+
+def test_load_config_accepts_pack_table_where_section_caps_sum_exactly_to_hard_cap(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        '[[embedding]]\n'
+        'id = "model-a"\n'
+        'endpoint = "http://127.0.0.1:8081/v1"\n'
+        "\n"
+        "[pinned]\n"
+        'id = ""\n'
+        "\n"
+        "[pack]\n"
+        "hard_cap_tokens = 2000\n"
+        "similar_cap_tokens = 500\n"
+        "reuse_cap_tokens = 500\n"
+        "findings_cap_tokens = 500\n"
+        "prose_cap_tokens = 400\n"
+    )
+
+    config = load_config(path=config_path)  # must not raise: sum == hard cap exactly
+
+    assert config.pack_budget.hard_cap_tokens == 2000
+    assert config.pack_budget.similar_cap_tokens == 500
+    assert config.pack_budget.reuse_cap_tokens == 500
+    assert config.pack_budget.findings_cap_tokens == 500
+    assert config.pack_budget.prose_cap_tokens == 400
