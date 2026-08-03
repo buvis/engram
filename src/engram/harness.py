@@ -1,6 +1,7 @@
 """Eval harness: score embedding models against a gold set, compare to rg baseline."""
 
 import itertools
+import os
 import re
 import subprocess
 from dataclasses import dataclass
@@ -108,6 +109,23 @@ def _score_candidate(entry: EmbeddingEntry, config_path: Path, goldset, work_dir
         store.conn.close()
 
 
+def _batch_corpus_files(corpus_files: list[Path], max_bytes: int) -> list[list[Path]]:
+    batches: list[list[Path]] = []
+    current: list[Path] = []
+    current_bytes = 0
+    for f in corpus_files:
+        f_bytes = len(os.fsencode(str(f))) + 1
+        if current and current_bytes + f_bytes > max_bytes:
+            batches.append(current)
+            current = []
+            current_bytes = 0
+        current.append(f)
+        current_bytes += f_bytes
+    if current:
+        batches.append(current)
+    return batches
+
+
 def _baseline_hit_rate(goldset) -> float:
     goldset_corpora = {g.corpus for g in goldset}
     corpus_files = [
@@ -119,6 +137,10 @@ def _baseline_hit_rate(goldset) -> float:
         # No corpus files to search — never pass an empty path list to rg, which
         # would make it recursively scan the cwd and corrupt the baseline.
         return 0.0
+    # Keep every rg invocation well under the OS's ARG_MAX (a few thousand
+    # corpus files can otherwise blow past it): split into batches, each
+    # comfortably within a quarter of the limit.
+    batches = _batch_corpus_files(corpus_files, os.sysconf("SC_ARG_MAX") // 4)
     baseline_hits = 0
     for g in goldset:
         tokens = {
@@ -128,18 +150,22 @@ def _baseline_hit_rate(goldset) -> float:
         }
         match_counts: dict[str, int] = {}
         for term in tokens:
-            result = subprocess.run(
-                ["rg", "-il", term, *corpus_files], capture_output=True, text=True
-            )
-            if result.returncode not in (0, 1):
-                raise RuntimeError(
-                    f"rg failed (exit {result.returncode}) for term {term!r}: {result.stderr.strip()}"
+            matched_files: set[str] = set()
+            for batch in batches:
+                result = subprocess.run(
+                    ["rg", "-il", term, *batch], capture_output=True, text=True
                 )
-            if result.stdout.strip():
-                for line in result.stdout.strip().split("\n"):
-                    fp = line.strip()
-                    if fp:
-                        match_counts[fp] = match_counts.get(fp, 0) + 1
+                if result.returncode not in (0, 1):
+                    raise RuntimeError(
+                        f"rg failed (exit {result.returncode}) for term {term!r}: {result.stderr.strip()}"
+                    )
+                if result.stdout.strip():
+                    for line in result.stdout.strip().split("\n"):
+                        fp = line.strip()
+                        if fp:
+                            matched_files.add(fp)
+            for fp in matched_files:
+                match_counts[fp] = match_counts.get(fp, 0) + 1
         ranked = sorted(match_counts.items(), key=lambda x: (-x[1], x[0]))
         top5 = {str(Path(p).resolve()) for p, _ in ranked[:5]}
         if g.expected_path in top5:
