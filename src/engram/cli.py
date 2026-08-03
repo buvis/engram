@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from engram import corpora, symbols
-from engram.client import embed, load_config, resolve_pinned_entry
+from engram.client import EngramConfig, embed, load_config, resolve_pinned_entry
 from engram.corpora import GITA_REPOS_CSV, enumerate_corpora
 from engram.findings import FINDINGS_CORPUS
 from engram.harvest import harvest
@@ -19,6 +19,7 @@ from engram.store import (
     Chunk,
     ChunkWithVector,
     Scope,
+    Store,
     StoreModelMismatchError,
     open_store,
 )
@@ -138,12 +139,14 @@ def _print_missing(missing: list[str], scope: Scope, corpus: str | None = None) 
         print(m)
 
 
-def _preserve_findings(tmp_store, config) -> None:
+def _preserve_findings(tmp_store: Store, config: EngramConfig) -> None:
     findings_chunks: list[Chunk] = []
     if DEFAULT_DB_PATH.exists():
         live_store = open_store(DEFAULT_DB_PATH)
-        findings_chunks = live_store.chunks_for_corpus(FINDINGS_CORPUS)
-        live_store.conn.close()
+        try:
+            findings_chunks = live_store.chunks_for_corpus(FINDINGS_CORPUS)
+        finally:
+            live_store.conn.close()
 
     if findings_chunks:
         entry = resolve_pinned_entry(config)
