@@ -256,7 +256,7 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         source_ref = None
     else:
         range_str = args.diff
-        base, head = range_str.split("..", 1)
+        _, head = range_str.split("..", 1)
         id_ = re.sub(r"[^A-Za-z0-9_-]", "-", range_str)
         source_ref = head
         result = subprocess.run(
