@@ -904,6 +904,26 @@ def test_query_repo_scope_reports_not_in_registered_repo_when_repos_csv_present_
     assert "not found" not in captured.err
 
 
+def test_query_repo_scope_unregistered_repo_error_still_recommends_scope_portfolio(
+    monkeypatch,
+    tmp_path,
+    capsys,
+):
+    repos_csv = tmp_path / "repos.csv"
+    repos_csv.write_text("/some/other/repo,other-repo\n")
+    monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", repos_csv)
+    monkeypatch.setattr("engram.cli._resolve_repo_name", lambda: None)
+    monkeypatch.setattr("engram.cli.load_config", _refuse)
+    monkeypatch.setattr("engram.cli.open_store", _refuse)
+    monkeypatch.setattr("engram.cli.query", _refuse)
+
+    exit_code = main(["query", "--scope", "repo", "some text"])
+
+    captured = capsys.readouterr()
+    assert exit_code != 0
+    assert "--scope portfolio" in captured.err
+
+
 # --- harvest: CLI dispatch and output ---
 
 
@@ -1747,6 +1767,27 @@ def test_pack_repo_scope_unresolved_returns_1_and_does_not_call_build(
     captured = capsys.readouterr()
     assert exit_code == 1
     assert captured.err != ""
+
+
+def test_pack_unregistered_repo_error_omits_scope_flag_and_names_repos_csv_path(
+    monkeypatch,
+    tmp_path,
+    capsys,
+):
+    repos_csv = tmp_path / "repos.csv"
+    repos_csv.write_text("/some/other/repo,other-repo\n")
+    monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", repos_csv)
+    monkeypatch.setattr("engram.cli._resolve_repo_name", lambda: None)
+    monkeypatch.setattr("engram.cli.load_config", _refuse)
+    monkeypatch.setattr("engram.cli.open_store", _refuse)
+    monkeypatch.setattr("engram.cli.build", _refuse)
+
+    exit_code = main(["pack", "--cycle", "cyc1"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "--scope" not in captured.err
+    assert str(repos_csv) in captured.err
 
 
 # --- pack: StoreModelMismatchError handling ---
