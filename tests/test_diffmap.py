@@ -559,3 +559,38 @@ def test_non_utf8_source_file_at_source_ref_is_parsed_with_replacement_not_crash
             line_end=2,
         ),
     ]
+
+
+# --- changed_symbols(): non-UTF-8 bytes in the diff file itself are decoded with replacement, not crashed on ---
+
+
+def test_non_utf8_bytes_in_the_diff_file_are_decoded_with_replacement_not_crashed_on(tmp_path):
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    module_path = tmp_path / "mod.py"
+    module_path.write_bytes(b'def foo():\n    return "x"\n')
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=t", "commit", "-m", "initial"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    module_path.write_bytes(b'def foo():\n    return "\xe9"\n')
+
+    diff_result = subprocess.run(
+        ["git", "diff"], cwd=tmp_path, check=True, capture_output=True
+    )
+    diff_path = tmp_path / "changes.diff"
+    diff_path.write_bytes(diff_result.stdout)
+
+    result = changed_symbols(diff_path, tmp_path)
+
+    assert result == [
+        Symbol(
+            path=str(tmp_path / "mod.py"),
+            name="foo",
+            kind="function",
+            line_start=1,
+            line_end=2,
+        ),
+    ]
