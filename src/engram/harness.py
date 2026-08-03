@@ -19,11 +19,26 @@ from engram.store import Scope, open_store
 RRF_DEDUP_POOL = 25
 
 STOPWORDS = frozenset(
-    {"a", "the", "is", "are", "of", "to", "in", "and", "or", "for", "on", "with", "how", "what"}
+    {
+        "a",
+        "the",
+        "is",
+        "are",
+        "of",
+        "to",
+        "in",
+        "and",
+        "or",
+        "for",
+        "on",
+        "with",
+        "how",
+        "what",
+    },
 )
 
 _VALID_CORPORA = frozenset(
-    {"memory", "prd", "decision", "discovery", "transcripts", "code"}
+    {"memory", "prd", "decision", "discovery", "transcripts", "code"},
 )
 
 
@@ -72,9 +87,13 @@ def load_goldset(goldset_path: Path) -> list[GoldEntry]:
     ]
 
 
-def _score_candidate(entry: EmbeddingEntry, config_path: Path, goldset, work_dir: Path) -> ModelScore:
+def _score_candidate(
+    entry: EmbeddingEntry, config_path: Path, goldset, work_dir: Path
+) -> ModelScore:
     cand_cfg = EngramConfig(
-        embeddings=[entry], pinned_id=entry.id, config_path=config_path
+        embeddings=[entry],
+        pinned_id=entry.id,
+        config_path=config_path,
     )
     db = work_dir / f"harness-{_sanitize_for_filename(entry.id)}.db"
     if db.exists():
@@ -88,7 +107,11 @@ def _score_candidate(entry: EmbeddingEntry, config_path: Path, goldset, work_dir
         per_corpus_totals: dict[str, int] = {}
         for g in goldset:
             pointers = query(
-                store, cand_cfg, g.query, Scope("portfolio", None), k=RRF_DEDUP_POOL
+                store,
+                cand_cfg,
+                g.query,
+                Scope("portfolio", None),
+                k=RRF_DEDUP_POOL,
             )
             seen: list[str] = []
             for p in pointers:
@@ -130,7 +153,9 @@ def _baseline_hit_rate(goldset) -> float:
     goldset_corpora = {g.corpus for g in goldset}
     corpus_files = [
         f.path
-        for f in itertools.chain(enumerate_corpora(), transcripts.enumerate(), symbols.enumerate())
+        for f in itertools.chain(
+            enumerate_corpora(), transcripts.enumerate(), symbols.enumerate()
+        )
         if f.corpus in goldset_corpora
     ]
     if not corpus_files:
@@ -153,11 +178,13 @@ def _baseline_hit_rate(goldset) -> float:
             matched_files: set[str] = set()
             for batch in batches:
                 result = subprocess.run(
-                    ["rg", "-il", term, *batch], capture_output=True, text=True
+                    ["rg", "-il", term, *batch],
+                    capture_output=True,
+                    text=True,
                 )
                 if result.returncode not in (0, 1):
                     raise RuntimeError(
-                        f"rg failed (exit {result.returncode}) for term {term!r}: {result.stderr.strip()}"
+                        f"rg failed (exit {result.returncode}) for term {term!r}: {result.stderr.strip()}",
                     )
                 if result.stdout.strip():
                     for line in result.stdout.strip().split("\n"):
@@ -191,11 +218,15 @@ def _write_pinned(config_path: Path, winner_id: str) -> None:
         else:
             new_lines.append(line)
     if not seen_pinned:
-        raise ValueError(f"config {config_path} has no [pinned] section to write the winner into")
+        raise ValueError(
+            f"config {config_path} has no [pinned] section to write the winner into"
+        )
     config_path.write_text("\n".join(new_lines))
 
 
-def run_harness(config: EngramConfig, goldset_path: Path, work_dir: Path) -> HarnessReport:
+def run_harness(
+    config: EngramConfig, goldset_path: Path, work_dir: Path
+) -> HarnessReport:
     goldset = load_goldset(goldset_path)
     leases = []
     per_model: dict[str, ModelScore] = {}
@@ -203,7 +234,9 @@ def run_harness(config: EngramConfig, goldset_path: Path, work_dir: Path) -> Har
     try:
         for entry in config.embeddings:
             leases.append(ensure_served(entry))
-            per_model[entry.id] = _score_candidate(entry, config.config_path, goldset, work_dir)
+            per_model[entry.id] = _score_candidate(
+                entry, config.config_path, goldset, work_dir
+            )
 
         best_rate = -1.0
         for entry in config.embeddings:
@@ -230,7 +263,9 @@ def format_report(report: HarnessReport) -> list[str]:
     for model_id, score in report.per_model.items():
         lines.append(f"{model_id}\t{score.hit_rate:.3f}")
         for corpus in sorted(score.per_corpus_hit_rate):
-            lines.append(f"{model_id}\t{corpus}\t{score.per_corpus_hit_rate[corpus]:.3f}")
+            lines.append(
+                f"{model_id}\t{corpus}\t{score.per_corpus_hit_rate[corpus]:.3f}"
+            )
     lines.append(f"winner\t{report.winner_id}")
     lines.append(f"baseline\t{report.baseline_hit_rate:.3f}")
     lines.append(f"gate_passed\t{report.gate_passed}")
