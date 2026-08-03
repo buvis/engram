@@ -68,7 +68,9 @@ def _exclude(hits: list[Pointer], spans: set[tuple[str, int, int]]) -> list[Poin
         hit
         for hit in hits
         if not any(
-            hit.path == span_path and hit.line_start <= span_end and span_start <= hit.line_end
+            hit.path == span_path
+            and hit.line_start <= span_end
+            and span_start <= hit.line_end
             for span_path, span_start, span_end in spans
         )
     ]
@@ -94,7 +96,9 @@ def _render_pointer(pointer: Pointer) -> str:
     if pointer.corpus == FINDINGS_CORPUS:
         origin = f"{pointer.corpus}:{pointer.path}"
     else:
-        origin = f"{pointer.repo}:{pointer.path}:{pointer.line_start}-{pointer.line_end}"
+        origin = (
+            f"{pointer.repo}:{pointer.path}:{pointer.line_start}-{pointer.line_end}"
+        )
     return f"- {origin}\n  {pointer.body}"
 
 
@@ -149,7 +153,9 @@ def _task_prose_entries(
     total_cap_chars = 4 * prose_cap_tokens
     # When a PRD is present, the capsule and memory hits ahead of it may only
     # spend half the budget between them, so the PRD always has room left.
-    leading_cap_chars = total_cap_chars // 2 if prd_path is not None else total_cap_chars
+    leading_cap_chars = (
+        total_cap_chars // 2 if prd_path is not None else total_cap_chars
+    )
 
     if capsule_path is not None:
         section = _capsule_active_work_section(capsule_path)
@@ -198,7 +204,7 @@ def _render_full(sections: dict, symbols_omitted: int) -> str:
     if symbols_omitted > 0:
         lines.append(
             f"{symbols_omitted} changed symbol(s) omitted "
-            f"(beyond the {MAX_SYMBOLS_PER_PACK}-symbol cap)."
+            f"(beyond the {MAX_SYMBOLS_PER_PACK}-symbol cap).",
         )
         lines.append("")
     for label in _SECTION_ORDER:
@@ -257,27 +263,51 @@ def build(
     for text, vector in zip(query_texts, vectors):
         similar_hits.extend(
             query(
-                store, config, text, Scope("repo", repo), corpus="code",
-                k=RETRIEVAL_K, vector=vector, include_body=True,
-            )
+                store,
+                config,
+                text,
+                Scope("repo", repo),
+                corpus="code",
+                k=RETRIEVAL_K,
+                vector=vector,
+                include_body=True,
+            ),
         )
         reuse_hits.extend(
             query(
-                store, config, text, Scope("portfolio", None), corpus="code",
-                k=RETRIEVAL_K, vector=vector, include_body=True,
-            )
+                store,
+                config,
+                text,
+                Scope("portfolio", None),
+                corpus="code",
+                k=RETRIEVAL_K,
+                vector=vector,
+                include_body=True,
+            ),
         )
         findings_hits.extend(
             query(
-                store, config, text, Scope("repo", repo), corpus=FINDINGS_CORPUS,
-                k=RETRIEVAL_K, vector=vector, include_body=True,
-            )
+                store,
+                config,
+                text,
+                Scope("repo", repo),
+                corpus=FINDINGS_CORPUS,
+                k=RETRIEVAL_K,
+                vector=vector,
+                include_body=True,
+            ),
         )
         findings_hits.extend(
             query(
-                store, config, text, Scope("portfolio", None), corpus=FINDINGS_CORPUS,
-                k=RETRIEVAL_K, vector=vector, include_body=True,
-            )
+                store,
+                config,
+                text,
+                Scope("portfolio", None),
+                corpus=FINDINGS_CORPUS,
+                k=RETRIEVAL_K,
+                vector=vector,
+                include_body=True,
+            ),
         )
 
     reuse_hits = [hit for hit in reuse_hits if hit.repo != repo]
@@ -288,18 +318,31 @@ def build(
     reuse_items = _sort_pointers(_dedup(_exclude(reuse_hits, changed_spans)))
     findings_items = _sort_pointers(_dedup(_exclude(findings_hits, changed_spans)))
     prose_entries = _task_prose_entries(
-        store, config, id_, prd_path, capsule_path, budget.prose_cap_tokens
+        store,
+        config,
+        id_,
+        prd_path,
+        capsule_path,
+        budget.prose_cap_tokens,
     )
 
     similar_items, similar_trimmed = _cap_items(
-        similar_items, _render_pointer, budget.similar_cap_tokens
+        similar_items,
+        _render_pointer,
+        budget.similar_cap_tokens,
     )
-    reuse_items, reuse_trimmed = _cap_items(reuse_items, _render_pointer, budget.reuse_cap_tokens)
+    reuse_items, reuse_trimmed = _cap_items(
+        reuse_items, _render_pointer, budget.reuse_cap_tokens
+    )
     findings_items, findings_trimmed = _cap_items(
-        findings_items, _render_pointer, budget.findings_cap_tokens
+        findings_items,
+        _render_pointer,
+        budget.findings_cap_tokens,
     )
     prose_entries, prose_trimmed = _cap_items(
-        prose_entries, lambda text: text, budget.prose_cap_tokens
+        prose_entries,
+        lambda text: text,
+        budget.prose_cap_tokens,
     )
 
     trimmed_sections = [
@@ -336,7 +379,9 @@ def build(
         items, render_fn = sections[label]
         body = "\n\n".join(render_fn(item) for item in items)
         final_sections.append(
-            PackSection(label=label, body=body, estimated_tokens=_estimate_tokens(body))
+            PackSection(
+                label=label, body=body, estimated_tokens=_estimate_tokens(body)
+            ),
         )
 
     total_estimated_tokens = _estimate_tokens(rendered_text)

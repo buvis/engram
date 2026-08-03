@@ -70,9 +70,9 @@ def _write_single_function_diff(tmp_path):
                 " def foo():",
                 "-    return 0",
                 "+    return 1",
-            ]
+            ],
         )
-        + "\n"
+        + "\n",
     )
     return file_path, diff_path
 
@@ -110,7 +110,8 @@ def _write_many_function_diff(tmp_path, count):
 
 
 def test_reindex_runs_before_the_first_retrieval_and_its_report_is_carried_through(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     _, diff_path = _write_single_function_diff(tmp_path)
     store = open_store(tmp_path / "engram.db")
@@ -120,7 +121,11 @@ def test_reindex_runs_before_the_first_retrieval_and_its_report_is_carried_throu
 
     events = []
     known_report = IndexReport(
-        files_scanned=3, chunks_added=2, chunks_updated=1, chunks_pruned=0, corpora_missing=["x"]
+        files_scanned=3,
+        chunks_added=2,
+        chunks_updated=1,
+        chunks_pruned=0,
+        corpora_missing=["x"],
     )
 
     def fake_index(store_arg, config_arg, scope):
@@ -137,7 +142,8 @@ def test_reindex_runs_before_the_first_retrieval_and_its_report_is_carried_throu
     monkeypatch.setattr("engram.pack.index", fake_index)
     monkeypatch.setattr("engram.pack.embed", spy_embed)
     monkeypatch.setattr(
-        "engram.query.embed", lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts]
+        "engram.query.embed",
+        lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts],
     )
 
     report = build(store, config, "repoA", tmp_path, "b1", diff_path, out_dir=out_dir)
@@ -149,7 +155,9 @@ def test_reindex_runs_before_the_first_retrieval_and_its_report_is_carried_throu
 # --- B3: symbols beyond the cap are counted and noted, never used as query subjects ---
 
 
-def test_symbols_beyond_the_cap_are_counted_and_noted_in_the_rendered_pack(tmp_path, monkeypatch):
+def test_symbols_beyond_the_cap_are_counted_and_noted_in_the_rendered_pack(
+    tmp_path, monkeypatch
+):
     count = MAX_SYMBOLS_PER_PACK + 3
     _, diff_path = _write_many_function_diff(tmp_path, count)
     all_symbols = changed_symbols(diff_path, tmp_path)
@@ -160,26 +168,33 @@ def test_symbols_beyond_the_cap_are_counted_and_noted_in_the_rendered_pack(tmp_p
     out_dir = tmp_path / "out"
     out_dir.mkdir()
 
-    monkeypatch.setattr("engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, []))
     monkeypatch.setattr(
-        "engram.pack.embed", lambda texts, entry: [_vec([1.0, 0.0, 0.0, 0.0]) for _ in texts]
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
     )
     monkeypatch.setattr(
-        "engram.query.embed", lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts]
+        "engram.pack.embed",
+        lambda texts, entry: [_vec([1.0, 0.0, 0.0, 0.0]) for _ in texts],
+    )
+    monkeypatch.setattr(
+        "engram.query.embed",
+        lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts],
     )
 
     report = build(store, config, "repoA", tmp_path, "b3", diff_path, out_dir=out_dir)
 
     assert report.symbols_omitted == 3
     content = report.path.read_text()
-    assert re.search(r"\b3\b", content), "omitted count must be noted somewhere in the rendered file"
+    assert re.search(r"\b3\b", content), (
+        "omitted count must be noted somewhere in the rendered file"
+    )
 
 
 # --- B4: exactly one batched embed call covers every capped symbol's query text ---
 
 
 def test_all_capped_symbol_query_texts_are_embedded_in_exactly_one_batched_call(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     count = MAX_SYMBOLS_PER_PACK + 3
     _, diff_path = _write_many_function_diff(tmp_path, count)
@@ -195,10 +210,13 @@ def test_all_capped_symbol_query_texts_are_embedded_in_exactly_one_batched_call(
         embed_calls.append(list(texts))
         return [_vec([1.0, 0.0, 0.0, 0.0]) for _ in texts]
 
-    monkeypatch.setattr("engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, []))
+    monkeypatch.setattr(
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+    )
     monkeypatch.setattr("engram.pack.embed", spy_embed)
     monkeypatch.setattr(
-        "engram.query.embed", lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts]
+        "engram.query.embed",
+        lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts],
     )
 
     build(store, config, "repoA", tmp_path, "b4", diff_path, out_dir=out_dir)
@@ -211,7 +229,8 @@ def test_all_capped_symbol_query_texts_are_embedded_in_exactly_one_batched_call(
 
 
 def test_self_sibling_and_beyond_cap_changed_symbol_hits_are_excluded_from_every_section(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     count = MAX_SYMBOLS_PER_PACK + 1
     _, diff_path = _write_many_function_diff(tmp_path, count)
@@ -227,10 +246,15 @@ def test_self_sibling_and_beyond_cap_changed_symbol_hits_are_excluded_from_every
     out_dir.mkdir()
 
     query_vector = _vec([1.0, 0.0, 0.0, 0.0])
-    monkeypatch.setattr("engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, []))
-    monkeypatch.setattr("engram.pack.embed", lambda texts, entry: [query_vector for _ in texts])
     monkeypatch.setattr(
-        "engram.query.embed", lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts]
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+    )
+    monkeypatch.setattr(
+        "engram.pack.embed", lambda texts, entry: [query_vector for _ in texts]
+    )
+    monkeypatch.setattr(
+        "engram.query.embed",
+        lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts],
     )
 
     self_chunk = _chunk(
@@ -267,7 +291,7 @@ def test_self_sibling_and_beyond_cap_changed_symbol_hits_are_excluded_from_every
             ChunkWithVector(chunk=sibling_chunk, vector=query_vector),
             ChunkWithVector(chunk=beyond_chunk, vector=query_vector),
             ChunkWithVector(chunk=unrelated_chunk, vector=query_vector),
-        ]
+        ],
     )
 
     report = build(store, config, "repoA", tmp_path, "b6", diff_path, out_dir=out_dir)
@@ -283,7 +307,8 @@ def test_self_sibling_and_beyond_cap_changed_symbol_hits_are_excluded_from_every
 
 
 def test_similar_code_hit_body_comes_from_the_stored_chunk_not_the_worktree_file(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     _, diff_path = _write_single_function_diff(tmp_path)
     disk_only_path = tmp_path / "other.py"
@@ -295,10 +320,15 @@ def test_similar_code_hit_body_comes_from_the_stored_chunk_not_the_worktree_file
     out_dir.mkdir()
 
     query_vector = _vec([1.0, 0.0, 0.0, 0.0])
-    monkeypatch.setattr("engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, []))
-    monkeypatch.setattr("engram.pack.embed", lambda texts, entry: [query_vector for _ in texts])
     monkeypatch.setattr(
-        "engram.query.embed", lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts]
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+    )
+    monkeypatch.setattr(
+        "engram.pack.embed", lambda texts, entry: [query_vector for _ in texts]
+    )
+    monkeypatch.setattr(
+        "engram.query.embed",
+        lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts],
     )
 
     stored_chunk = _chunk(
@@ -321,7 +351,8 @@ def test_similar_code_hit_body_comes_from_the_stored_chunk_not_the_worktree_file
 
 
 def test_section_over_its_cap_drops_the_lowest_scored_item_and_is_flagged_as_trimmed(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     _, diff_path = _write_single_function_diff(tmp_path)
 
@@ -337,12 +368,16 @@ def test_section_over_its_cap_drops_the_lowest_scored_item_and_is_flagged_as_tri
     out_dir = tmp_path / "out"
     out_dir.mkdir()
 
-    monkeypatch.setattr("engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, []))
     monkeypatch.setattr(
-        "engram.pack.embed", lambda texts, entry: [_vec([1.0, 0.0, 0.0, 0.0]) for _ in texts]
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
     )
     monkeypatch.setattr(
-        "engram.query.embed", lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts]
+        "engram.pack.embed",
+        lambda texts, entry: [_vec([1.0, 0.0, 0.0, 0.0]) for _ in texts],
+    )
+    monkeypatch.setattr(
+        "engram.query.embed",
+        lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts],
     )
 
     vectors = [
@@ -364,7 +399,9 @@ def test_section_over_its_cap_drops_the_lowest_scored_item_and_is_flagged_as_tri
         items.append(ChunkWithVector(chunk=chunk, vector=vec))
     store.upsert_chunks(items)
 
-    report = build(store, config, "repoA", tmp_path, "b8trim", diff_path, out_dir=out_dir)
+    report = build(
+        store, config, "repoA", tmp_path, "b8trim", diff_path, out_dir=out_dir
+    )
 
     content = report.path.read_text()
     assert "Similar code" in report.trimmed_sections
@@ -384,10 +421,15 @@ def test_tied_score_items_are_ordered_by_the_full_tiebreak_tuple(tmp_path, monke
     out_dir.mkdir()
 
     query_vector = _vec([1.0, 0.0, 0.0, 0.0])
-    monkeypatch.setattr("engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, []))
-    monkeypatch.setattr("engram.pack.embed", lambda texts, entry: [query_vector for _ in texts])
     monkeypatch.setattr(
-        "engram.query.embed", lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts]
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+    )
+    monkeypatch.setattr(
+        "engram.pack.embed", lambda texts, entry: [query_vector for _ in texts]
+    )
+    monkeypatch.setattr(
+        "engram.query.embed",
+        lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts],
     )
 
     # identical body/heading -> identical BM25 and KNN legs -> a genuine score tie.
@@ -417,10 +459,12 @@ def test_tied_score_items_are_ordered_by_the_full_tiebreak_tuple(tmp_path, monke
         [
             ChunkWithVector(chunk=chunk_low_repo, vector=query_vector),
             ChunkWithVector(chunk=chunk_high_repo, vector=query_vector),
-        ]
+        ],
     )
 
-    report = build(store, config, "repoX", tmp_path, "b8tie", diff_path, out_dir=out_dir)
+    report = build(
+        store, config, "repoX", tmp_path, "b8tie", diff_path, out_dir=out_dir
+    )
 
     content = report.path.read_text()
     label_a = "aaa-repo:zzz-path.py:1-1"
@@ -434,7 +478,8 @@ def test_tied_score_items_are_ordered_by_the_full_tiebreak_tuple(tmp_path, monke
 
 
 def test_hard_cap_is_enforced_by_dropping_items_when_the_first_render_overshoots(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     _, diff_path = _write_single_function_diff(tmp_path)
 
@@ -451,31 +496,51 @@ def test_hard_cap_is_enforced_by_dropping_items_when_the_first_render_overshoots
     out_dir.mkdir()
 
     query_vector = _vec([1.0, 0.0, 0.0, 0.0])
-    monkeypatch.setattr("engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, []))
-    monkeypatch.setattr("engram.pack.embed", lambda texts, entry: [query_vector for _ in texts])
     monkeypatch.setattr(
-        "engram.query.embed", lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts]
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+    )
+    monkeypatch.setattr(
+        "engram.pack.embed", lambda texts, entry: [query_vector for _ in texts]
+    )
+    monkeypatch.setattr(
+        "engram.query.embed",
+        lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts],
     )
 
     filler = "overshoot-filler-text " * 40
     similar_chunk = _chunk(
-        corpus="code", repo="repoA", path="a.py", line_start=1, line_end=1,
-        body=f"similar-marker {filler}", content_hash="h-sim",
+        corpus="code",
+        repo="repoA",
+        path="a.py",
+        line_start=1,
+        line_end=1,
+        body=f"similar-marker {filler}",
+        content_hash="h-sim",
     )
     reuse_chunk = _chunk(
-        corpus="code", repo="repoB", path="b.py", line_start=1, line_end=1,
-        body=f"reuse-marker {filler}", content_hash="h-reuse",
+        corpus="code",
+        repo="repoB",
+        path="b.py",
+        line_start=1,
+        line_end=1,
+        body=f"reuse-marker {filler}",
+        content_hash="h-reuse",
     )
     findings_chunk = _chunk(
-        corpus=FINDINGS_CORPUS, repo="repoA", path="findings/f.md", line_start=1, line_end=1,
-        body=f"findings-marker {filler}", content_hash="h-find",
+        corpus=FINDINGS_CORPUS,
+        repo="repoA",
+        path="findings/f.md",
+        line_start=1,
+        line_end=1,
+        body=f"findings-marker {filler}",
+        content_hash="h-find",
     )
     store.upsert_chunks(
         [
             ChunkWithVector(chunk=similar_chunk, vector=query_vector),
             ChunkWithVector(chunk=reuse_chunk, vector=query_vector),
             ChunkWithVector(chunk=findings_chunk, vector=query_vector),
-        ]
+        ],
     )
 
     report = build(store, config, "repoA", tmp_path, "b11", diff_path, out_dir=out_dir)
@@ -489,7 +554,8 @@ def test_hard_cap_is_enforced_by_dropping_items_when_the_first_render_overshoots
 
 
 def test_rendered_pack_carries_freshness_line_section_headings_and_origin_labels(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     _, diff_path = _write_single_function_diff(tmp_path)
 
@@ -499,37 +565,57 @@ def test_rendered_pack_carries_freshness_line_section_headings_and_origin_labels
     out_dir.mkdir()
 
     query_vector = _vec([1.0, 0.0, 0.0, 0.0])
-    monkeypatch.setattr("engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, []))
-    monkeypatch.setattr("engram.pack.embed", lambda texts, entry: [query_vector for _ in texts])
     monkeypatch.setattr(
-        "engram.query.embed", lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts]
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+    )
+    monkeypatch.setattr(
+        "engram.pack.embed", lambda texts, entry: [query_vector for _ in texts]
+    )
+    monkeypatch.setattr(
+        "engram.query.embed",
+        lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts],
     )
 
     other_path = tmp_path / "other.py"
     code_chunk = _chunk(
-        corpus="code", repo="repoA", path=str(other_path),
-        line_start=5, line_end=6, body="origin-label-code-marker",
+        corpus="code",
+        repo="repoA",
+        path=str(other_path),
+        line_start=5,
+        line_end=6,
+        body="origin-label-code-marker",
         content_hash="h-code-b12",
     )
     findings_chunk = _chunk(
-        corpus=FINDINGS_CORPUS, repo="repoA", path="findings/note.md",
-        line_start=1, line_end=1, body="origin-label-findings-marker",
+        corpus=FINDINGS_CORPUS,
+        repo="repoA",
+        path="findings/note.md",
+        line_start=1,
+        line_end=1,
+        body="origin-label-findings-marker",
         content_hash="h-find-b12",
     )
     store.upsert_chunks(
         [
             ChunkWithVector(chunk=code_chunk, vector=query_vector),
             ChunkWithVector(chunk=findings_chunk, vector=query_vector),
-        ]
+        ],
     )
 
     report = build(store, config, "repoA", tmp_path, "b12", diff_path, out_dir=out_dir)
 
     content = report.path.read_text()
 
-    assert "Portfolio freshness: NOT refreshed this cycle (PRD 00002 pending)" in content
+    assert (
+        "Portfolio freshness: NOT refreshed this cycle (PRD 00002 pending)" in content
+    )
 
-    for label in ("Similar code", "Reuse precedent", "Findings precedent", "Task prose"):
+    for label in (
+        "Similar code",
+        "Reuse precedent",
+        "Findings precedent",
+        "Task prose",
+    ):
         assert re.search(rf"^##.*{re.escape(label)}", content, re.MULTILINE), label
     assert {s.label for s in report.sections} == {
         "Similar code",
@@ -546,7 +632,8 @@ def test_rendered_pack_carries_freshness_line_section_headings_and_origin_labels
 
 
 def test_two_builds_over_identical_fixture_state_produce_byte_identical_output(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     _, diff_path = _write_single_function_diff(tmp_path)
 
@@ -556,15 +643,24 @@ def test_two_builds_over_identical_fixture_state_produce_byte_identical_output(
     out_dir.mkdir()
 
     query_vector = _vec([1.0, 0.0, 0.0, 0.0])
-    monkeypatch.setattr("engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, []))
-    monkeypatch.setattr("engram.pack.embed", lambda texts, entry: [query_vector for _ in texts])
     monkeypatch.setattr(
-        "engram.query.embed", lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts]
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+    )
+    monkeypatch.setattr(
+        "engram.pack.embed", lambda texts, entry: [query_vector for _ in texts]
+    )
+    monkeypatch.setattr(
+        "engram.query.embed",
+        lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts],
     )
 
     code_chunk = _chunk(
-        corpus="code", repo="repoA", path=str(tmp_path / "other.py"),
-        line_start=5, line_end=6, body="determinism-marker",
+        corpus="code",
+        repo="repoA",
+        path=str(tmp_path / "other.py"),
+        line_start=5,
+        line_end=6,
+        body="determinism-marker",
         content_hash="h-det",
     )
     store.upsert_chunks([ChunkWithVector(chunk=code_chunk, vector=query_vector)])
@@ -586,18 +682,23 @@ def _prose_fixture(tmp_path, monkeypatch):
     _, diff_path = _write_single_function_diff(tmp_path)
     store = open_store(tmp_path / "engram.db")
     config = _config(tmp_path, _small_budget())
-    monkeypatch.setattr("engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, []))
     monkeypatch.setattr(
-        "engram.pack.embed", lambda texts, entry: [_vec([1.0, 0.0, 0.0, 0.0]) for _ in texts]
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
     )
     monkeypatch.setattr(
-        "engram.query.embed", lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts]
+        "engram.pack.embed",
+        lambda texts, entry: [_vec([1.0, 0.0, 0.0, 0.0]) for _ in texts],
+    )
+    monkeypatch.setattr(
+        "engram.query.embed",
+        lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts],
     )
     return store, config, diff_path
 
 
 def test_capsule_entry_carries_the_prose_under_the_active_work_heading_not_the_heading(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     store, config, diff_path = _prose_fixture(tmp_path, monkeypatch)
     capsule_path = tmp_path / "project-capsule.md"
@@ -612,7 +713,7 @@ def test_capsule_entry_carries_the_prose_under_the_active_work_heading_not_the_h
         "- next up: the CLI verb\n"
         "\n"
         "## Project Health\n"
-        "- green\n"
+        "- green\n",
     )
     out_dir = tmp_path / "out"
     out_dir.mkdir()
@@ -637,13 +738,16 @@ def test_capsule_entry_carries_the_prose_under_the_active_work_heading_not_the_h
 
 
 def test_oversized_prd_is_truncated_into_task_prose_rather_than_dropped_whole(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     store, config, diff_path = _prose_fixture(tmp_path, monkeypatch)
     prd_path = tmp_path / "00004-prd.md"
     # far beyond prose_cap_tokens (200 tokens == 800 chars) so whole-entry
     # dropping would make the PRD vanish entirely instead of contributing.
-    prd_path.write_text("PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500))
+    prd_path.write_text(
+        "PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500)
+    )
     out_dir = tmp_path / "out"
     out_dir.mkdir()
 
@@ -664,7 +768,8 @@ def test_oversized_prd_is_truncated_into_task_prose_rather_than_dropped_whole(
 
 
 def test_prd_survives_truncation_when_an_earlier_prose_entry_precedes_it(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     # Regression for the separator off-by-one: the room left for the PRD must
     # account for the "\n\n" that will join it to the entries already present.
@@ -678,7 +783,9 @@ def test_prd_survives_truncation_when_an_earlier_prose_entry_precedes_it(
     assert len("- PRD 00004 in wip") % 4 == 2
 
     prd_path = tmp_path / "00004-prd.md"
-    prd_path.write_text("PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500))
+    prd_path.write_text(
+        "PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500)
+    )
     out_dir = tmp_path / "out"
     out_dir.mkdir()
 
@@ -702,7 +809,8 @@ def test_prd_survives_truncation_when_an_earlier_prose_entry_precedes_it(
 
 
 def test_oversized_capsule_does_not_crowd_out_the_prd_from_task_prose(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     # The capsule's Active Work section can be far larger than prose_cap_tokens
     # on its own. Appending it at full length used up the whole budget before
@@ -712,10 +820,13 @@ def test_oversized_capsule_does_not_crowd_out_the_prd_from_task_prose(
     store, config, diff_path = _prose_fixture(tmp_path, monkeypatch)
     capsule_path = tmp_path / "project-capsule.md"
     capsule_path.write_text(
-        "## Active Work\n" + ("capsule filler line far exceeding the prose budget\n" * 60)
+        "## Active Work\n"
+        + ("capsule filler line far exceeding the prose budget\n" * 60),
     )
     prd_path = tmp_path / "00004-prd.md"
-    prd_path.write_text("PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500))
+    prd_path.write_text(
+        "PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500)
+    )
     out_dir = tmp_path / "out"
     out_dir.mkdir()
 
@@ -746,7 +857,13 @@ def test_build_creates_a_missing_out_dir_instead_of_crashing(tmp_path, monkeypat
     missing_out_dir = tmp_path / "never" / "created"
 
     report = build(
-        store, config, "repoA", tmp_path, "mkdir", diff_path, out_dir=missing_out_dir
+        store,
+        config,
+        "repoA",
+        tmp_path,
+        "mkdir",
+        diff_path,
+        out_dir=missing_out_dir,
     )
 
     assert report.path.exists()
@@ -757,7 +874,8 @@ def test_build_creates_a_missing_out_dir_instead_of_crashing(tmp_path, monkeypat
 
 
 def test_a_high_scoring_foreign_repo_chunk_never_reaches_the_similar_code_section(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     _, diff_path = _write_single_function_diff(tmp_path)
 
@@ -767,12 +885,16 @@ def test_a_high_scoring_foreign_repo_chunk_never_reaches_the_similar_code_sectio
     out_dir.mkdir()
 
     query_vector = _vec([1.0, 0.0, 0.0, 0.0])
-    monkeypatch.setattr("engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, []))
     monkeypatch.setattr(
-        "engram.pack.embed", lambda texts, entry: [query_vector for _ in texts]
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
     )
     monkeypatch.setattr(
-        "engram.query.embed", lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts]
+        "engram.pack.embed",
+        lambda texts, entry: [query_vector for _ in texts],
+    )
+    monkeypatch.setattr(
+        "engram.query.embed",
+        lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts],
     )
 
     # Both chunks share the exact same vector as the query, so both are
@@ -797,17 +919,13 @@ def test_a_high_scoring_foreign_repo_chunk_never_reaches_the_similar_code_sectio
         [
             ChunkWithVector(chunk=foreign_chunk, vector=query_vector),
             ChunkWithVector(chunk=local_chunk, vector=query_vector),
-        ]
+        ],
     )
 
     report = build(store, config, "repoA", tmp_path, "b15", diff_path, out_dir=out_dir)
 
-    similar_section = next(
-        s for s in report.sections if s.label == "Similar code"
-    )
-    reuse_section = next(
-        s for s in report.sections if s.label == "Reuse precedent"
-    )
+    similar_section = next(s for s in report.sections if s.label == "Similar code")
+    reuse_section = next(s for s in report.sections if s.label == "Reuse precedent")
 
     # Regression guard: foreign repo must not appear in Similar code
     assert "FOREIGN-REPO-MARKER-xyz" not in similar_section.body
@@ -828,7 +946,7 @@ def test_memory_query_text_is_the_prds_first_top_level_heading(tmp_path, monkeyp
     prd_path.write_text(
         "# Engram Review Packs: Diff-Selective Reviewer Context\n"
         "\n"
-        "Some PRD body text that is not the title.\n"
+        "Some PRD body text that is not the title.\n",
     )
 
     query_calls = []
@@ -847,7 +965,8 @@ def test_memory_query_text_is_the_prds_first_top_level_heading(tmp_path, monkeyp
 
 
 def test_memory_query_text_falls_back_to_the_prd_filename_stem_when_no_heading_exists(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     store = open_store(tmp_path / "engram.db")
     config = _config(tmp_path, _small_budget())
@@ -869,7 +988,9 @@ def test_memory_query_text_falls_back_to_the_prd_filename_stem_when_no_heading_e
     assert args[2] == "00004-engram-review-packs-v1"
 
 
-def test_memory_query_is_skipped_entirely_when_no_prd_path_is_resolved(tmp_path, monkeypatch):
+def test_memory_query_is_skipped_entirely_when_no_prd_path_is_resolved(
+    tmp_path, monkeypatch
+):
     store = open_store(tmp_path / "engram.db")
     config = _config(tmp_path, _small_budget())
 
