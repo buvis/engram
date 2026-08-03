@@ -151,6 +151,20 @@ _OPENER = urllib.request.build_opener(_LoopbackRedirectHandler)
 # leaving a zombie that would keep answering os.kill(pid, 0).
 _spawned_processes: dict[int, subprocess.Popen] = {}
 
+# endpoint -> pid of the server WE spawned there. Ownership outlives the call
+# that spawned it: every ensure_served after the first finds the endpoint already
+# healthy, and without this it would report spawned=False and disown a server we
+# are responsible for. That is what let a degraded server survive un-recycled
+# through a whole index run.
+_spawned_pids_by_endpoint: dict[str, int] = {}
+
+
+def _forget_spawned(pid: int) -> None:
+    _spawned_processes.pop(pid, None)
+    for endpoint, spawned_pid in list(_spawned_pids_by_endpoint.items()):
+        if spawned_pid == pid:
+            del _spawned_pids_by_endpoint[endpoint]
+
 
 def _build_pack_budget(pack_raw: dict, path: Path) -> PackBudget:
     defaults = PackBudget()
@@ -281,7 +295,7 @@ def preflight(entry: EmbeddingEntry) -> None:
 
 
 def _reap(process: subprocess.Popen) -> None:
-    _spawned_processes.pop(process.pid, None)
+    _forget_spawned(process.pid)
     process.kill()
     try:
         process.wait(timeout=5)
@@ -289,12 +303,33 @@ def _reap(process: subprocess.Popen) -> None:
         pass
 
 
+def _reap_owned(endpoint: str) -> None:
+    """Kill the server we spawned at `endpoint`, if any. No-op otherwise."""
+    pid = _spawned_pids_by_endpoint.get(endpoint)
+    if pid is None:
+        return
+    process = _spawned_processes.get(pid)
+    if process is None:
+        _forget_spawned(pid)
+        return
+    _reap(process)
+
+
 def ensure_served(entry: EmbeddingEntry) -> ServerLease:
     try:
         preflight(entry)
-        return ServerLease(entry=entry, spawned=False, pid=None)
+        # Already healthy. It is still ours if we spawned it earlier in this
+        # process; only a server we never started is leased as unspawned.
+        owned_pid = _spawned_pids_by_endpoint.get(entry.endpoint)
+        return ServerLease(entry=entry, spawned=owned_pid is not None, pid=owned_pid)
     except EmbeddingPreflightError:
         pass
+
+    # The endpoint is unhealthy. When the server sitting there is one of ours it
+    # is sick, not absent, and it still holds the port - spawning a replacement
+    # without reaping it first means the new process cannot bind and every
+    # readiness probe below keeps reaching the sick one until the deadline.
+    _reap_owned(entry.endpoint)
 
     binary = shutil.which("llama-server")
     if binary is None:
@@ -328,6 +363,7 @@ def ensure_served(entry: EmbeddingEntry) -> ServerLease:
         start_new_session=True,
     )
     _spawned_processes[process.pid] = process
+    _spawned_pids_by_endpoint[entry.endpoint] = process.pid
 
     deadline = time.monotonic() + EMBED_REQUEST_TIMEOUT_S
     last_error: Exception | None = None
@@ -353,7 +389,8 @@ def stop_served(lease: ServerLease) -> None:
     if not lease.spawned or lease.pid is None:
         return
 
-    process = _spawned_processes.pop(lease.pid, None)
+    process = _spawned_processes.get(lease.pid)
+    _forget_spawned(lease.pid)
     try:
         os.kill(lease.pid, signal.SIGTERM)
     except ProcessLookupError:

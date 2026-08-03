@@ -397,6 +397,102 @@ def test_ensure_served_returns_unspawned_lease_for_healthy_endpoint(mock_server)
     assert lease == ServerLease(entry=entry, spawned=False, pid=None)
 
 
+# --- regression: server ownership outlives the call that spawned it ---
+# embed() calls ensure_served on every invocation. When the endpoint is already
+# healthy the lease used to come back spawned=False, so embed() disowned a server
+# it had started itself and refused to recycle it. Measured against the real
+# backend: a degraded server survived un-recycled and killed the index run.
+
+
+def test_ensure_served_still_leases_a_server_it_spawned_earlier_as_ours(
+    tmp_path, monkeypatch
+):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    _write_stub_llama_server(bin_dir)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+    port = _free_port()
+    entry = EmbeddingEntry(id="stub-model", endpoint=f"http://127.0.0.1:{port}/v1")
+
+    first = ensure_served(entry)
+    try:
+        assert first.spawned is True
+        second = ensure_served(entry)  # endpoint healthy now, but still ours
+        assert second.spawned is True
+        assert second.pid == first.pid
+    finally:
+        stop_served(first)
+
+
+def test_ensure_served_disowns_a_stopped_server(tmp_path, monkeypatch):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    _write_stub_llama_server(bin_dir)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+
+    port = _free_port()
+    entry = EmbeddingEntry(id="stub-model", endpoint=f"http://127.0.0.1:{port}/v1")
+
+    lease = ensure_served(entry)
+    stop_served(lease)
+
+    assert entry.endpoint not in client._spawned_pids_by_endpoint
+
+
+# --- regression: a sick server we own is reaped before its replacement spawns ---
+# It still holds the port, so a replacement cannot bind and every readiness probe
+# reaches the sick one until the deadline. Measured: the run died with "did not
+# become ready ... HTTP Error 500" after burning the full 120s timeout.
+
+
+def test_ensure_served_reaps_our_sick_server_before_spawning_a_replacement(
+    tmp_path, monkeypatch
+):
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    stub = bin_dir / "llama-server"
+    stub.write_text("#!/bin/sh\nexit 0\n")
+    stub.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+    monkeypatch.setattr(client, "EMBED_REQUEST_TIMEOUT_S", 0.1)
+
+    class _FakeProcess:
+        def __init__(self, pid):
+            self.pid = pid
+            self.killed = False
+
+        def poll(self):
+            return None
+
+        def terminate(self):
+            """No-op: nothing was really spawned."""
+
+        def kill(self):
+            self.killed = True
+
+        def wait(self, timeout=None):
+            return 0
+
+    sick = _FakeProcess(pid=911911)
+    # Nothing is listening on this port, so preflight fails and ensure_served
+    # takes its spawn path with a server it believes it owns.
+    port = _free_port()
+    entry = EmbeddingEntry(id="stub-model", endpoint=f"http://127.0.0.1:{port}/v1")
+
+    monkeypatch.setattr(client, "_spawned_processes", {sick.pid: sick})
+    monkeypatch.setattr(client, "_spawned_pids_by_endpoint", {entry.endpoint: sick.pid})
+    monkeypatch.setattr(
+        client.subprocess, "Popen", lambda argv, **kwargs: _FakeProcess(pid=922922)
+    )
+
+    with pytest.raises(EmbeddingServerError):
+        ensure_served(entry)
+
+    assert sick.killed is True
+    assert sick.pid not in client._spawned_processes
+
+
 def test_ensure_served_spawns_stub_server_when_endpoint_is_dead(tmp_path, monkeypatch):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
