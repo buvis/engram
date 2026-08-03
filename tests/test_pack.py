@@ -751,3 +751,68 @@ def test_build_creates_a_missing_out_dir_instead_of_crashing(tmp_path, monkeypat
 
     assert report.path.exists()
     assert report.path.parent == missing_out_dir
+
+
+# --- B15: foreign-repo chunks must never leak into "Similar code" ---
+
+
+def test_a_high_scoring_foreign_repo_chunk_never_reaches_the_similar_code_section(
+    tmp_path, monkeypatch
+):
+    _, diff_path = _write_single_function_diff(tmp_path)
+
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path, _small_budget())
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    query_vector = _vec([1.0, 0.0, 0.0, 0.0])
+    monkeypatch.setattr("engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, []))
+    monkeypatch.setattr(
+        "engram.pack.embed", lambda texts, entry: [query_vector for _ in texts]
+    )
+    monkeypatch.setattr(
+        "engram.query.embed", lambda texts, entry: [_vec([0, 0, 0, 1]) for _ in texts]
+    )
+
+    # Both chunks share the exact same vector as the query, so both are
+    # maximally similar and ranking cannot explain either one's absence.
+    foreign_chunk = _chunk(
+        repo="repoB",
+        path=str(tmp_path / "foreign.py"),
+        line_start=1,
+        line_end=1,
+        body="FOREIGN-REPO-MARKER-xyz",
+        content_hash="h-foreign",
+    )
+    local_chunk = _chunk(
+        repo="repoA",
+        path=str(tmp_path / "unrelated.py"),
+        line_start=9001,
+        line_end=9002,
+        body="LOCAL-REPO-MARKER-xyz",
+        content_hash="h-local",
+    )
+    store.upsert_chunks(
+        [
+            ChunkWithVector(chunk=foreign_chunk, vector=query_vector),
+            ChunkWithVector(chunk=local_chunk, vector=query_vector),
+        ]
+    )
+
+    report = build(store, config, "repoA", tmp_path, "b15", diff_path, out_dir=out_dir)
+
+    similar_section = next(
+        s for s in report.sections if s.label == "Similar code"
+    )
+    reuse_section = next(
+        s for s in report.sections if s.label == "Reuse precedent"
+    )
+
+    # Regression guard: foreign repo must not appear in Similar code
+    assert "FOREIGN-REPO-MARKER-xyz" not in similar_section.body
+    # Local repo must appear, otherwise the exclusion above is vacuous
+    assert "LOCAL-REPO-MARKER-xyz" in similar_section.body
+    # Foreign chunk is retrievable and high-scoring (proves scope filter, not
+    # reachability, is responsible for its absence from Similar code)
+    assert "FOREIGN-REPO-MARKER-xyz" in reuse_section.body
