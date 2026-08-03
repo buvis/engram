@@ -39,14 +39,26 @@ def changed_symbols(
             results.append(symbol)
 
     for section in sections:
-        rel_path = section[0].split()[-1][2:]
+        # ponytail: paths with spaces handled via the +++/--- lines; git's C-quoted
+        # form ("b/caf\303\251.py") is not unquoted - decode it here if non-ASCII
+        # paths ever show up in a reviewed diff.
+        plus_line = next((line for line in section if line.startswith("+++ ")), None)
+        if plus_line is None:
+            continue
+        if plus_line == "+++ /dev/null":
+            minus_line = next((line for line in section if line.startswith("--- ")), None)
+            if minus_line is None:
+                continue
+            rel_path = minus_line[4:]
+            rel_path = rel_path.removeprefix("a/")
+        else:
+            rel_path = plus_line[4:]
+            rel_path = rel_path.removeprefix("b/")
         abs_path = str(repo_root / rel_path)
         name = Path(rel_path).name
 
         if any(line == "+++ /dev/null" for line in section):
-            _add(
-                Symbol(path=abs_path, name=name, kind="file", line_start=1, line_end=1)
-            )
+            _add(_file_symbol(abs_path, name, 1))
             continue
 
         language = detect_language_from_path(abs_path)
@@ -55,17 +67,14 @@ def changed_symbols(
             content = _read_content(repo_root, rel_path, source_ref)
             if content is not None:
                 structure = process(
-                    content, ProcessConfig(language, structure=True)
+                    content,
+                    ProcessConfig(language, structure=True),
                 ).structure
 
         for c, body in _hunks(section):
             changed = _changed_lines(body, c)
             if not changed:
-                _add(
-                    Symbol(
-                        path=abs_path, name=name, kind="file", line_start=c, line_end=c
-                    )
-                )
+                _add(_file_symbol(abs_path, name, c))
                 continue
             for line in changed:
                 item = _smallest_enclosing(structure, line) if structure else None
@@ -80,17 +89,13 @@ def changed_symbols(
                         ),
                     )
                 else:
-                    _add(
-                        Symbol(
-                            path=abs_path,
-                            name=name,
-                            kind="file",
-                            line_start=line,
-                            line_end=line,
-                        )
-                    )
+                    _add(_file_symbol(abs_path, name, line))
 
     return results
+
+
+def _file_symbol(path: str, name: str, line: int) -> Symbol:
+    return Symbol(path=path, name=name, kind="file", line_start=line, line_end=line)
 
 
 def _split_sections(lines: list[str]) -> list[list[str]]:
@@ -117,7 +122,7 @@ def _changed_lines(body: list[str], start: int) -> list[int]:
     counter = start
     changed = []
     for line in body:
-        marker = line[0]
+        marker = line[:1]
         if marker == "+":
             changed.append(counter)
             counter += 1
