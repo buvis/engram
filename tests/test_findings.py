@@ -131,6 +131,21 @@ def test_parse_raises_when_reviewers_value_is_empty(tmp_path):
         parse(path)
 
 
+def test_parse_raises_when_reviewers_value_is_whitespace_only(tmp_path):
+    path, _lines = _write_review(
+        tmp_path,
+        [
+            "",
+            "Verdict: 9 findings",
+            "Tests: 142 passed, 0 failed, 0 skipped",
+        ],
+        reviewers='"   "',
+    )
+
+    with pytest.raises(ValueError):
+        parse(path)
+
+
 # --- total-parse-failure: verdict/tests completeness ---
 
 
@@ -172,6 +187,30 @@ def test_parse_raises_when_file_does_not_exist(tmp_path):
 
     with pytest.raises(ValueError):
         parse(missing)
+
+
+# --- exception passthrough: only OSError/YAMLError convert to ValueError ---
+
+
+def test_parse_lets_non_target_exceptions_propagate_with_their_own_type(
+    tmp_path, monkeypatch
+):
+    path, _lines = _write_review(
+        tmp_path,
+        [
+            "",
+            "Verdict: 9 findings",
+            "Tests: 142 passed, 0 failed, 0 skipped",
+        ],
+    )
+
+    def _raise_runtime_error(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr("engram.findings.yaml.safe_load", _raise_runtime_error)
+
+    with pytest.raises(RuntimeError):
+        parse(path)
 
 
 # --- shape A: consolidated-findings table rows ---
