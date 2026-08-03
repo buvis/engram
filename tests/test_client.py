@@ -457,7 +457,9 @@ def test_stop_served_releases_the_replacement_when_the_lease_is_stale(monkeypatc
 
     signalled: list[tuple[int, int]] = []
     monkeypatch.setattr(
-        client.os, "kill", lambda pid, sig: signalled.append((pid, sig))
+        client.os,
+        "kill",
+        lambda pid, sig: signalled.append((pid, sig)),
     )
 
     stop_served(stale_lease)
@@ -475,7 +477,9 @@ def test_stop_served_is_a_noop_when_engram_owns_nothing_at_the_endpoint(monkeypa
 
     signalled: list[tuple[int, int]] = []
     monkeypatch.setattr(
-        client.os, "kill", lambda pid, sig: signalled.append((pid, sig))
+        client.os,
+        "kill",
+        lambda pid, sig: signalled.append((pid, sig)),
     )
 
     stop_served(lease)
@@ -611,7 +615,8 @@ def test_ensure_served_sizes_the_spawned_server_to_hold_a_full_request(
 
 
 def test_ensure_served_raises_when_llama_server_missing_from_path(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     empty_bin = tmp_path / "empty-bin"
     empty_bin.mkdir()
@@ -697,7 +702,8 @@ def test_embed_truncates_long_text_only_in_outgoing_request(mock_server):
 
 
 def test_ensure_served_terminates_orphaned_process_on_readiness_timeout(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -707,7 +713,8 @@ def test_ensure_served_terminates_orphaned_process_on_readiness_timeout(
 
     port = _free_port()
     entry = EmbeddingEntry(
-        id="never-ready-model", endpoint=f"http://127.0.0.1:{port}/v1"
+        id="never-ready-model",
+        endpoint=f"http://127.0.0.1:{port}/v1",
     )
 
     captured = {}
@@ -738,7 +745,8 @@ def test_ensure_served_terminates_orphaned_process_on_readiness_timeout(
 
 
 def test_stop_served_escalates_to_sigkill_when_process_ignores_sigterm(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
@@ -836,7 +844,8 @@ def _redirect_chain_to_reachable_off_machine_loopback():
 
     reachable_server = _V6HTTPServer(("::1", reachable_port), ReachableHandler)
     reachable_thread = threading.Thread(
-        target=reachable_server.serve_forever, daemon=True
+        target=reachable_server.serve_forever,
+        daemon=True,
     )
     reachable_thread.start()
 
@@ -856,10 +865,12 @@ def _redirect_chain_to_reachable_off_machine_loopback():
 
     redirect_port = _free_port()
     redirect_server = http.server.HTTPServer(
-        ("127.0.0.1", redirect_port), RedirectHandler
+        ("127.0.0.1", redirect_port),
+        RedirectHandler,
     )
     redirect_thread = threading.Thread(
-        target=redirect_server.serve_forever, daemon=True
+        target=redirect_server.serve_forever,
+        daemon=True,
     )
     redirect_thread.start()
 
@@ -1000,7 +1011,9 @@ def test_resolve_pinned_entry_returns_pinned_match(tmp_path):
 
 def test_resolve_pinned_entry_raises_on_empty_embeddings(tmp_path):
     config = EngramConfig(
-        embeddings=[], pinned_id=None, config_path=tmp_path / "config.toml"
+        embeddings=[],
+        pinned_id=None,
+        config_path=tmp_path / "config.toml",
     )
 
     with pytest.raises(ValueError):
