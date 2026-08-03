@@ -27,7 +27,9 @@ def enumerate(repos_csv: Path = GITA_REPOS_CSV) -> Iterator[CorpusFile]:
             continue
 
         for rel_path in result.stdout.splitlines():
-            yield CorpusFile("code", name, Path(repo_path) / rel_path)
+            file_path = Path(repo_path) / rel_path
+            if file_path.is_file():
+                yield CorpusFile("code", name, file_path)
 
 
 def chunk(path: Path, repo: str, content_hash: str) -> list[Chunk]:
