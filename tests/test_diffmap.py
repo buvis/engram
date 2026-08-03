@@ -594,3 +594,193 @@ def test_non_utf8_bytes_in_the_diff_file_are_decoded_with_replacement_not_crashe
             line_end=2,
         ),
     ]
+
+
+# --- changed_symbols(): a multi-line change to a grammarless file yields one file-level symbol anchored at the first changed line ---
+
+
+def test_multiline_change_to_grammarless_file_yields_one_file_level_symbol_anchored_at_first_changed_line(
+    tmp_path,
+):
+    (tmp_path / "CHANGELOG.md").write_text("# Changelog\n\n- existing entry\n")
+    diff_path = _write_diff(
+        tmp_path,
+        [
+            "diff --git a/CHANGELOG.md b/CHANGELOG.md",
+            "index 1111111..2222222 100644",
+            "--- a/CHANGELOG.md",
+            "+++ b/CHANGELOG.md",
+            "@@ -1,3 +1,6 @@",
+            " # Changelog",
+            " ",
+            " - existing entry",
+            "+- new entry one",
+            "+- new entry two",
+            "+- new entry three",
+        ],
+    )
+
+    result = changed_symbols(diff_path, tmp_path)
+
+    assert result == [
+        Symbol(
+            path=str(tmp_path / "CHANGELOG.md"),
+            name="CHANGELOG.md",
+            kind="file",
+            line_start=4,
+            line_end=4,
+        ),
+    ]
+
+
+# --- changed_symbols(): separate hunks in one grammarless file dedup to one file-level symbol per file, not per hunk ---
+
+
+def test_multiple_hunks_in_grammarless_file_dedup_to_one_file_level_symbol(tmp_path):
+    (tmp_path / "Makefile").write_text("build:\n\tgo build ./...\n\ntest:\n\tgo test ./...\n")
+    diff_path = _write_diff(
+        tmp_path,
+        [
+            "diff --git a/Makefile b/Makefile",
+            "index 1111111..2222222 100644",
+            "--- a/Makefile",
+            "+++ b/Makefile",
+            "@@ -1,2 +1,2 @@",
+            " build:",
+            "-\tgo build ./...",
+            "+\tgo build ./cmd/...",
+            "@@ -4,2 +4,2 @@",
+            " test:",
+            "-\tgo test ./...",
+            "+\tgo test ./cmd/...",
+        ],
+    )
+
+    result = changed_symbols(diff_path, tmp_path)
+
+    assert len(result) == 1
+    assert result[0].kind == "file"
+    assert result[0].path == str(tmp_path / "Makefile")
+
+
+# --- changed_symbols(): several module-level edits in one Python file dedup to one file-level symbol ---
+
+
+def test_multiple_module_level_edits_in_python_file_dedup_to_one_file_level_symbol(tmp_path):
+    (tmp_path / "mod6.py").write_text(
+        'import os\n'
+        'import sys\n'
+        '\n'
+        'def foo():\n'
+        '    return 1\n'
+    )
+    diff_path = _write_diff(
+        tmp_path,
+        [
+            "diff --git a/mod6.py b/mod6.py",
+            "index 1111111..2222222 100644",
+            "--- a/mod6.py",
+            "+++ b/mod6.py",
+            "@@ -1,1 +1,1 @@",
+            "-import osx",
+            "+import os",
+            "@@ -2,1 +2,1 @@",
+            "-import sysx",
+            "+import sys",
+        ],
+    )
+
+    result = changed_symbols(diff_path, tmp_path)
+
+    assert len(result) == 1
+    assert result[0].kind == "file"
+    assert result[0].path == str(tmp_path / "mod6.py")
+    assert result[0].line_start == 1
+    assert result[0].line_end == 1
+
+
+# --- changed_symbols(): the file-level dedup key is per file, not global across the whole diff ---
+
+
+def test_dedup_is_per_file_not_global_across_two_grammarless_files(tmp_path):
+    (tmp_path / "data.bin").write_text("first line\nsecond line\nthird line\n")
+    (tmp_path / "Makefile").write_text("build:\n\tgo build\n\techo done\n")
+    diff_path = _write_diff(
+        tmp_path,
+        [
+            "diff --git a/data.bin b/data.bin",
+            "index 1111111..2222222 100644",
+            "--- a/data.bin",
+            "+++ b/data.bin",
+            "@@ -1,1 +1,3 @@",
+            " first line",
+            "+second line",
+            "+third line",
+            "diff --git a/Makefile b/Makefile",
+            "index 1111111..2222222 100644",
+            "--- a/Makefile",
+            "+++ b/Makefile",
+            "@@ -1,2 +1,3 @@",
+            " build:",
+            " \tgo build",
+            "+\techo done",
+        ],
+    )
+
+    result = changed_symbols(diff_path, tmp_path)
+
+    assert len(result) == 2
+    assert set(result) == {
+        Symbol(path=str(tmp_path / "data.bin"), name="data.bin", kind="file", line_start=2, line_end=2),
+        Symbol(path=str(tmp_path / "Makefile"), name="Makefile", kind="file", line_start=3, line_end=3),
+    }
+
+
+# --- changed_symbols(): deduping the file-level fallback does not swallow real function symbols ---
+
+
+def test_function_and_module_level_edits_in_same_file_yield_functions_plus_one_file_symbol(tmp_path):
+    (tmp_path / "mod5.py").write_text(
+        'import os\n'
+        'import sys\n'
+        '\n'
+        '\n'
+        'def foo():\n'
+        '    return 1\n'
+        '\n'
+        '\n'
+        'def bar():\n'
+        '    return 2\n'
+    )
+    diff_path = _write_diff(
+        tmp_path,
+        [
+            "diff --git a/mod5.py b/mod5.py",
+            "index 1111111..2222222 100644",
+            "--- a/mod5.py",
+            "+++ b/mod5.py",
+            "@@ -1,2 +1,2 @@",
+            "-import osx",
+            "+import os",
+            "-import sysx",
+            "+import sys",
+            "@@ -5,2 +5,2 @@",
+            " def foo():",
+            "-    return 0",
+            "+    return 1",
+            "@@ -9,2 +9,2 @@",
+            " def bar():",
+            "-    return 0",
+            "+    return 2",
+        ],
+    )
+
+    result = changed_symbols(diff_path, tmp_path)
+
+    expected_path = str(tmp_path / "mod5.py")
+    assert len(result) == 3
+    assert set(result) == {
+        Symbol(path=expected_path, name="mod5.py", kind="file", line_start=1, line_end=1),
+        Symbol(path=expected_path, name="foo", kind="function", line_start=5, line_end=6),
+        Symbol(path=expected_path, name="bar", kind="function", line_start=9, line_end=10),
+    }
