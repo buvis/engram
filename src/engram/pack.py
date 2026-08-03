@@ -116,6 +116,20 @@ def _capsule_active_work_section(capsule_path: Path) -> str | None:
     return None
 
 
+def _append_prose_entry(entries: list[str], text: str, cap_chars: int) -> None:
+    # Budget in characters, and count the "\n\n" that will join this entry to
+    # the entries already added. Going through _estimate_tokens first rounds
+    # twice, which leaves the rejoined section one token over the cap for
+    # half of all entry lengths - and _cap_items then drops the entry whole,
+    # which is the bug this truncation exists to prevent.
+    used_chars = len("\n\n".join(entries))
+    if entries:
+        used_chars += 2
+    remaining_chars = cap_chars - used_chars
+    if remaining_chars > 0:
+        entries.append(text[:remaining_chars])
+
+
 def _task_prose_entries(
     store,
     config,
@@ -125,10 +139,15 @@ def _task_prose_entries(
     prose_cap_tokens: int,
 ) -> list[str]:
     entries: list[str] = []
+    total_cap_chars = 4 * prose_cap_tokens
+    # When a PRD is present, the capsule and memory hits ahead of it may only
+    # spend half the budget between them, so the PRD always has room left.
+    leading_cap_chars = total_cap_chars // 2 if prd_path is not None else total_cap_chars
+
     if capsule_path is not None:
         section = _capsule_active_work_section(capsule_path)
         if section:
-            entries.append(section)
+            _append_prose_entry(entries, section, leading_cap_chars)
 
     memory_hits = query(
         store,
@@ -141,25 +160,15 @@ def _task_prose_entries(
     )
     for hit in memory_hits[:2]:
         if hit.body:
-            entries.append(hit.body)
+            _append_prose_entry(entries, hit.body, leading_cap_chars)
 
     if prd_path is not None:
-        # Budget in characters, and count the "\n\n" that will join the PRD to
-        # the entries above it. Going through _estimate_tokens first rounds
-        # twice, which leaves the rejoined section one token over the cap for
-        # half of all entry lengths - and _cap_items then drops the PRD whole,
-        # which is the bug this truncation exists to prevent.
-        used_chars = len("\n\n".join(entries))
-        if entries:
-            used_chars += 2
-        remaining_chars = 4 * prose_cap_tokens - used_chars
-        if remaining_chars > 0:
-            try:
-                prd_text = prd_path.read_text(errors="replace")
-            except OSError:
-                prd_text = None
-            if prd_text is not None:
-                entries.append(prd_text[:remaining_chars])
+        try:
+            prd_text = prd_path.read_text(errors="replace")
+        except OSError:
+            prd_text = None
+        if prd_text is not None:
+            _append_prose_entry(entries, prd_text, total_cap_chars)
 
     return entries
 
