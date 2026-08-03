@@ -30,6 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **query**: two additive retrieval options - `vector` reuses an already-computed query embedding instead of re-embedding the same text (so a caller issuing several scoped queries per subject embeds once, not once per call), and `include_body` surfaces every hit's stored body text rather than only a findings hit's; both default off, so existing callers are byte-identical
 
+- **client**: optional `[pack]` config table - five per-section token caps (`hard_cap_tokens`, `similar_cap_tokens`, `reuse_cap_tokens`, `findings_cap_tokens`, `prose_cap_tokens`) surfaced as `EngramConfig.pack_budget`; an absent or partial table takes documented defaults, and load fails loud when a cap is not a positive integer (a TOML boolean is rejected, not silently read as 1) or when the four section caps plus reserved framing overhead would not fit inside the hard cap
+
 - **harvest**: `engram harvest <review-file>...` - a fifth CLI verb that ingests review-contract files into the findings corpus, per-file isolated so one path's failure never aborts the batch and never replaces that path's existing records; each path is canonicalized first (relative, absolute and symlinked spellings of one file share one record set), its repo resolved from the git toplevel via the gita registry (with a `claude-home` sentinel for `~/.claude`, which is not a normal working tree); prints one `path/outcome/count` line per file and exits nonzero if any failed
 
 ### Fixed

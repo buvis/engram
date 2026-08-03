@@ -82,11 +82,26 @@ class ServerLease:
     pid: int | None
 
 
+FRAMING_OVERHEAD_TOKENS = 100  # reserved for the markdown headings/separators
+                               # a rendered pack adds on top of its four
+                               # section bodies
+
+
+@dataclass(frozen=True)
+class PackBudget:
+    hard_cap_tokens: int = 4000
+    similar_cap_tokens: int = 1400
+    reuse_cap_tokens: int = 1000
+    findings_cap_tokens: int = 1000
+    prose_cap_tokens: int = 500
+
+
 @dataclass
 class EngramConfig:
     embeddings: list[EmbeddingEntry]
     pinned_id: str | None
     config_path: Path
+    pack_budget: PackBudget = PackBudget()
 
 
 class EmbeddingPreflightError(RuntimeError):
@@ -140,7 +155,47 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> EngramConfig:
             f"config {path} pins id {pinned_id!r} which is not in the embedding shortlist"
         )
 
-    return EngramConfig(embeddings=embeddings, pinned_id=pinned_id, config_path=path)
+    defaults = PackBudget()
+    pack_raw = raw.get("pack", {})
+    pack_budget = PackBudget(
+        hard_cap_tokens=pack_raw.get("hard_cap_tokens", defaults.hard_cap_tokens),
+        similar_cap_tokens=pack_raw.get("similar_cap_tokens", defaults.similar_cap_tokens),
+        reuse_cap_tokens=pack_raw.get("reuse_cap_tokens", defaults.reuse_cap_tokens),
+        findings_cap_tokens=pack_raw.get("findings_cap_tokens", defaults.findings_cap_tokens),
+        prose_cap_tokens=pack_raw.get("prose_cap_tokens", defaults.prose_cap_tokens),
+    )
+    for field_name, value in (
+        ("hard_cap_tokens", pack_budget.hard_cap_tokens),
+        ("similar_cap_tokens", pack_budget.similar_cap_tokens),
+        ("reuse_cap_tokens", pack_budget.reuse_cap_tokens),
+        ("findings_cap_tokens", pack_budget.findings_cap_tokens),
+        ("prose_cap_tokens", pack_budget.prose_cap_tokens),
+    ):
+        if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+            raise ValueError(
+                f"config {path} has invalid [pack] {field_name} {value!r}; "
+                "must be a positive integer"
+            )
+
+    section_sum = (
+        pack_budget.similar_cap_tokens
+        + pack_budget.reuse_cap_tokens
+        + pack_budget.findings_cap_tokens
+        + pack_budget.prose_cap_tokens
+        + FRAMING_OVERHEAD_TOKENS
+    )
+    if section_sum > pack_budget.hard_cap_tokens:
+        raise ValueError(
+            f"config {path} [pack] section caps plus framing overhead ({section_sum}) "
+            f"exceed hard_cap_tokens ({pack_budget.hard_cap_tokens})"
+        )
+
+    return EngramConfig(
+        embeddings=embeddings,
+        pinned_id=pinned_id,
+        config_path=path,
+        pack_budget=pack_budget,
+    )
 
 
 def resolve_pinned_entry(config: EngramConfig) -> EmbeddingEntry:
