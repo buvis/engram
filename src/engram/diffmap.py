@@ -44,23 +44,28 @@ def changed_symbols(
         name = Path(rel_path).name
 
         if any(line == "+++ /dev/null" for line in section):
-            _add(Symbol(path=abs_path, name=name, kind="file", line_start=1, line_end=1))
+            _add(
+                Symbol(path=abs_path, name=name, kind="file", line_start=1, line_end=1)
+            )
             continue
 
         language = detect_language_from_path(abs_path)
         structure = None
-        unreadable = False
         if language is not None:
             content = _read_content(repo_root, rel_path, source_ref)
-            if content is None:
-                unreadable = True
-            else:
-                structure = process(content, ProcessConfig(language, structure=True)).structure
+            if content is not None:
+                structure = process(
+                    content, ProcessConfig(language, structure=True)
+                ).structure
 
         for c, body in _hunks(section):
             changed = _changed_lines(body, c)
             if not changed:
-                _add(Symbol(path=abs_path, name=name, kind="file", line_start=c, line_end=c))
+                _add(
+                    Symbol(
+                        path=abs_path, name=name, kind="file", line_start=c, line_end=c
+                    )
+                )
                 continue
             for line in changed:
                 item = _smallest_enclosing(structure, line) if structure else None
@@ -75,8 +80,15 @@ def changed_symbols(
                         ),
                     )
                 else:
-                    anchor = 1 if unreadable else line
-                    _add(Symbol(path=abs_path, name=name, kind="file", line_start=anchor, line_end=anchor))
+                    _add(
+                        Symbol(
+                            path=abs_path,
+                            name=name,
+                            kind="file",
+                            line_start=line,
+                            line_end=line,
+                        )
+                    )
 
     return results
 
