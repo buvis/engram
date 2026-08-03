@@ -45,7 +45,8 @@ def changed_symbols(
         plus_line = next((line for line in section if line.startswith("+++ ")), None)
         if plus_line is None:
             continue
-        if plus_line == "+++ /dev/null":
+        is_deletion = plus_line == "+++ /dev/null"
+        if is_deletion:
             minus_line = next((line for line in section if line.startswith("--- ")), None)
             if minus_line is None:
                 continue
@@ -57,7 +58,7 @@ def changed_symbols(
         abs_path = str(repo_root / rel_path)
         name = Path(rel_path).name
 
-        if any(line == "+++ /dev/null" for line in section):
+        if is_deletion:
             _add(_file_symbol(abs_path, name, 1))
             continue
 
@@ -144,7 +145,7 @@ def _smallest_enclosing(items, line: int):
 def _read_content(repo_root: Path, rel_path: str, source_ref: str | None) -> str | None:
     if source_ref is None:
         try:
-            return (repo_root / rel_path).read_text()
+            return (repo_root / rel_path).read_text(errors="replace")
         except OSError:
             return None
 
@@ -153,6 +154,7 @@ def _read_content(repo_root: Path, rel_path: str, source_ref: str | None) -> str
         cwd=repo_root,
         capture_output=True,
         text=True,
+        errors="replace",
     )
     if result.returncode != 0:
         return None
