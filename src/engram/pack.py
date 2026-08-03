@@ -350,21 +350,18 @@ def _build_pack_sections(
     capsule_path: Path | None,
     budget,
 ) -> tuple[dict, list[str]]:
-    similar_items, similar_trimmed = _prepare_section_items(
-        similar_hits,
-        changed_spans,
-        budget.similar_cap_tokens,
-    )
-    reuse_items, reuse_trimmed = _prepare_section_items(
-        reuse_hits,
-        changed_spans,
-        budget.reuse_cap_tokens,
-    )
-    findings_items, findings_trimmed = _prepare_section_items(
-        findings_hits,
-        changed_spans,
-        budget.findings_cap_tokens,
-    )
+    sections: dict = {}
+    trimmed_sections: list[str] = []
+
+    for label, hits, cap_tokens in (
+        ("Similar code", similar_hits, budget.similar_cap_tokens),
+        ("Reuse precedent", reuse_hits, budget.reuse_cap_tokens),
+        ("Findings precedent", findings_hits, budget.findings_cap_tokens),
+    ):
+        items, was_trimmed = _prepare_section_items(hits, changed_spans, cap_tokens)
+        sections[label] = (items, _render_pointer)
+        if was_trimmed:
+            trimmed_sections.append(label)
 
     prose_entries = _task_prose_entries(
         store,
@@ -379,24 +376,9 @@ def _build_pack_sections(
         lambda text: text,
         budget.prose_cap_tokens,
     )
-
-    trimmed_sections = [
-        label
-        for label, was_trimmed in (
-            ("Similar code", similar_trimmed),
-            ("Reuse precedent", reuse_trimmed),
-            ("Findings precedent", findings_trimmed),
-            ("Task prose", prose_trimmed),
-        )
-        if was_trimmed
-    ]
-
-    sections = {
-        "Similar code": (similar_items, _render_pointer),
-        "Reuse precedent": (reuse_items, _render_pointer),
-        "Findings precedent": (findings_items, _render_pointer),
-        "Task prose": (prose_entries, lambda text: text),
-    }
+    sections["Task prose"] = (prose_entries, lambda text: text)
+    if prose_trimmed:
+        trimmed_sections.append("Task prose")
 
     return sections, trimmed_sections
 
