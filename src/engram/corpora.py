@@ -34,7 +34,7 @@ def _enumerate_memory_corpora(
         resolved_repo = slug_to_name.get(project_slug, "_unmapped")
         for md_file in sorted(memory_dir.glob("*.md")):
             if md_file.is_file():
-                yield CorpusFile("memory", resolved_repo, md_file)
+                yield CorpusFile("memory", resolved_repo, md_file.resolve())
 
 
 def _enumerate_repo_corpora(root: Path, name: str) -> Iterator[CorpusFile]:
