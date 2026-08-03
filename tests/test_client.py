@@ -1,6 +1,7 @@
 import http.server
 import json
 import os
+import signal
 import socket
 import threading
 import time
@@ -437,6 +438,49 @@ def test_ensure_served_disowns_a_stopped_server(tmp_path, monkeypatch):
     stop_served(lease)
 
     assert entry.endpoint not in client._spawned_pids_by_endpoint
+
+
+# --- regression: a stale lease releases the replacement, not a dead pid ---
+# embed() recycles a degraded server and keeps the fresh lease in a local, so the
+# caller still holds the pre-recycle pid. Signalling that corpse left the
+# replacement running; harness.run_harness holds a lease per candidate across a
+# full scoring run, so it leaked a server for every candidate that recycled.
+
+
+def test_stop_served_releases_the_replacement_when_the_lease_is_stale(monkeypatch):
+    entry = EmbeddingEntry(id="stub-model", endpoint="http://127.0.0.1:9911/v1")
+    stale_lease = ServerLease(entry=entry, spawned=True, pid=111111)
+
+    # State after a recycle: we own the replacement, not the lease's pid.
+    monkeypatch.setattr(client, "_spawned_processes", {})
+    monkeypatch.setattr(client, "_spawned_pids_by_endpoint", {entry.endpoint: 222222})
+
+    signalled: list[tuple[int, int]] = []
+    monkeypatch.setattr(
+        client.os, "kill", lambda pid, sig: signalled.append((pid, sig))
+    )
+
+    stop_served(stale_lease)
+
+    assert signalled == [(222222, signal.SIGTERM)]
+    assert client._spawned_pids_by_endpoint == {}
+
+
+def test_stop_served_is_a_noop_when_engram_owns_nothing_at_the_endpoint(monkeypatch):
+    entry = EmbeddingEntry(id="stub-model", endpoint="http://127.0.0.1:9911/v1")
+    lease = ServerLease(entry=entry, spawned=True, pid=111111)
+
+    monkeypatch.setattr(client, "_spawned_processes", {})
+    monkeypatch.setattr(client, "_spawned_pids_by_endpoint", {})
+
+    signalled: list[tuple[int, int]] = []
+    monkeypatch.setattr(
+        client.os, "kill", lambda pid, sig: signalled.append((pid, sig))
+    )
+
+    stop_served(lease)
+
+    assert signalled == []
 
 
 # --- regression: a sick server we own is reaped before its replacement spawns ---

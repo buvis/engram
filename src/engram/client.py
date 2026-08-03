@@ -458,14 +458,32 @@ def ensure_served(entry: EmbeddingEntry) -> ServerLease:
     )
 
 
+def _pid_to_release(lease: ServerLease) -> int | None:
+    """The pid `stop_served` should signal for this lease.
+
+    A lease goes stale whenever `embed()` recycles a degraded server: it keeps
+    the fresh lease in a local while the caller still holds the pre-recycle pid.
+    Signalling that dead pid left the replacement running - `harness.run_harness`
+    holds a lease per candidate across a full scoring run, so it leaked a server
+    per recycled candidate. A stale lease therefore resolves to whatever we
+    currently own at that endpoint: "release engram's server here", which is what
+    every caller means. Returns None when we own nothing there.
+    """
+    return _spawned_pids_by_endpoint.get(lease.entry.endpoint)
+
+
 def stop_served(lease: ServerLease) -> None:
-    if not lease.spawned or lease.pid is None:
+    if not lease.spawned:
         return
 
-    process = _spawned_processes.get(lease.pid)
-    _forget_spawned(lease.pid)
+    pid = _pid_to_release(lease)
+    if pid is None:
+        return
+
+    process = _spawned_processes.get(pid)
+    _forget_spawned(pid)
     try:
-        os.kill(lease.pid, signal.SIGTERM)
+        os.kill(pid, signal.SIGTERM)
     except ProcessLookupError:
         return
 
@@ -474,7 +492,7 @@ def stop_served(lease: ServerLease) -> None:
             process.wait(timeout=STOP_WAIT_TIMEOUT_S)
         except subprocess.TimeoutExpired:
             try:
-                os.kill(lease.pid, signal.SIGKILL)
+                os.kill(pid, signal.SIGKILL)
             except ProcessLookupError:
                 pass
             try:
