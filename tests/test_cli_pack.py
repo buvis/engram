@@ -8,7 +8,7 @@ from engram.indexer import IndexReport
 from engram.pack import PackReport
 from engram.store import StoreModelMismatchError
 
-from _cli_helpers import _init_git_repo, _refuse, _stub_symbols_count_skipped
+from _cli_helpers import _init_git_repo, _refuse
 
 
 # --- pack: shared test helpers ---

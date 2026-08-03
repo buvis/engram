@@ -7,7 +7,7 @@ from engram.findings import FINDINGS_CORPUS
 from engram.harvest import FileHarvestResult, HarvestReport
 from engram.query import Pointer
 
-from _cli_helpers import _init_git_repo, _refuse, _stub_symbols_count_skipped
+from _cli_helpers import _init_git_repo, _refuse
 
 
 # --- query requires --scope ---

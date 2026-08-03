@@ -5,7 +5,19 @@ from engram.cli import main
 from engram.indexer import IndexReport
 from engram.store import CorpusStatus, StatusReport, StoreModelMismatchError
 
-from _cli_helpers import _refuse, _stub_symbols_count_skipped
+from _cli_helpers import _refuse
+
+
+@pytest.fixture(autouse=True)
+def _stub_symbols_count_skipped(monkeypatch):
+    # _run_status now prints a "code\tskipped=N" line driven by
+    # symbols.count_skipped(); default it to 0 (no line printed) so existing
+    # tests (written before this producer existed) are unaffected.
+    monkeypatch.setattr(
+        "engram.cli.symbols.count_skipped",
+        lambda *a, **k: 0,
+        raising=False,
+    )
 
 
 class _FakeStoreForStatus:
