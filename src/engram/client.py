@@ -267,6 +267,14 @@ def _post_embeddings(entry: EmbeddingEntry, inputs) -> dict:
         with _OPENER.open(request, timeout=EMBED_REQUEST_TIMEOUT_S) as response:
             raw = response.read()
         payload = json.loads(raw)
+    except urllib.error.HTTPError as e:
+        message = f"embedding request to {entry.endpoint} for model {entry.id} failed: {e}"
+        if 500 <= e.code < 600:
+            # A server-side 5xx is the same shape of degradation as null
+            # vectors: the server is sick, not our request. Let it hit the
+            # recycle path instead of dying as a plain preflight error.
+            raise EmbeddingDegradedError(message) from e
+        raise EmbeddingPreflightError(message) from e
     except (
         urllib.error.URLError,
         OSError,
@@ -506,8 +514,10 @@ def _budgeted_batches(texts: list[str]) -> Iterator[tuple[int, list[str]]]:
 def _post_batch(texts: list[str], entry: EmbeddingEntry, start: int) -> list[Vector]:
     try:
         payload = _post_embeddings(entry, texts)
-    except EmbeddingDegradedError:
-        raise
+    except EmbeddingDegradedError as e:
+        raise EmbeddingDegradedError(
+            f"{e} (batch indices {start}..{start + len(texts) - 1})",
+        ) from e
     except EmbeddingPreflightError as e:
         raise EmbeddingPreflightError(
             f"{e} (batch indices {start}..{start + len(texts) - 1})",

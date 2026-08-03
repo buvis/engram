@@ -40,6 +40,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **client**: recycle a spawned embedding server that starts answering 5xx, not just one returning null vectors - `llama-server` under sustained load degrades into `500 Internal Server Error` on every embed while `/v1/models` still answers 200, and that shape bypassed the recycle path and killed the run outright; a 4xx still fails loud without a recycle, since a bad request is not a sick server
 - **symbols**: skip tracked paths that are not regular files when enumerating the code corpus - `git ls-files` lists a submodule gitlink (a directory on disk) and a tracked-but-deleted file just like any source file, and hashing either one raised `IsADirectoryError`/`FileNotFoundError` that aborted the whole portfolio index run
 - **cli**: `pack` no longer tells you to "pass `--scope portfolio`" when you run it outside a registered repo - `pack` has no `--scope` flag, so following that advice exited 2 with `unrecognized arguments`; it now names the gita `repos.csv` path and the actual remedy. `query`, `index` and `status`, which do accept `--scope`, keep the original message
 - **cli**: `pack --cycle` fails loud when the staged review diff is missing, naming the exact path it looked for and exiting 1 before any indexing happens - it previously ran a full repository reindex (real embedding traffic) and only then died on an uncaught `FileNotFoundError` traceback from inside the diff parser, which is the error case the PRD's own test strategy names
