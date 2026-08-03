@@ -154,9 +154,7 @@ def _preserve_findings(tmp_store: Store, config: EngramConfig) -> None:
         for c in findings_chunks:
             by_source.setdefault(c.path, []).append(c)
         for path, chunks in by_source.items():
-            texts = [
-                f"{c.heading}\n{c.body}" if c.heading else c.body for c in chunks
-            ]
+            texts = [c.text_for_embedding for c in chunks]
             vectors = embed(texts, entry)
             items = [
                 ChunkWithVector(chunk=c, vector=v) for c, v in zip(chunks, vectors)

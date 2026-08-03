@@ -87,7 +87,7 @@ def _diff_and_embed(
         if not chunks:
             continue
 
-        texts = [f"{c.heading}\n{c.body}" if c.heading else c.body for c in chunks]
+        texts = [c.text_for_embedding for c in chunks]
         vectors = embed(texts, entry)
         all_chunks.extend(
             ChunkWithVector(chunk=c, vector=v) for c, v in zip(chunks, vectors)

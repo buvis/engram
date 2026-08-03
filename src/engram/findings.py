@@ -187,7 +187,7 @@ def upsert(
         )
         for i, record in enumerate(records)
     ]
-    texts = [f"{c.heading}\n{c.body}" if c.heading else c.body for c in chunks]
+    texts = [c.text_for_embedding for c in chunks]
 
     vectors = embed(texts, resolve_pinned_entry(config)) if texts else []
 

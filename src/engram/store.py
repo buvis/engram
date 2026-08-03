@@ -26,6 +26,10 @@ class Chunk:
     content_hash: str
     chunk_ordinal: int
 
+    @property
+    def text_for_embedding(self) -> str:
+        return f"{self.heading}\n{self.body}" if self.heading else self.body
+
 
 @dataclass(frozen=True)
 class ChunkWithVector:
