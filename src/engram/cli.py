@@ -254,6 +254,9 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         capture_output=True,
         text=True,
     )
+    if toplevel_result.returncode != 0:
+        print("engram pack must run inside a git worktree", file=sys.stderr)
+        return 1
     repo_root = Path(toplevel_result.stdout.strip())
 
     if args.cycle is not None:

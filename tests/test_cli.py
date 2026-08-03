@@ -1205,6 +1205,27 @@ def test_pack_resolves_repo_root_to_git_toplevel_when_run_from_a_subdirectory(
     assert calls[0]["repo_root"].resolve() == toplevel.resolve()
 
 
+def test_pack_fails_loud_when_cwd_is_not_a_git_worktree_despite_a_resolved_scope(
+    monkeypatch,
+    tmp_path,
+    capsys,
+):
+    not_a_repo = tmp_path / "not-a-repo"
+    not_a_repo.mkdir()
+    monkeypatch.chdir(not_a_repo)
+
+    monkeypatch.setattr("engram.cli._resolve_repo_name", lambda: "claude-home")
+    monkeypatch.setattr("engram.cli.load_config", _refuse)
+    monkeypatch.setattr("engram.cli.open_store", _refuse)
+    monkeypatch.setattr("engram.cli.build", _refuse)
+
+    exit_code = main(["pack", "--cycle", "cyc1"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert captured.err != ""
+
+
 # --- pack: --cycle derives diff_path/id_/source_ref and prints summary ---
 
 
