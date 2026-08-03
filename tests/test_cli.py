@@ -1,14 +1,12 @@
 from pathlib import Path
 
 import pytest
+from _cli_helpers import _init_git_repo, _refuse
 
 from engram.cli import _resolve_repo_name, main
 from engram.findings import FINDINGS_CORPUS
 from engram.harvest import FileHarvestResult, HarvestReport
 from engram.query import Pointer
-
-from _cli_helpers import _init_git_repo, _refuse
-
 
 # --- query requires --scope ---
 

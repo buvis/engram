@@ -1,11 +1,10 @@
 import pytest
+from _cli_helpers import _refuse
 
 from engram import corpora
 from engram.cli import main
 from engram.indexer import IndexReport
 from engram.store import CorpusStatus, StatusReport, StoreModelMismatchError
-
-from _cli_helpers import _refuse
 
 
 @pytest.fixture(autouse=True)

@@ -2,14 +2,12 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from _cli_helpers import _init_git_repo, _refuse
 
 from engram.cli import main
 from engram.indexer import IndexReport
 from engram.pack import PackReport
 from engram.store import StoreModelMismatchError
-
-from _cli_helpers import _init_git_repo, _refuse
-
 
 # --- pack: shared test helpers ---
 
