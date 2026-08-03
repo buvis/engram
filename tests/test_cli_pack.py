@@ -1,3 +1,4 @@
+import re
 import subprocess
 from pathlib import Path
 
@@ -379,6 +380,63 @@ def test_pack_cycle_success_passes_expected_build_args_and_prints_summary_to_std
     assert "271828" in captured.out
 
 
+# --- pack: --cycle id is slugged, same rule as --diff's derived id ---
+
+
+def test_pack_cycle_traversal_attempt_is_slugged_and_stays_under_repo_tmp_dir(
+    monkeypatch,
+    tmp_path,
+):
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    toplevel = _init_git_repo(repo_dir)
+    _register_repo(monkeypatch, tmp_path, toplevel)
+    monkeypatch.chdir(toplevel)
+
+    raw_cycle_id = "../../x"
+    # Same filename-safe rule the --diff branch already applies to its
+    # derived id (see test_pack_diff_keeps_raw_source_ref_while_slugging...).
+    slug = re.sub(r"[^A-Za-z0-9_-]", "-", raw_cycle_id)
+    _stage_diff(toplevel, cycle_id=slug)
+
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+
+    ids_seen = []
+    read_contents = []
+
+    def fake_build(
+        store,
+        config,
+        repo,
+        repo_root,
+        id_,
+        diff_path,
+        source_ref=None,
+        prd_path=None,
+        capsule_path=None,
+        out_dir=Path("dev/local/tmp"),
+    ):
+        ids_seen.append(id_)
+        read_contents.append(Path(diff_path).read_text())
+        return _make_pack_report(toplevel / "dev/local/tmp" / f"engram-pack-{id_}.md")
+
+    monkeypatch.setattr("engram.cli.build", fake_build)
+
+    exit_code = main(["pack", "--cycle", raw_cycle_id])
+
+    assert exit_code == 0
+    # The id handed to build (and therefore used to name the pack output)
+    # is the slug, never the raw traversal string.
+    assert ids_seen == [slug]
+    # The diff actually read is the one staged under the sanitized name,
+    # under dev/local/tmp -- proving the read never escaped via "..".
+    assert read_contents == ["diff --git a/foo b/foo\n+added line\n"]
+    # Nothing escaped to a sibling of dev/local/tmp.
+    dev_local_entries = {p.name for p in (toplevel / "dev" / "local").iterdir()}
+    assert dev_local_entries == {"tmp"}
+
+
 # --- pack: --diff materializes git diff and derives slug/source_ref ---
 
 
@@ -507,6 +565,38 @@ def test_pack_diff_empty_git_output_returns_1_and_does_not_call_build(
     captured = capsys.readouterr()
     assert exit_code == 1
     assert captured.err != ""
+
+
+def test_pack_diff_range_starting_with_dash_is_rejected_before_reaching_git(
+    monkeypatch,
+    tmp_path,
+    capsys,
+):
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    toplevel = _init_git_repo(repo_dir)
+    _register_repo(monkeypatch, tmp_path, toplevel)
+    monkeypatch.chdir(toplevel)
+
+    diff_calls, fake_run = _make_fake_git_diff_run(
+        "diff --git a/foo b/foo\n+added line\n",
+        returncode=0,
+    )
+    monkeypatch.setattr("engram.cli.subprocess.run", fake_run)
+
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.build", _refuse)
+
+    malicious_range = "--output=/tmp/pwned..HEAD"
+    exit_code = main(["pack", f"--diff={malicious_range}"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert captured.err != ""
+    assert malicious_range in captured.err
+    # git must never have been invoked with the rejected value.
+    assert diff_calls == []
 
 
 # --- pack: --prd default resolution ---
