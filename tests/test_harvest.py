@@ -466,6 +466,76 @@ def test_harvest_batch_isolates_failures_so_one_bad_path_does_not_abort_the_rest
     assert any(c.body == "good-marker-token" for c in chunks)
 
 
+# --- harvest: OSError escaping repo resolution is isolated per-path ---
+
+
+def test_harvest_os_error_during_repo_resolution_yields_no_repo_outcome_without_raising(
+    tmp_path,
+    monkeypatch,
+):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+    broken_dir = tmp_path / "broken"
+    broken_dir.mkdir()
+    broken_path = broken_dir / "review.md"
+    _write_review_file(broken_path)
+    repos_csv = tmp_path / "repos.csv"
+    monkeypatch.setattr("engram.harvest.GITA_REPOS_CSV", repos_csv)
+    broken_cwd = broken_path.resolve().parent
+    original_run = subprocess.run
+
+    def flaky_run(cmd, **kwargs):
+        if kwargs.get("cwd") == broken_cwd:
+            raise PermissionError("simulated permission error")
+        return original_run(cmd, **kwargs)
+
+    monkeypatch.setattr("engram.harvest.subprocess.run", flaky_run)
+
+    report = harvest(store, config, [broken_path])
+
+    result = report.results[0]
+    assert result.outcome == "no_repo"
+    assert result.records_count == 0
+
+
+def test_harvest_os_error_during_repo_resolution_on_one_path_does_not_abort_the_batch(
+    tmp_path,
+    monkeypatch,
+):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+    monkeypatch.setattr("engram.findings.embed", _make_embed())
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    toplevel = _init_git_repo(repo_dir)
+    good_path = toplevel / "good.md"
+    _write_review_file(good_path, body_marker="good-marker-token")
+    repos_csv = tmp_path / "repos.csv"
+    _write_repos_csv(repos_csv, [(toplevel, "repoA")])
+    monkeypatch.setattr("engram.harvest.GITA_REPOS_CSV", repos_csv)
+
+    broken_dir = tmp_path / "broken"
+    broken_dir.mkdir()
+    broken_path = broken_dir / "review.md"
+    _write_review_file(broken_path)
+    broken_cwd = broken_path.resolve().parent
+    original_run = subprocess.run
+
+    def flaky_run(cmd, **kwargs):
+        if kwargs.get("cwd") == broken_cwd:
+            raise PermissionError("simulated permission error")
+        return original_run(cmd, **kwargs)
+
+    monkeypatch.setattr("engram.harvest.subprocess.run", flaky_run)
+
+    report = harvest(store, config, [broken_path, good_path])
+
+    broken_result, good_result = report.results
+    assert broken_result.outcome == "no_repo"
+    assert good_result.outcome == "upserted"
+    assert good_result.records_count > 0
+
+
 # --- HarvestReport.any_failed ---
 
 

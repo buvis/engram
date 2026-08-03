@@ -1,10 +1,11 @@
+import subprocess
 from pathlib import Path
 
 import pytest
 from engram.harvest import FileHarvestResult, HarvestReport
 
 from engram import corpora
-from engram.cli import main
+from engram.cli import _resolve_repo_name, main
 from engram.findings import FINDINGS_CORPUS
 from engram.indexer import IndexReport
 from engram.query import Pointer
@@ -1007,3 +1008,68 @@ def test_harvest_without_any_path_argument_exits_with_usage_error(monkeypatch):
         main(["harvest"])
 
     assert exc_info.value.code == 2
+
+
+# --- _resolve_repo_name: consolidated repo resolution (claude-home sentinel) ---
+
+
+def _init_git_repo(path):
+    subprocess.run(["git", "init", "-q", str(path)], check=True)
+    result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        cwd=path,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return Path(result.stdout.strip())
+
+
+def test_resolve_repo_name_from_inside_claude_home_returns_claude_home_sentinel(
+    tmp_path,
+    monkeypatch,
+):
+    fake_home = tmp_path / "home"
+    claude_dir = fake_home / ".claude"
+    claude_dir.mkdir(parents=True)
+    monkeypatch.setattr("pathlib.Path.home", lambda: fake_home)
+    monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", tmp_path / "repos.csv")
+    monkeypatch.chdir(claude_dir)
+
+    result = _resolve_repo_name()
+
+    assert result == "claude-home"
+
+
+def test_resolve_repo_name_from_inside_registered_git_repo_returns_registered_name(
+    tmp_path,
+    monkeypatch,
+):
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    toplevel = _init_git_repo(repo_dir)
+    repos_csv = tmp_path / "repos.csv"
+    repos_csv.write_text(f"{toplevel},repoA\n")
+    monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", repos_csv)
+    monkeypatch.chdir(toplevel)
+
+    result = _resolve_repo_name()
+
+    assert result == "repoA"
+
+
+def test_resolve_repo_name_from_inside_unregistered_git_repo_returns_none(
+    tmp_path,
+    monkeypatch,
+):
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    toplevel = _init_git_repo(repo_dir)
+    repos_csv = tmp_path / "repos.csv"
+    repos_csv.write_text(f"{tmp_path / 'some-other-repo'},other-repo\n")
+    monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", repos_csv)
+    monkeypatch.chdir(toplevel)
+
+    result = _resolve_repo_name()
+
+    assert result is None
