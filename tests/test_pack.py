@@ -4,7 +4,7 @@ from engram.client import EmbeddingEntry, EngramConfig, PackBudget, Vector
 from engram.diffmap import changed_symbols
 from engram.findings import FINDINGS_CORPUS
 from engram.indexer import IndexReport
-from engram.pack import MAX_SYMBOLS_PER_PACK, build
+from engram.pack import MAX_SYMBOLS_PER_PACK, _task_prose_entries, build
 from engram.store import Chunk, ChunkWithVector, Scope, open_store
 
 MODEL_ID = "test-model"
@@ -816,3 +816,71 @@ def test_a_high_scoring_foreign_repo_chunk_never_reaches_the_similar_code_sectio
     # Foreign chunk is retrievable and high-scoring (proves scope filter, not
     # reachability, is responsible for its absence from Similar code)
     assert "FOREIGN-REPO-MARKER-xyz" in reuse_section.body
+
+
+# --- regression: Task-prose memory retrieval is keyed on the PRD title, not the cycle id ---
+
+
+def test_memory_query_text_is_the_prds_first_top_level_heading(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path, _small_budget())
+    prd_path = tmp_path / "00004-engram-review-packs-v1.md"
+    prd_path.write_text(
+        "# Engram Review Packs: Diff-Selective Reviewer Context\n"
+        "\n"
+        "Some PRD body text that is not the title.\n"
+    )
+
+    query_calls = []
+
+    def fake_query(*args, **kwargs):
+        query_calls.append((args, kwargs))
+        return []
+
+    monkeypatch.setattr("engram.pack.query", fake_query)
+
+    _task_prose_entries(store, config, "cyc1", prd_path, None, 200)
+
+    assert len(query_calls) == 1
+    args, _kwargs = query_calls[0]
+    assert args[2] == "Engram Review Packs: Diff-Selective Reviewer Context"
+
+
+def test_memory_query_text_falls_back_to_the_prd_filename_stem_when_no_heading_exists(
+    tmp_path, monkeypatch
+):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path, _small_budget())
+    prd_path = tmp_path / "00004-engram-review-packs-v1.md"
+    prd_path.write_text("This file has no top-level markdown heading at all.\n")
+
+    query_calls = []
+
+    def fake_query(*args, **kwargs):
+        query_calls.append((args, kwargs))
+        return []
+
+    monkeypatch.setattr("engram.pack.query", fake_query)
+
+    _task_prose_entries(store, config, "cyc1", prd_path, None, 200)
+
+    assert len(query_calls) == 1
+    args, _kwargs = query_calls[0]
+    assert args[2] == "00004-engram-review-packs-v1"
+
+
+def test_memory_query_is_skipped_entirely_when_no_prd_path_is_resolved(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path, _small_budget())
+
+    query_calls = []
+
+    def fake_query(*args, **kwargs):
+        query_calls.append((args, kwargs))
+        return []
+
+    monkeypatch.setattr("engram.pack.query", fake_query)
+
+    _task_prose_entries(store, config, "cyc1", None, None, 200)
+
+    assert query_calls == []
