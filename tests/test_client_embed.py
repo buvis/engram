@@ -361,3 +361,55 @@ def test_embed_never_restarts_a_server_it_did_not_spawn(mock_server, monkeypatch
         embed(["alpha"], entry)
 
     assert calls == ["ensure"]
+
+
+# --- regression: embed() treats a server-side HTTP 5xx as degradation too ---
+# A llama-server under sustained load starts answering every embed with HTTP
+# 500 while /v1/models still returns 200 - the same degradation as null
+# vectors, just a different shape. Observed live: "HTTP Error 500" on batch
+# indices 3..5 during a real eval-harness run, which killed the whole index.
+# A 4xx is the request's fault, not the server's, so it must not recycle.
+
+
+def test_embed_recycles_a_5xx_from_a_spawned_server_and_retries_the_request(
+    mock_server,
+    monkeypatch,
+):
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+    calls = _fake_lifecycle(monkeypatch, spawned=True)
+
+    def error_then_healthy(payload):
+        count = len(_input_list(payload))
+        if len(_embed_payloads(mock_server)) == 1:
+            return 500, b'{"error": "boom"}'
+        return 200, _ok_body(mock_server.model_id, count)
+
+    mock_server.responder = error_then_healthy
+
+    vectors = embed(["alpha", "beta"], entry)
+
+    assert [v.values for v in vectors] == [[0.0] * 4, [1.0] * 4]
+    assert calls == ["ensure", "stop", "ensure"]
+
+
+def test_embed_treats_a_4xx_as_a_bad_request_not_a_degradation(mock_server, monkeypatch):
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+    calls = _fake_lifecycle(monkeypatch, spawned=True)
+    mock_server.responder = lambda payload: (400, b'{"error": "bad request"}')
+
+    with pytest.raises(EmbeddingPreflightError) as excinfo:
+        embed(["alpha"], entry)
+
+    assert not isinstance(excinfo.value, EmbeddingDegradedError)
+    assert calls == ["ensure"]
+
+
+def test_embed_never_restarts_an_unspawned_server_on_a_5xx(mock_server, monkeypatch):
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+    calls = _fake_lifecycle(monkeypatch, spawned=False)
+    mock_server.responder = lambda payload: (500, b'{"error": "boom"}')
+
+    with pytest.raises(EmbeddingPreflightError):
+        embed(["alpha"], entry)
+
+    assert calls == ["ensure"]
