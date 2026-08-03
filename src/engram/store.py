@@ -420,17 +420,18 @@ class Store:
             ).fetchall()
             stale: set[str] = set()
             dead = 0
-            for path, content_hash in rows:
-                file_path = Path(path)
-                if not file_path.exists():
-                    dead += 1
-                    continue
-                data = file_path.read_bytes()
-                actual_hash = hashlib.sha1(
-                    b"blob " + str(len(data)).encode() + b"\0" + data,
-                ).hexdigest()
-                if actual_hash != content_hash:
-                    stale.add(path)
+            if corpus != "findings":
+                for path, content_hash in rows:
+                    file_path = Path(path)
+                    if not file_path.exists():
+                        dead += 1
+                        continue
+                    data = file_path.read_bytes()
+                    actual_hash = hashlib.sha1(
+                        b"blob " + str(len(data)).encode() + b"\0" + data,
+                    ).hexdigest()
+                    if actual_hash != content_hash:
+                        stale.add(path)
             per_corpus[corpus] = CorpusStatus(
                 row_count=len(rows),
                 stale_files=sorted(stale),
