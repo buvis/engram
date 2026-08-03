@@ -367,7 +367,9 @@ def _build_pack_sections(
         ("Findings precedent", findings_hits, budget.findings_cap_tokens),
     ):
         items, was_trimmed = _prepare_section_items(
-            section_hits, changed_spans, cap_tokens
+            section_hits,
+            changed_spans,
+            cap_tokens,
         )
         sections[label] = (items, _render_pointer)
         if was_trimmed:
