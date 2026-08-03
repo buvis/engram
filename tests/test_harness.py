@@ -1,3 +1,4 @@
+import os
 import types
 
 from pathlib import Path
@@ -168,6 +169,19 @@ def _patch_common(
     # those producers existed) don't hit the real filesystem or spawn git.
     monkeypatch.setattr("engram.harness.transcripts.enumerate", lambda *a, **k: iter(()))
     monkeypatch.setattr("engram.harness.symbols.enumerate", lambda *a, **k: iter(()))
+
+
+def _stopword_padding_entries(tmp_path, count, prefix):
+    """Gold entries whose query is pure stopwords, so `_baseline_hit_rate`
+    computes zero search tokens for them and never calls rg on their behalf.
+    Used to pad a goldset up to load_goldset's >= 30 minimum without adding
+    any competing rg call or ranking noise around the one entry a test
+    actually cares about."""
+    files = _dummy_files(tmp_path, count, prefix=prefix)
+    return [
+        {"query": "a the is are of to", "expected_path": str(f), "corpus": "memory"}
+        for f in files
+    ]
 
 
 # --- load_goldset: entry count ---
@@ -833,3 +847,260 @@ def test_write_pinned_fails_loud_when_no_pinned_section(tmp_path):
 
     with pytest.raises(ValueError):
         _write_pinned(config_path, "winner-id")
+
+
+# --- rg baseline: must never build an argv that approaches the OS limit ---
+
+
+def test_baseline_hit_rate_keeps_every_rg_invocation_under_the_os_arg_max(tmp_path, monkeypatch):
+    # Regression: _baseline_hit_rate passed every corpus file as its own argv
+    # entry to a single `rg` call: subprocess.run(["rg", "-il", term,
+    # *corpus_files]). With ~11,400 code files and ~638 transcript files in the
+    # real portfolio, that single argv exceeded the OS's ARG_MAX and
+    # subprocess.run raised OSError: [Errno 7] Argument list too long, killing
+    # a 45-minute eval run after every candidate model had already been
+    # scored. No single rg invocation may come anywhere near the OS's actual
+    # argument limit, no matter how many corpus files are enumerated.
+    #
+    # Only one gold entry here carries a real (non-stopword) search token;
+    # the other 29 are stopword-only so they add zero rg calls and can't
+    # blur which call's argv we're measuring.
+    padding = _stopword_padding_entries(tmp_path, 29, prefix="argvpad")
+    target_file = tmp_path / "argv_target.md"
+    target_file.write_text("# target\nuniqueargvprobeterm appears here\n")
+    entries_meta = padding + [
+        {
+            "query": "uniqueargvprobeterm",
+            "expected_path": str(target_file),
+            "corpus": "memory",
+        }
+    ]
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    entry = _entry("argv-bound-model", 8130)
+    config = _harness_config(tmp_path, [entry])
+    _write_config_toml(config.config_path, [entry])
+
+    # The model always misses; only the rg baseline matters here.
+    def scripted_query(store, config, text, scope, corpus=None, k=5):
+        return [_pointer(path="/never/matches.md", rank=1)]
+
+    # Synthesize a corpus at the scale that crashed the real run: 25,000
+    # realistic-length paths, comfortably exceeding any OS's real ARG_MAX if
+    # passed as a single argv (25,000 * ~95 bytes ~= 2.4 MB).
+    huge_files = [
+        Path(
+            f"/synthetic/repo/src/package_{i:05d}/"
+            f"module_with_a_realistic_name_{i:05d}.py"
+        )
+        for i in range(25000)
+    ]
+
+    def huge_enum(*a, **k):
+        return iter(CorpusFile("memory", "bigrepo", p) for p in huge_files)
+
+    _patch_common(monkeypatch, tmp_path, scripted_query, enumerate_fn=huge_enum)
+
+    rg_calls = []
+
+    def fake_run(args, **kwargs):
+        rg_calls.append(args)
+        return types.SimpleNamespace(returncode=1, stdout="", stderr="")
+
+    monkeypatch.setattr("engram.harness.subprocess.run", fake_run)
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    run_harness(config, goldset_path, work_dir)
+
+    assert rg_calls, "expected the rg baseline to actually run against the huge corpus"
+    arg_max = os.sysconf("SC_ARG_MAX")
+    for args in rg_calls:
+        argv_bytes = sum(len(os.fsencode(str(a))) + 1 for a in args)
+        assert argv_bytes < arg_max // 2, (
+            f"a single rg invocation carried {argv_bytes} argv bytes, "
+            f"too close to this OS's ARG_MAX of {arg_max} -- corpus_files "
+            "must be batched"
+        )
+
+
+# --- rg baseline: batching must not change the hit-rate result ---
+
+
+def test_baseline_hit_rate_matches_an_unbatched_run_when_the_hit_is_in_the_last_batch(
+    tmp_path, monkeypatch
+):
+    # Regression: a batching fix that only searches the first chunk of
+    # corpus_files (e.g. an early `break` or a loop that stops after one rg
+    # call) would silently miss any match sitting later in a large corpus.
+    # The hit-rate result must be identical whether or not the file list was
+    # large enough to require splitting.
+    padding = _stopword_padding_entries(tmp_path, 29, prefix="lastbatch")
+    target_file = tmp_path / "endposition_target.md"
+    target_file.write_text("# target\nendpositiontoken appears here\n")
+    entries_meta = padding + [
+        {
+            "query": "endpositiontoken",
+            "expected_path": str(target_file),
+            "corpus": "memory",
+        }
+    ]
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    entry = _entry("last-batch-model", 8131)
+    config = _harness_config(tmp_path, [entry])
+    _write_config_toml(config.config_path, [entry])
+
+    def scripted_query(store, config, text, scope, corpus=None, k=5):
+        return [_pointer(path="/never/matches.md", rank=1)]
+
+    target_str = str(target_file)
+
+    def faithful_rg(args, **kwargs):
+        # Stateless, faithful stand-in for real rg: reports exactly which of
+        # the paths it was actually asked to search are true matches (each at
+        # most once per invocation, matching `rg -l` semantics), regardless
+        # of how the caller partitioned the work.
+        paths = [str(a) for a in args[3:]]
+        hits = list(dict.fromkeys(p for p in paths if p == target_str))
+        return types.SimpleNamespace(
+            returncode=0 if hits else 1, stdout="\n".join(hits), stderr=""
+        )
+
+    monkeypatch.setattr("engram.harness.subprocess.run", faithful_rg)
+
+    # Unbatched reference: only the one file that can ever match.
+    def small_enum(*a, **k):
+        return iter([CorpusFile("memory", "smallrepo", target_file)])
+
+    _patch_common(monkeypatch, tmp_path, scripted_query, enumerate_fn=small_enum)
+    work_dir_small = tmp_path / "work-small"
+    work_dir_small.mkdir()
+    report_small = run_harness(config, goldset_path, work_dir_small)
+
+    # Batching-forced run: the same target file, now the very last entry
+    # behind thousands of filler files that never match anything.
+    filler = [
+        Path(f"/synthetic/repo/lastbatch/filler_{i:05d}.py") for i in range(24999)
+    ]
+
+    def large_enum(*a, **k):
+        return iter(
+            [CorpusFile("memory", "bigrepo", p) for p in filler]
+            + [CorpusFile("memory", "bigrepo", target_file)]
+        )
+
+    _patch_common(monkeypatch, tmp_path, scripted_query, enumerate_fn=large_enum)
+    monkeypatch.setattr("engram.harness.subprocess.run", faithful_rg)
+    work_dir_large = tmp_path / "work-large"
+    work_dir_large.mkdir()
+    report_large = run_harness(config, goldset_path, work_dir_large)
+
+    assert report_small.baseline_hit_rate == 1 / 30
+    assert report_large.baseline_hit_rate == report_small.baseline_hit_rate
+
+
+def test_baseline_hit_rate_counts_a_file_once_even_when_its_path_spans_two_batches(
+    tmp_path, monkeypatch
+):
+    # Regression: a batching fix whose aggregation increments a file's match
+    # count once per rg call it turns up in (rather than once per term) would
+    # inflate the score of any file whose entry happens to land in more than
+    # one batch. That inflated file can then outrank -- and bump out of the
+    # top 5 -- a file that legitimately matched the same term exactly once.
+    # A file must be counted once per term, never once per batch it appears
+    # in, so the hit-rate result must match an unbatched run either way.
+    padding = _stopword_padding_entries(tmp_path, 29, prefix="spanbatch")
+    target_file = tmp_path / "00_target.md"
+    target_file.write_text("# target\nracetermtarget appears here\n")
+    entries_meta = padding + [
+        {
+            "query": "racetermtarget",
+            "expected_path": str(target_file),
+            "corpus": "memory",
+        }
+    ]
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    entry = _entry("span-batch-model", 8132)
+    config = _harness_config(tmp_path, [entry])
+    _write_config_toml(config.config_path, [entry])
+
+    def scripted_query(store, config, text, scope, corpus=None, k=5):
+        return [_pointer(path="/never/matches.md", rank=1)]
+
+    # Four competitors that legitimately match the same term once each, plus
+    # the target, all sorted (by path) ahead of a sixth file ("zz_extra")
+    # that would be the odd one out on a fair top-5 tie-break. If zz_extra's
+    # count gets inflated because its path spans two batches, it jumps to
+    # rank 1 on count alone and bumps the target out of the top 5.
+    competitors = [tmp_path / f"00_{c}.md" for c in ("a", "b", "c", "d")]
+    for c in competitors:
+        c.write_text("competitor\n")
+    extra_file = tmp_path / "zz_extra.md"
+    extra_file.write_text("extra\n")
+
+    matching_paths = {str(p) for p in competitors} | {str(target_file), str(extra_file)}
+
+    def faithful_rg(args, **kwargs):
+        # Stateless, faithful stand-in for real rg: reports each true match at
+        # most once per invocation (matching `rg -l` semantics), regardless
+        # of how the caller partitioned the work.
+        paths = [str(a) for a in args[3:]]
+        hits = list(dict.fromkeys(p for p in paths if p in matching_paths))
+        return types.SimpleNamespace(
+            returncode=0 if hits else 1, stdout="\n".join(hits), stderr=""
+        )
+
+    monkeypatch.setattr("engram.harness.subprocess.run", faithful_rg)
+
+    # Unbatched reference: the six candidate files only, each listed once.
+    def small_enum(*a, **k):
+        return iter(
+            [CorpusFile("memory", "smallrepo", p) for p in competitors]
+            + [
+                CorpusFile("memory", "smallrepo", target_file),
+                CorpusFile("memory", "smallrepo", extra_file),
+            ]
+        )
+
+    _patch_common(monkeypatch, tmp_path, scripted_query, enumerate_fn=small_enum)
+    work_dir_small = tmp_path / "work-small"
+    work_dir_small.mkdir()
+    report_small = run_harness(config, goldset_path, work_dir_small)
+
+    # Batching-forced run: same six candidates, plus 40,000 filler files (far
+    # more than any ARG_MAX-respecting batch size could hold at once, per the
+    # argv-bound test above), with extra_file's path listed twice -- once
+    # right at the front, once right at the back -- so any implementation
+    # that keeps every call under the OS argv limit is forced to search the
+    # two occurrences in two different rg calls.
+    filler_front = [
+        Path(f"/synthetic/repo/spanbatch/front_{i:05d}.py") for i in range(20000)
+    ]
+    filler_back = [
+        Path(f"/synthetic/repo/spanbatch/back_{i:05d}.py") for i in range(20000)
+    ]
+
+    def large_enum(*a, **k):
+        return iter(
+            [CorpusFile("memory", "bigrepo", p) for p in competitors]
+            + [CorpusFile("memory", "bigrepo", target_file)]
+            + [CorpusFile("memory", "bigrepo", extra_file)]
+            + [CorpusFile("memory", "bigrepo", p) for p in filler_front]
+            + [CorpusFile("memory", "bigrepo", extra_file)]
+            + [CorpusFile("memory", "bigrepo", p) for p in filler_back]
+        )
+
+    _patch_common(monkeypatch, tmp_path, scripted_query, enumerate_fn=large_enum)
+    monkeypatch.setattr("engram.harness.subprocess.run", faithful_rg)
+    work_dir_large = tmp_path / "work-large"
+    work_dir_large.mkdir()
+    report_large = run_harness(config, goldset_path, work_dir_large)
+
+    assert report_small.baseline_hit_rate == 1 / 30
+    assert report_large.baseline_hit_rate == report_small.baseline_hit_rate
