@@ -53,6 +53,21 @@ def _make_embed(dim=4, value=0.5):
     return _embed
 
 
+# --- Chunk.text_for_embedding ---
+
+
+def test_text_for_embedding_with_heading_joins_heading_and_body_with_newline():
+    chunk = _chunk(heading="Distinctive Heading", body="Distinctive body text")
+
+    assert chunk.text_for_embedding == "Distinctive Heading\nDistinctive body text"
+
+
+def test_text_for_embedding_with_no_heading_is_body_alone():
+    chunk = _chunk(heading="", body="Distinctive body text")
+
+    assert chunk.text_for_embedding == "Distinctive body text"
+
+
 # --- replace_chunks_for_source: atomic replace, retrievable like upsert_chunks ---
 
 
