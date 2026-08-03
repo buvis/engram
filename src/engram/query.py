@@ -30,11 +30,13 @@ def query(
     scope: Scope,
     corpus: str | None = None,
     k: int = 5,
+    vector: Vector | None = None,
+    include_body: bool = False,
 ) -> list[Pointer]:
     entry = resolve_pinned_entry(config)
 
     bm25_hits = store.search_bm25(text, scope, corpus, RRF_POOL)
-    query_vector: Vector = embed([text], entry)[0]
+    query_vector: Vector = vector if vector is not None else embed([text], entry)[0]
     knn_hits = store.search_knn(query_vector, scope, corpus, RRF_POOL)
 
     # Build lookup: chunk_id -> SearchHit (prefer BM25 if present in both)
@@ -64,7 +66,7 @@ def query(
             corpus=hit_map[cid].chunk.corpus,
             repo=hit_map[cid].chunk.repo,
             body=hit_map[cid].chunk.body
-            if hit_map[cid].chunk.corpus == FINDINGS_CORPUS
+            if (include_body or hit_map[cid].chunk.corpus == FINDINGS_CORPUS)
             else None,
         )
         for i, cid in enumerate(sorted_ids)
