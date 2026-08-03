@@ -30,19 +30,21 @@ def _init_git_repo(repo_dir: Path, files: dict[str, str | bytes]) -> Path:
 # --- chunk(): recursive pre-order symbol walk with 1-indexed lines ---
 
 
-def test_function_and_class_symbols_yield_preorder_chunks_with_correct_body_and_lines(tmp_path):
+def test_function_and_class_symbols_yield_preorder_chunks_with_correct_body_and_lines(
+    tmp_path,
+):
     path = tmp_path / "shapes.py"
     path.write_text(
-        'def greet(name):\n'
+        "def greet(name):\n"
         '    """Say hello."""\n'
         '    return "hi " + name\n'
-        '\n'
-        '\n'
-        'class Shape:\n'
+        "\n"
+        "\n"
+        "class Shape:\n"
         '    """A shape."""\n'
-        '\n'
-        '    def area(self):\n'
-        '        return 0\n'
+        "\n"
+        "    def area(self):\n"
+        "        return 0\n",
     )
 
     chunks = symbols.chunk(path, "widget", "h1")
@@ -91,7 +93,9 @@ def test_function_and_class_symbols_yield_preorder_chunks_with_correct_body_and_
 
 
 @pytest.mark.parametrize("filename", ["data.bin", "Makefile"])
-def test_file_with_no_grammar_yields_no_chunks_and_is_recorded_as_skipped(tmp_path, filename):
+def test_file_with_no_grammar_yields_no_chunks_and_is_recorded_as_skipped(
+    tmp_path, filename
+):
     symbols.skipped_files.clear()
     path = tmp_path / filename
     path.write_bytes(b"some content\n")
@@ -119,7 +123,9 @@ def test_unreadable_path_yields_no_chunks_and_is_recorded_as_skipped(tmp_path):
 # --- chunk(): non-UTF-8 bytes are replaced, not treated as unreadable ---
 
 
-def test_file_with_invalid_utf8_bytes_is_parsed_with_replacement_and_not_skipped(tmp_path):
+def test_file_with_invalid_utf8_bytes_is_parsed_with_replacement_and_not_skipped(
+    tmp_path,
+):
     symbols.skipped_files.clear()
     path = tmp_path / "weird.py"
     path.write_bytes(b'def greet():\n    return "\xff\xfe"\n')
@@ -137,7 +143,9 @@ def test_file_with_invalid_utf8_bytes_is_parsed_with_replacement_and_not_skipped
 
 
 @pytest.mark.parametrize("source", ["", "   \n\t\n\n"])
-def test_empty_or_whitespace_only_source_yields_no_chunks_and_is_not_skipped(tmp_path, source):
+def test_empty_or_whitespace_only_source_yields_no_chunks_and_is_not_skipped(
+    tmp_path, source
+):
     symbols.skipped_files.clear()
     path = tmp_path / "empty.py"
     path.write_text(source)
@@ -165,7 +173,9 @@ def test_count_skipped_counts_tracked_files_with_no_grammar(tmp_path):
 # --- enumerate(): one CorpusFile per HEAD-tracked file, grammar-agnostic ---
 
 
-def test_enumerate_yields_corpusfile_per_tracked_file_and_resets_skipped_files(tmp_path):
+def test_enumerate_yields_corpusfile_per_tracked_file_and_resets_skipped_files(
+    tmp_path,
+):
     symbols.skipped_files.append("stale.py")
     repo_dir = _init_git_repo(
         tmp_path / "repo",
