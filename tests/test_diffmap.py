@@ -467,3 +467,95 @@ def test_binary_and_mode_sections_before_text_change_do_not_abort_the_rest_of_th
             line_end=2,
         ),
     ]
+
+
+# --- changed_symbols(): a non-UTF-8 source file is decoded with replacement, not crashed on (worktree mode) ---
+
+
+def test_non_utf8_source_file_is_parsed_with_replacement_not_crashed_on(tmp_path):
+    (tmp_path / "weird.py").write_bytes(b'def foo():\n    return "\xe9"\n')
+    diff_path = _write_diff(
+        tmp_path,
+        [
+            "diff --git a/weird.py b/weird.py",
+            "index 1111111..2222222 100644",
+            "--- a/weird.py",
+            "+++ b/weird.py",
+            "@@ -1,2 +1,2 @@",
+            " def foo():",
+            "-    return 0",
+            "+    return 1",
+        ],
+    )
+
+    result = changed_symbols(diff_path, tmp_path)
+
+    assert result == [
+        Symbol(
+            path=str(tmp_path / "weird.py"),
+            name="foo",
+            kind="function",
+            line_start=1,
+            line_end=2,
+        ),
+    ]
+
+
+# --- changed_symbols(): a non-UTF-8 source file is decoded with replacement, not crashed on (historical mode) ---
+
+
+def test_non_utf8_source_file_at_source_ref_is_parsed_with_replacement_not_crashed_on(tmp_path):
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    (tmp_path / "weird.py").write_bytes(b'def foo():\n    return "\xe9"\n')
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=t", "commit", "-m", "older"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+    older_ref = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    (tmp_path / "weird.py").write_text(
+        'def beta():\n'
+        '    return 2\n'
+    )
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=t", "commit", "-m", "newer"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+
+    diff_path = _write_diff(
+        tmp_path,
+        [
+            "diff --git a/weird.py b/weird.py",
+            "index 1111111..2222222 100644",
+            "--- a/weird.py",
+            "+++ b/weird.py",
+            "@@ -1,2 +1,2 @@",
+            " def foo():",
+            "-    return 0",
+            "+    return 1",
+        ],
+    )
+
+    result = changed_symbols(diff_path, tmp_path, source_ref=older_ref)
+
+    assert result == [
+        Symbol(
+            path=str(tmp_path / "weird.py"),
+            name="foo",
+            kind="function",
+            line_start=1,
+            line_end=2,
+        ),
+    ]
