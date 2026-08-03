@@ -1344,6 +1344,34 @@ def test_pack_out_dir_default_anchors_to_repo_root_when_invoked_from_a_subdirect
     assert calls[0]["out_dir"].resolve() == (toplevel / "dev/local/tmp").resolve()
 
 
+# --- pack: --cycle missing staged diff file fails loud before reindex ---
+
+
+def test_pack_cycle_missing_staged_diff_fails_loud_before_reindex(
+    monkeypatch,
+    tmp_path,
+    capsys,
+):
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    toplevel = _init_git_repo(repo_dir)
+    _register_repo(monkeypatch, tmp_path, toplevel)
+    monkeypatch.chdir(toplevel)
+
+    # No dev/local/tmp/review-diff-cyc1.diff is staged.
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.build", _refuse)
+
+    exit_code = main(["pack", "--cycle", "cyc1"])
+
+    captured = capsys.readouterr()
+    expected_diff_path = toplevel / "dev" / "local" / "tmp" / "review-diff-cyc1.diff"
+    assert exit_code == 1
+    assert str(expected_diff_path) in captured.err
+    assert not (toplevel / "dev/local/tmp/engram-pack-cyc1.md").exists()
+
+
 # --- pack: --cycle derives diff_path/id_/source_ref and prints summary ---
 
 
