@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 
-from engram import findings
 from engram.findings import FINDINGS_CORPUS, Record, parse
 
 
@@ -564,3 +563,57 @@ def test_tests_line_accepts_docs_only_none_value(tmp_path):
 
     record = _find_by_body(records, "Tests: none (docs-only)")
     assert record.structured is False
+
+
+# --- real review file fixture ---
+
+REAL_REVIEW_FIXTURE = (
+    Path(__file__).parent / "fixtures" / "00001-engram-core-v1-review-5.md"
+)
+
+
+def test_real_review_file_parses_without_raising():
+    records = parse(REAL_REVIEW_FIXTURE)
+
+    assert records
+
+
+def test_real_review_file_table_rows_produce_structured_records_with_issue_column_heading():
+    records = parse(REAL_REVIEW_FIXTURE)
+
+    goldset_record = next(
+        r
+        for r in records
+        if r.structured
+        and r.heading == "Gold set covers only 3 of 4 corpora; `decision` corpus empty (SETTLED)"
+    )
+    assert goldset_record.body.startswith("|")
+    assert goldset_record.heading != goldset_record.body
+
+
+def test_real_review_file_emoji_bullets_produce_structured_records():
+    records = parse(REAL_REVIEW_FIXTURE)
+
+    assert any(
+        r.structured
+        and r.body.startswith("- ")
+        and "Memory-corpus repo attribution is always `_unmapped`" in r.heading
+        for r in records
+    )
+
+
+def test_real_review_file_unmatched_prose_lands_in_unstructured_records():
+    records = parse(REAL_REVIEW_FIXTURE)
+
+    assert any(
+        not r.structured and "dismisses Bob's" in r.body for r in records
+    )
+
+
+def test_real_review_file_specific_finding_is_present():
+    records = parse(REAL_REVIEW_FIXTURE)
+
+    assert any(
+        "Chunker `path.read_text()` has no per-file guard" in r.heading
+        for r in records
+    )
