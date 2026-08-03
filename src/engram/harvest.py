@@ -11,9 +11,10 @@ from engram.client import (
     EmbeddingModelIdentityError,
     EmbeddingPreflightError,
     EmbeddingServerError,
+    EngramConfig,
 )
 from engram.corpora import GITA_REPOS_CSV
-from engram.store import StoreModelMismatchError
+from engram.store import Store, StoreModelMismatchError
 
 
 @dataclass(frozen=True)
@@ -60,62 +61,52 @@ def _resolve_repo_for_path(path: Path, repos_csv: Path = GITA_REPOS_CSV) -> str 
     return None
 
 
-def harvest(store, config, paths: list[Path]) -> HarvestReport:
-    results: list[FileHarvestResult] = []
+def _harvest_path(store: Store, config: EngramConfig, path: Path) -> FileHarvestResult:
+    try:
+        resolved_path = path.resolve()
+    except (OSError, RuntimeError) as e:
+        return FileHarvestResult(
+            path=path,
+            outcome="no_repo",
+            records_count=0,
+            error=str(e),
+        )
+    path = resolved_path
 
-    for path in paths:
-        try:
-            resolved_path = path.resolve()
-        except (OSError, RuntimeError) as e:
-            results.append(
-                FileHarvestResult(
-                    path=path,
-                    outcome="no_repo",
-                    records_count=0,
-                    error=str(e),
-                ),
-            )
-            continue
-        path = resolved_path
+    repo = _resolve_repo_for_path(path, GITA_REPOS_CSV)
+    if repo is None:
+        return FileHarvestResult(path=path, outcome="no_repo", records_count=0)
 
-        repo = _resolve_repo_for_path(path, GITA_REPOS_CSV)
-        if repo is None:
-            results.append(FileHarvestResult(path=path, outcome="no_repo", records_count=0))
-            continue
+    try:
+        records = findings.parse(path)
+    except ValueError as e:
+        return FileHarvestResult(
+            path=path,
+            outcome="parse_failed",
+            records_count=0,
+            error=str(e),
+        )
 
-        try:
-            records = findings.parse(path)
-        except ValueError as e:
-            results.append(
-                FileHarvestResult(
-                    path=path,
-                    outcome="parse_failed",
-                    records_count=0,
-                    error=str(e),
-                ),
-            )
-            continue
+    try:
+        n = findings.upsert(store, config, repo, path, records)
+    except (
+        StoreModelMismatchError,
+        EmbeddingPreflightError,
+        EmbeddingServerError,
+        EmbeddingModelIdentityError,
+        OSError,
+        sqlite3.Error,
+    ) as e:
+        return FileHarvestResult(
+            path=path,
+            outcome="upsert_failed",
+            records_count=0,
+            error=str(e),
+        )
 
-        try:
-            n = findings.upsert(store, config, repo, path, records)
-        except (
-            StoreModelMismatchError,
-            EmbeddingPreflightError,
-            EmbeddingServerError,
-            EmbeddingModelIdentityError,
-            OSError,
-            sqlite3.Error,
-        ) as e:
-            results.append(
-                FileHarvestResult(
-                    path=path,
-                    outcome="upsert_failed",
-                    records_count=0,
-                    error=str(e),
-                ),
-            )
-            continue
+    return FileHarvestResult(path=path, outcome="upserted", records_count=n)
 
-        results.append(FileHarvestResult(path=path, outcome="upserted", records_count=n))
 
+def harvest(store: Store, config: EngramConfig, paths: list[Path]) -> HarvestReport:
+    results = [_harvest_path(store, config, path) for path in paths]
     return HarvestReport(results=results)
