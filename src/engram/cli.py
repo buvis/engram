@@ -138,6 +138,29 @@ def _print_missing(missing: list[str], scope: Scope, corpus: str | None = None) 
         print(m)
 
 
+def _preserve_findings(tmp_store, config) -> None:
+    findings_chunks: list[Chunk] = []
+    if DEFAULT_DB_PATH.exists():
+        live_store = open_store(DEFAULT_DB_PATH)
+        findings_chunks = live_store.chunks_for_corpus(FINDINGS_CORPUS)
+        live_store.conn.close()
+
+    if findings_chunks:
+        entry = resolve_pinned_entry(config)
+        by_source: dict[str, list[Chunk]] = {}
+        for c in findings_chunks:
+            by_source.setdefault(c.path, []).append(c)
+        for path, chunks in by_source.items():
+            texts = [
+                f"{c.heading}\n{c.body}" if c.heading else c.body for c in chunks
+            ]
+            vectors = embed(texts, entry)
+            items = [
+                ChunkWithVector(chunk=c, vector=v) for c, v in zip(chunks, vectors)
+            ]
+            tmp_store.replace_chunks_for_source(FINDINGS_CORPUS, path, items)
+
+
 def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     if args.rebuild:
         if args.scope is not None or args.corpus is not None:
@@ -153,26 +176,13 @@ def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
             print(f"rebuild failed: {e}", file=sys.stderr)
             return 1
 
-        findings_chunks: list[Chunk] = []
-        if DEFAULT_DB_PATH.exists():
-            live_store = open_store(DEFAULT_DB_PATH)
-            findings_chunks = live_store.chunks_for_corpus(FINDINGS_CORPUS)
-            live_store.conn.close()
-
-        if findings_chunks:
-            entry = resolve_pinned_entry(config)
-            by_source: dict[str, list[Chunk]] = {}
-            for c in findings_chunks:
-                by_source.setdefault(c.path, []).append(c)
-            for path, chunks in by_source.items():
-                texts = [
-                    f"{c.heading}\n{c.body}" if c.heading else c.body for c in chunks
-                ]
-                vectors = embed(texts, entry)
-                items = [
-                    ChunkWithVector(chunk=c, vector=v) for c, v in zip(chunks, vectors)
-                ]
-                tmp_store.replace_chunks_for_source(FINDINGS_CORPUS, path, items)
+        try:
+            _preserve_findings(tmp_store, config)
+        except Exception as e:
+            tmp_store.conn.close()
+            tmp_path.unlink(missing_ok=True)
+            print(f"rebuild failed: {e}", file=sys.stderr)
+            return 1
 
         tmp_store.conn.close()
         os.replace(tmp_path, DEFAULT_DB_PATH)
