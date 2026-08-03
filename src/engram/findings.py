@@ -123,7 +123,8 @@ def parse(path: Path) -> list[Record]:
         frontmatter_end = lines.index("---", 1)
 
         metadata = yaml.safe_load("\n".join(lines[1:frontmatter_end]))
-        if not isinstance(metadata, Mapping) or not metadata.get("reviewers"):
+        reviewers = metadata.get("reviewers") if isinstance(metadata, Mapping) else ""
+        if not str(reviewers or "").strip():
             raise ValueError("frontmatter must contain reviewers")
 
         body_lines = lines[frontmatter_end + 1 :]
@@ -161,7 +162,7 @@ def parse(path: Path) -> list[Record]:
         return records
     except ValueError:
         raise
-    except Exception as exc:
+    except (OSError, yaml.YAMLError) as exc:
         raise ValueError(f"unable to parse {path}") from exc
 
 
