@@ -8,6 +8,7 @@ from _embedding_server import (
     _MockEmbeddingServer,
     _responder_with_broken_batch,
 )
+
 from engram import client
 from engram.client import (
     EMBED_BATCH_MAX_CHARS,
@@ -87,7 +88,7 @@ def test_embed_preserves_original_input_order_despite_out_of_order_response(
         if len(items) > 1:
             items = list(reversed(items))
         body = json.dumps(
-            {"object": "list", "model": mock_server.model_id, "data": items}
+            {"object": "list", "model": mock_server.model_id, "data": items},
         ).encode()
         return 200, body
 
@@ -149,7 +150,7 @@ def test_embed_names_batch_index_range_on_post_failure(mock_server):
         inputs = _input_list(payload)
         if len(inputs) == 1:
             data = [
-                {"index": 0, "embedding": [0.1, 0.2, 0.3, 0.4], "object": "embedding"}
+                {"index": 0, "embedding": [0.1, 0.2, 0.3, 0.4], "object": "embedding"},
             ]
             body = json.dumps(
                 {"object": "list", "model": mock_server.model_id, "data": data},
@@ -175,7 +176,7 @@ def test_embed_raises_on_null_data_field(mock_server):
     mock_server.responder = lambda payload: (
         200,
         json.dumps(
-            {"object": "list", "model": mock_server.model_id, "data": None}
+            {"object": "list", "model": mock_server.model_id, "data": None},
         ).encode(),
     )
 
@@ -188,7 +189,7 @@ def test_embed_raises_on_null_data_element(mock_server):
     mock_server.responder = lambda payload: (
         200,
         json.dumps(
-            {"object": "list", "model": mock_server.model_id, "data": [None]}
+            {"object": "list", "model": mock_server.model_id, "data": [None]},
         ).encode(),
     )
 
@@ -201,7 +202,7 @@ def test_embed_raises_on_scalar_data_element(mock_server):
     mock_server.responder = lambda payload: (
         200,
         json.dumps(
-            {"object": "list", "model": mock_server.model_id, "data": [1]}
+            {"object": "list", "model": mock_server.model_id, "data": [1]},
         ).encode(),
     )
 
@@ -259,7 +260,7 @@ def test_embed_names_the_batch_index_range_of_a_later_budgeted_request(mock_serv
             for i in range(len(_input_list(payload)))
         ]
         body = json.dumps(
-            {"object": "list", "model": mock_server.model_id, "data": data}
+            {"object": "list", "model": mock_server.model_id, "data": data},
         )
         return 200, body.encode()
 
@@ -392,7 +393,9 @@ def test_embed_recycles_a_5xx_from_a_spawned_server_and_retries_the_request(
     assert calls == ["ensure", "stop", "ensure"]
 
 
-def test_embed_treats_a_4xx_as_a_bad_request_not_a_degradation(mock_server, monkeypatch):
+def test_embed_treats_a_4xx_as_a_bad_request_not_a_degradation(
+    mock_server, monkeypatch
+):
     entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
     calls = _fake_lifecycle(monkeypatch, spawned=True)
     mock_server.responder = lambda payload: (400, b'{"error": "bad request"}')
