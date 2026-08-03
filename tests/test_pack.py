@@ -701,6 +701,43 @@ def test_prd_survives_truncation_when_an_earlier_prose_entry_precedes_it(
     assert prose.estimated_tokens <= config.pack_budget.prose_cap_tokens
 
 
+def test_oversized_capsule_does_not_crowd_out_the_prd_from_task_prose(
+    tmp_path, monkeypatch
+):
+    # The capsule's Active Work section can be far larger than prose_cap_tokens
+    # on its own. Appending it at full length used up the whole budget before
+    # the PRD was even considered, so _cap_items then popped the memory hits
+    # and the capsule entry itself, leaving Task prose empty. Every prose
+    # source must be truncated to the room left, and the PRD must keep room.
+    store, config, diff_path = _prose_fixture(tmp_path, monkeypatch)
+    capsule_path = tmp_path / "project-capsule.md"
+    capsule_path.write_text(
+        "## Active Work\n" + ("capsule filler line far exceeding the prose budget\n" * 60)
+    )
+    prd_path = tmp_path / "00004-prd.md"
+    prd_path.write_text("PRD-HEAD-MARKER goal statement\n" + ("prd filler line\n" * 500))
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    report = build(
+        store,
+        config,
+        "repoA",
+        tmp_path,
+        "prose-capsule-starve",
+        diff_path,
+        prd_path=prd_path,
+        capsule_path=capsule_path,
+        out_dir=out_dir,
+    )
+
+    content = report.path.read_text()
+    assert "capsule filler line" in content
+    assert "PRD-HEAD-MARKER" in content
+    prose = next(s for s in report.sections if s.label == "Task prose")
+    assert prose.estimated_tokens <= config.pack_budget.prose_cap_tokens
+
+
 # --- regression: build() must not require its out_dir to exist ---
 
 
