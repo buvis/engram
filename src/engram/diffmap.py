@@ -168,7 +168,7 @@ def _read_content(repo_root: Path, rel_path: str, source_ref: str | None) -> str
             return None
 
     result = subprocess.run(
-        ["git", "show", f"{source_ref}:{rel_path}"],
+        ["git", "show", f"{source_ref}:{rel_path}", "--"],
         cwd=repo_root,
         capture_output=True,
         text=True,

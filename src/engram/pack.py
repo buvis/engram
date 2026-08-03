@@ -47,7 +47,7 @@ def _symbol_query_text(symbol: Symbol, repo_root: Path, source_ref: str | None) 
         else:
             rel_path = Path(symbol.path).relative_to(repo_root)
             result = subprocess.run(
-                ["git", "show", f"{source_ref}:{rel_path}"],
+                ["git", "show", f"{source_ref}:{rel_path}", "--"],
                 cwd=repo_root,
                 capture_output=True,
                 text=True,

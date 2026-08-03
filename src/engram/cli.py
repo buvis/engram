@@ -264,11 +264,12 @@ def _resolve_pack_diff(
     out_dir: Path,
 ) -> tuple[Path, str, str | None] | None:
     if args.cycle is not None:
-        diff_path = out_dir / f"review-diff-{args.cycle}.diff"
+        cycle_slug = re.sub(r"[^A-Za-z0-9_-]", "-", args.cycle)
+        diff_path = out_dir / f"review-diff-{cycle_slug}.diff"
         if not diff_path.exists():
             print(f"no staged diff found at {diff_path}", file=sys.stderr)
             return None
-        return diff_path, args.cycle, None
+        return diff_path, cycle_slug, None
 
     range_str = args.diff
     if ".." not in range_str:
@@ -277,11 +278,17 @@ def _resolve_pack_diff(
             file=sys.stderr,
         )
         return None
+    if range_str.startswith("-"):
+        print(
+            f"--diff range must not start with '-', got {range_str!r}",
+            file=sys.stderr,
+        )
+        return None
     _, head = range_str.split("..", 1)
     id_ = re.sub(r"[^A-Za-z0-9_-]", "-", range_str)
     source_ref = head
     result = subprocess.run(
-        ["git", "-C", str(repo_root), "diff", range_str],
+        ["git", "-C", str(repo_root), "diff", range_str, "--"],
         capture_output=True,
         text=True,
     )
