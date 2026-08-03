@@ -2,7 +2,7 @@ import engram.corpora as corpora_module
 import pytest
 
 from engram.client import EmbeddingEntry, EngramConfig, Vector
-from engram.corpora import CorpusFile
+from engram.corpora import CorpusFile, hash_source
 from engram.indexer import IndexReport, _chunk_file, index
 from engram.store import Chunk, ChunkWithVector, Scope, StoreModelMismatchError, open_store
 
@@ -37,6 +37,10 @@ def _config(tmp_path, model_id="test-model"):
 
 def fake_embed(texts, entry):
     return [Vector([1.0, 0.0, 0.0, 0.0], entry.id, 4) for _ in texts]
+
+
+class _EmbedFailure(Exception):
+    """Distinct exception used to simulate a killed/crashed embedding step."""
 
 
 # --- zero-embeds on unchanged reindex (PRD key acceptance) ---
@@ -488,5 +492,165 @@ def test_index_enumerates_transcripts_producer_and_indexes_its_chunks(tmp_path, 
     assert report.chunks_added > 0
     hits = store.search_bm25(
         "freshly-added-transcript-marker", Scope("portfolio", None), corpus=None, k=10
+    )
+    assert len(hits) == 1
+
+
+# --- checkpointing: a killed run keeps the progress it already committed ---
+
+
+def test_index_preserves_already_committed_chunks_when_embedding_fails_partway(
+    tmp_path, monkeypatch
+):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+
+    repo_dir = tmp_path / "repoA"
+    repo_dir.mkdir()
+    file_committed = repo_dir / "committed.md"
+    file_committed.write_text("# Heading\ncommitted-before-failure-marker\n")
+    file_uncommitted = repo_dir / "uncommitted.md"
+    file_uncommitted.write_text("# Heading\nnever-embedded-marker\n")
+
+    def fake_enum(*a, **k):
+        yield CorpusFile("notes", "repoA", file_committed)
+        yield CorpusFile("notes", "repoA", file_uncommitted)
+
+    call_count = {"n": 0}
+
+    def failing_embed(texts, entry):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            return [Vector([1.0, 0.0, 0.0, 0.0], entry.id, 4) for _ in texts]
+        raise _EmbedFailure("embedding server died mid-run")
+
+    monkeypatch.setattr("engram.indexer.enumerate_corpora", fake_enum)
+    monkeypatch.setattr("engram.indexer.embed", failing_embed)
+
+    with pytest.raises(_EmbedFailure):
+        index(store, config, Scope("portfolio", None))
+
+    hits_committed = store.search_bm25(
+        "committed-before-failure-marker", Scope("portfolio", None), corpus=None, k=10
+    )
+    assert len(hits_committed) == 1
+
+    hits_uncommitted = store.search_bm25(
+        "never-embedded-marker", Scope("portfolio", None), corpus=None, k=10
+    )
+    assert hits_uncommitted == []
+
+
+# --- checkpointing: re-run after a failure resumes instead of restarting ---
+
+
+def test_rerun_after_partial_failure_embeds_only_the_uncommitted_file(
+    tmp_path, monkeypatch
+):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+
+    repo_dir = tmp_path / "repoA"
+    repo_dir.mkdir()
+    file_committed = repo_dir / "committed.md"
+    file_committed.write_text("# Heading\nalready-committed-marker\n")
+    file_uncommitted = repo_dir / "uncommitted.md"
+    file_uncommitted.write_text("# Heading\nresumed-after-failure-marker\n")
+
+    def fake_enum(*a, **k):
+        yield CorpusFile("notes", "repoA", file_committed)
+        yield CorpusFile("notes", "repoA", file_uncommitted)
+
+    call_count = {"n": 0}
+
+    def failing_embed(texts, entry):
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            return [Vector([1.0, 0.0, 0.0, 0.0], entry.id, 4) for _ in texts]
+        raise _EmbedFailure("embedding server died mid-run")
+
+    monkeypatch.setattr("engram.indexer.enumerate_corpora", fake_enum)
+    monkeypatch.setattr("engram.indexer.embed", failing_embed)
+
+    with pytest.raises(_EmbedFailure):
+        index(store, config, Scope("portfolio", None))
+
+    embed_calls = []
+
+    def counting_embed(texts, entry):
+        embed_calls.append(texts)
+        return [Vector([1.0, 0.0, 0.0, 0.0], entry.id, 4) for _ in texts]
+
+    monkeypatch.setattr("engram.indexer.embed", counting_embed)
+
+    second_report = index(store, config, Scope("portfolio", None))
+
+    assert len(embed_calls) == 1
+    all_texts = [t for call in embed_calls for t in call]
+    assert not any("already-committed-marker" in t for t in all_texts)
+    assert any("resumed-after-failure-marker" in t for t in all_texts)
+    assert second_report.chunks_added > 0
+
+    hits_resumed = store.search_bm25(
+        "resumed-after-failure-marker", Scope("portfolio", None), corpus=None, k=10
+    )
+    assert len(hits_resumed) == 1
+
+
+# --- checkpointing: a killed run never prunes rows of files it never reached ---
+
+
+def test_partial_failure_never_prunes_rows_of_files_it_never_reached(
+    tmp_path, monkeypatch
+):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+
+    repo_dir = tmp_path / "repoA"
+    repo_dir.mkdir()
+
+    failing_file = repo_dir / "triggers-failure.md"
+    failing_file.write_text("# Heading\nfailing-file-marker\n")
+
+    unreached_file = repo_dir / "never-reached.md"
+    unreached_file.write_text("# Heading\nnever-reached-preexisting-marker\n")
+
+    # Simulate rows already committed by an earlier, successful index() run.
+    preexisting_chunk = Chunk(
+        corpus="notes",
+        repo="repoA",
+        doc_type="md",
+        path=str(unreached_file),
+        heading="Heading",
+        body="never-reached-preexisting-marker",
+        line_start=1,
+        line_end=2,
+        content_hash=hash_source(unreached_file),
+        chunk_ordinal=0,
+    )
+    store.upsert_chunks(
+        [
+            ChunkWithVector(
+                chunk=preexisting_chunk,
+                vector=Vector([1.0, 0.0, 0.0, 0.0], "test-model", 4),
+            )
+        ]
+    )
+
+    def fake_enum(*a, **k):
+        yield CorpusFile("notes", "repoA", failing_file)
+        yield CorpusFile("notes", "repoA", unreached_file)
+
+    def failing_embed(texts, entry):
+        raise _EmbedFailure("embedding server died mid-run")
+
+    monkeypatch.setattr("engram.indexer.enumerate_corpora", fake_enum)
+    monkeypatch.setattr("engram.indexer.embed", failing_embed)
+
+    with pytest.raises(_EmbedFailure):
+        index(store, config, Scope("portfolio", None))
+
+    hits = store.search_bm25(
+        "never-reached-preexisting-marker", Scope("portfolio", None), corpus=None, k=10
     )
     assert len(hits) == 1
