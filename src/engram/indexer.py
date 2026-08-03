@@ -38,15 +38,31 @@ def index(
 
     store.assert_configured_model(entry.id)
 
-    # 2. Diff against known sources, chunk, and embed changed files
+    # 2. Diff, chunk, embed, and upsert per-file (commit as we go)
     known = store.known_sources(scope, corpus)
-    all_chunks, chunks_added, active_sources = _diff_and_embed(files, known, entry)
+    chunks_added = 0
+    active_sources: set[tuple[str, str, str]] = set()
 
-    # 3. Upsert
-    if all_chunks:
+    for file in files:
+        h = hash_source(file.path)
+        key = (file.repo, str(file.path), h)
+
+        if key in known:
+            active_sources.add(key)
+            continue
+
+        chunks = _chunk_file(file, h)
+        if not chunks:
+            continue
+
+        texts = [c.text_for_embedding for c in chunks]
+        vectors = embed(texts, entry)
+        all_chunks = [ChunkWithVector(chunk=c, vector=v) for c, v in zip(chunks, vectors)]
         store.upsert_chunks(all_chunks)
+        active_sources.add(key)
+        chunks_added += len(chunks)
 
-    # 4. Prune
+    # 3. Prune (only reached here if the loop completed without exception)
     chunks_pruned = store.prune(scope, corpus, active_sources)
 
     return IndexReport(
