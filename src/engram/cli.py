@@ -44,10 +44,12 @@ def _resolve_scope(kind: str) -> Scope | None:
     return Scope("repo", repo_name)
 
 
-def _repo_scope_error_msg() -> str:
+def _repo_scope_error_msg(mention_scope: bool = True) -> str:
     if not GITA_REPOS_CSV.exists():
         return f"{GITA_REPOS_CSV} not found; register repos with gita first"
-    return _NOT_IN_REPO_MSG
+    if mention_scope:
+        return _NOT_IN_REPO_MSG
+    return f"not inside a registered repo; register it in {GITA_REPOS_CSV}"
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -244,7 +246,7 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
 
     scope = _resolve_scope("repo")
     if scope is None:
-        print(_repo_scope_error_msg(), file=sys.stderr)
+        print(_repo_scope_error_msg(mention_scope=False), file=sys.stderr)
         return 1
 
     repo_name = scope.repo
