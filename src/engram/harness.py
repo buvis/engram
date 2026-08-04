@@ -1,5 +1,6 @@
 """Eval harness: score embedding models against a gold set, compare to rg baseline."""
 
+import hashlib
 import itertools
 import os
 import re
@@ -67,6 +68,35 @@ def _sanitize_for_filename(model_id: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]", "_", model_id)
 
 
+def _chunking_signature() -> str:
+    """Fingerprint of the code that produces chunks and vectors.
+
+    A candidate index is only safe to reuse while the code that built it is
+    unchanged: `index()` skips a file whose *source* hash is unchanged, so a
+    chunker or embedding change would leave the old chunks in place and the gate
+    would score yesterday's vectors. Folding this into the database name makes
+    any engram change produce a different file rather than silently stale rows.
+    """
+    digest = hashlib.sha256()
+    for path in sorted(Path(__file__).resolve().parent.glob("*.py")):
+        digest.update(path.read_bytes())
+    return digest.hexdigest()[:12]
+
+
+def _candidate_db(work_dir: Path, entry: EmbeddingEntry, goldset) -> Path:
+    """Where this candidate's index lives.
+
+    Keyed by everything the index depends on - the model, the corpora the
+    goldset asks for, and the chunking code - so a cached index is either
+    exactly right to reuse or is not found at all. Reuse matters because
+    `index()` is incremental: a re-run with all three unchanged reindexes in
+    seconds instead of repeating a 20-25 minute cold build per candidate.
+    """
+    corpora = "-".join(sorted({g.corpus for g in goldset}))
+    name = f"harness-{_sanitize_for_filename(entry.id)}-{corpora}-{_chunking_signature()}"
+    return work_dir / f"{name}.db"
+
+
 def load_goldset(goldset_path: Path) -> list[GoldEntry]:
     raw = yaml.safe_load(goldset_path.read_text())
     if len(raw) < 30:
@@ -95,9 +125,7 @@ def _score_candidate(
         pinned_id=entry.id,
         config_path=config_path,
     )
-    db = work_dir / f"harness-{_sanitize_for_filename(entry.id)}.db"
-    if db.exists():
-        db.unlink()
+    db = _candidate_db(work_dir, entry, goldset)
     store = open_store(db)
     try:
         for corpus in sorted({g.corpus for g in goldset}):

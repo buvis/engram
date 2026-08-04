@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from engram import harness
 from engram.client import EmbeddingEntry, EngramConfig, ServerLease, load_config
 from engram.corpora import CorpusFile
 from engram.harness import (
@@ -1222,6 +1223,70 @@ def test_score_candidate_closes_store_connection(tmp_path, monkeypatch):
 
     assert opened
     assert all(s.conn.closed for s in opened)
+
+
+# --- regression: a candidate index is reused instead of rebuilt cold ---
+# _score_candidate unlinked the database on every run and eval/harness.py handed
+# it a TemporaryDirectory, so each of the three candidates paid a full 20-25
+# minute cold index on every gate run. index() is incremental, so the rebuild was
+# pure waste - but only while the model, the goldset's corpora and the chunking
+# code are all unchanged, which is what the filename now encodes.
+
+
+def _run_once(tmp_path, monkeypatch, work_dir, entry):
+    files = _dummy_files(tmp_path, 30, prefix="reuse")
+    entries_meta = _valid_goldset_entries(files)
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+    config = _harness_config(tmp_path, [entry])
+    _write_config_toml(config.config_path, [entry])
+    expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
+    _patch_common(
+        monkeypatch, tmp_path, _hit_or_miss_query(expected_by_query, lambda c: True)
+    )
+    run_harness(config, goldset_path, work_dir)
+
+
+def test_score_candidate_keeps_the_candidate_database_for_the_next_run(
+    tmp_path, monkeypatch
+):
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+    entry = _entry("reuse-model", 8121)
+
+    _run_once(tmp_path, monkeypatch, work_dir, entry)
+    databases = sorted(work_dir.glob("*.db"))
+    assert len(databases) == 1, "the candidate index should survive the run"
+
+    marker = databases[0].stat().st_ino
+    _run_once(tmp_path, monkeypatch, work_dir, entry)
+
+    survivors = sorted(work_dir.glob("*.db"))
+    assert [p.name for p in survivors] == [databases[0].name]
+    assert survivors[0].stat().st_ino == marker, "the same file should be reused"
+
+
+def test_candidate_database_name_changes_when_the_chunking_code_changes(
+    tmp_path, monkeypatch
+):
+    goldset = [GoldEntry(query="q", expected_path="/tmp/x", corpus="prd")]
+    entry = _entry("sig-model", 8122)
+
+    before = harness._candidate_db(tmp_path, entry, goldset)
+    monkeypatch.setattr(harness, "_chunking_signature", lambda: "deadbeef0000")
+    after = harness._candidate_db(tmp_path, entry, goldset)
+
+    assert before != after, "a chunking change must not reuse the old index"
+
+
+def test_candidate_database_name_changes_when_the_goldset_corpora_change(tmp_path):
+    entry = _entry("corpora-model", 8123)
+    prd_only = [GoldEntry(query="q", expected_path="/tmp/x", corpus="prd")]
+    plus_code = [*prd_only, GoldEntry(query="q2", expected_path="/tmp/y", corpus="code")]
+
+    assert harness._candidate_db(tmp_path, entry, prd_only) != harness._candidate_db(
+        tmp_path, entry, plus_code
+    ), "a different corpus set would leave foreign rows as distractors"
 
 
 # --- format_report: per-model, per-corpus hit rates ---
