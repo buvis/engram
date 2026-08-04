@@ -492,3 +492,15 @@ def test_default_error_pattern_keeps_tool_result_carrying_each_marker(tmp_path, 
     assert chunks[0].line_start == 1
     assert chunks[0].line_end == 1
     assert chunks[0].chunk_ordinal == 1
+
+
+# --- chunk(): a file whose bytes cannot be decoded as UTF-8 is skipped, not raised ---
+
+
+def test_file_with_undecodable_bytes_is_skipped_not_raised(tmp_path):
+    path = tmp_path / "session.jsonl"
+    path.write_bytes(b"\xff\xfe" + json.dumps({"type": "user"}).encode() + b"\n")
+
+    chunks = transcripts.chunk(path, repo="cellar", content_hash="hash-abc", error_patterns=[])
+
+    assert chunks == []

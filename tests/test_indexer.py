@@ -1,6 +1,7 @@
 import engram.corpora as corpora_module
 import pytest
 
+from engram import symbols
 from engram.client import EmbeddingEntry, EngramConfig, Vector
 from engram.corpora import CorpusFile, hash_source
 from engram.indexer import IndexReport, _chunk_file, index
@@ -652,5 +653,176 @@ def test_partial_failure_never_prunes_rows_of_files_it_never_reached(
 
     hits = store.search_bm25(
         "never-reached-preexisting-marker", Scope("portfolio", None), corpus=None, k=10
+    )
+    assert len(hits) == 1
+
+
+# --- Defect A: a repo whose git-ls-files enumeration failed must not have its
+# already-indexed chunks pruned; a repo that enumerates fine still prunes normally ---
+
+
+def test_failed_repo_enumeration_does_not_prune_its_chunks(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+
+    # Rows already indexed for repoA and repoB by an earlier, healthy run.
+    preexisting_a = Chunk(
+        corpus="code",
+        repo="repoA",
+        doc_type="function",
+        path="repoA/old.py",
+        heading="Function repo_a_marker",
+        body="def repo_a_marker():\n    pass",
+        line_start=1,
+        line_end=2,
+        content_hash="preexisting-hash-a",
+        chunk_ordinal=1,
+    )
+    preexisting_b = Chunk(
+        corpus="code",
+        repo="repoB",
+        doc_type="function",
+        path="repoB/old.py",
+        heading="Function repo_b_marker",
+        body="def repo_b_marker():\n    pass",
+        line_start=1,
+        line_end=2,
+        content_hash="preexisting-hash-b",
+        chunk_ordinal=1,
+    )
+    store.upsert_chunks(
+        [
+            ChunkWithVector(
+                chunk=preexisting_a, vector=Vector([1.0, 0.0, 0.0, 0.0], "test-model", 4)
+            ),
+            ChunkWithVector(
+                chunk=preexisting_b, vector=Vector([1.0, 0.0, 0.0, 0.0], "test-model", 4)
+            ),
+        ]
+    )
+
+    repo_a_dir = tmp_path / "repoA"
+    repo_a_dir.mkdir()
+    file_a = repo_a_dir / "new.py"
+    file_a.write_text("def repo_a_marker():\n    pass\n")
+
+    def fake_symbols_enum(*a, **k):
+        # repoA enumerates fine and reports its one currently-tracked file.
+        yield CorpusFile("code", "repoA", file_a)
+        # repoB's `git ls-files` failed (dir gone / mid-rebase / unmounted disk):
+        # nothing is yielded for it, matching enumerate()'s real failure branch.
+        corpora_module.missing_dirs.append("code:repoB")
+
+    monkeypatch.setattr("engram.indexer.enumerate_corpora", lambda *a, **k: iter(()))
+    monkeypatch.setattr("engram.indexer.symbols.enumerate", fake_symbols_enum)
+    monkeypatch.setattr("engram.indexer.embed", fake_embed)
+
+    index(store, config, Scope("portfolio", None))
+
+    remaining_paths = {c.path for c in store.chunks_for_corpus("code")}
+    assert preexisting_b.path in remaining_paths
+
+
+def test_healthy_repo_still_prunes_genuinely_deleted_files_despite_a_sibling_repos_enumeration_failure(
+    tmp_path, monkeypatch
+):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+
+    preexisting_a_old = Chunk(
+        corpus="code",
+        repo="repoA",
+        doc_type="function",
+        path="repoA/old.py",
+        heading="Function repo_a_marker",
+        body="def repo_a_marker():\n    pass",
+        line_start=1,
+        line_end=2,
+        content_hash="preexisting-hash-a",
+        chunk_ordinal=1,
+    )
+    preexisting_b = Chunk(
+        corpus="code",
+        repo="repoB",
+        doc_type="function",
+        path="repoB/old.py",
+        heading="Function repo_b_marker",
+        body="def repo_b_marker():\n    pass",
+        line_start=1,
+        line_end=2,
+        content_hash="preexisting-hash-b",
+        chunk_ordinal=1,
+    )
+    store.upsert_chunks(
+        [
+            ChunkWithVector(
+                chunk=preexisting_a_old, vector=Vector([1.0, 0.0, 0.0, 0.0], "test-model", 4)
+            ),
+            ChunkWithVector(
+                chunk=preexisting_b, vector=Vector([1.0, 0.0, 0.0, 0.0], "test-model", 4)
+            ),
+        ]
+    )
+
+    # repoA is healthy this run but old.py is genuinely gone; only a different
+    # file remains tracked.
+    repo_a_dir = tmp_path / "repoA"
+    repo_a_dir.mkdir()
+    file_a_current = repo_a_dir / "current.py"
+    file_a_current.write_text("def repo_a_current():\n    pass\n")
+
+    def fake_symbols_enum(*a, **k):
+        yield CorpusFile("code", "repoA", file_a_current)
+        corpora_module.missing_dirs.append("code:repoB")
+
+    monkeypatch.setattr("engram.indexer.enumerate_corpora", lambda *a, **k: iter(()))
+    monkeypatch.setattr("engram.indexer.symbols.enumerate", fake_symbols_enum)
+    monkeypatch.setattr("engram.indexer.embed", fake_embed)
+
+    index(store, config, Scope("portfolio", None))
+
+    remaining_paths = {c.path for c in store.chunks_for_corpus("code")}
+    assert preexisting_a_old.path not in remaining_paths
+    assert preexisting_b.path in remaining_paths
+
+
+# --- Defect B: a file that raises while being parsed is skipped, not fatal,
+# and the run completes and visibly reports the skip ---
+
+
+def test_index_skips_file_that_fails_to_parse_completes_and_reports_the_skip(
+    tmp_path, monkeypatch
+):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+
+    repo_dir = tmp_path / "repoA"
+    repo_dir.mkdir()
+    good_file = repo_dir / "good.py"
+    good_file.write_text("def surviving_marker():\n    pass\n")
+    bad_file = repo_dir / "bad.py"
+    bad_file.write_text("def failing_marker():\n    pass\n")
+
+    def fake_symbols_enum(*a, **k):
+        yield CorpusFile("code", "repoA", good_file)
+        yield CorpusFile("code", "repoA", bad_file)
+
+    real_process = symbols.process
+
+    def flaky_process(source, process_config):
+        if "failing_marker" in source:
+            raise RuntimeError("tree-sitter blew up")
+        return real_process(source, process_config)
+
+    monkeypatch.setattr("engram.indexer.enumerate_corpora", lambda *a, **k: iter(()))
+    monkeypatch.setattr("engram.indexer.symbols.enumerate", fake_symbols_enum)
+    monkeypatch.setattr("engram.symbols.process", flaky_process)
+    monkeypatch.setattr("engram.indexer.embed", fake_embed)
+
+    report = index(store, config, Scope("portfolio", None))
+
+    assert report.files_skipped >= 1
+    hits = store.search_bm25(
+        "surviving_marker", Scope("portfolio", None), corpus=None, k=10
     )
     assert len(hits) == 1

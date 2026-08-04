@@ -139,6 +139,25 @@ def test_file_with_invalid_utf8_bytes_is_parsed_with_replacement_and_not_skipped
     assert "�" in chunks[0].body
 
 
+# --- chunk(): a file that raises while being parsed is skipped, not raised ---
+
+
+def test_file_that_raises_during_parsing_is_skipped_and_recorded(tmp_path, monkeypatch):
+    symbols.skipped_files.clear()
+    path = tmp_path / "pathological.py"
+    path.write_text("def f():\n    pass\n")
+
+    def raising_process(source, process_config):
+        raise RuntimeError("tree-sitter blew up")
+
+    monkeypatch.setattr(symbols, "process", raising_process)
+
+    chunks = symbols.chunk(path, "widget", "h1")
+
+    assert chunks == []
+    assert str(path) in symbols.skipped_files
+
+
 # --- chunk(): empty / whitespace-only source has no symbols and is not a skip ---
 
 
