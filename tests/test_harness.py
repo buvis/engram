@@ -3,7 +3,6 @@ import types
 from pathlib import Path
 
 import pytest
-
 from engram import harness
 from engram.client import EmbeddingEntry, EngramConfig, ServerLease, load_config
 from engram.corpora import CorpusFile
@@ -180,7 +179,8 @@ def _patch_common(
     # producers; default them to no-ops so existing tests (written before
     # those producers existed) don't hit the real filesystem or spawn git.
     monkeypatch.setattr(
-        "engram.harness.transcripts.enumerate", lambda *a, **k: iter(())
+        "engram.harness.transcripts.enumerate",
+        lambda *a, **k: iter(()),
     )
     monkeypatch.setattr("engram.harness.symbols.enumerate", lambda *a, **k: iter(()))
 
@@ -997,7 +997,8 @@ def test_run_harness_stops_the_winners_lease_when_it_crashes_after_selection(
 
 
 def test_run_harness_stops_lease_of_candidate_that_raises_mid_scoring(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     files = _dummy_files(tmp_path, 30)
     entries_meta = _valid_goldset_entries(files)
@@ -1095,7 +1096,8 @@ def test_run_harness_baseline_skips_rg_when_no_corpus_files(tmp_path, monkeypatc
 
 
 def test_baseline_hit_rate_includes_files_from_transcripts_producer(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     files = _dummy_files(tmp_path, 30, prefix="basetranscript")
     entries_meta = _valid_goldset_entries(files)
@@ -1225,6 +1227,58 @@ def test_score_candidate_closes_store_connection(tmp_path, monkeypatch):
     assert all(s.conn.closed for s in opened)
 
 
+# --- regression: only the classes a requirement gates can fail the gate alone ---
+# The per-class bar was applied to every class in the gold set, so PRD 00002 was
+# blocked partly by `prd` at 0.769 - a pre-existing corpus it never introduced and
+# whose retrieval no success metric names.
+
+
+def test_gate_ignores_a_low_class_that_no_requirement_gates(tmp_path, monkeypatch):
+    code_files = _dummy_files(tmp_path, 5, prefix="ungatedcode")
+    prd_files = _dummy_files(tmp_path, 25, prefix="ungatedprd")
+
+    entries_meta = [
+        {"query": f"ungatedcodequery{i}", "expected_path": str(f), "corpus": "code"}
+        for i, f in enumerate(code_files)
+    ] + [
+        {"query": f"ungatedprdquery{i}", "expected_path": str(f), "corpus": "prd"}
+        for i, f in enumerate(prd_files)
+    ]
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    entry = _entry("ungated-class-model", 8151)
+    config = _harness_config(tmp_path, [entry])
+    _write_config_toml(config.config_path, [entry])
+
+    expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
+
+    def scripted_query(store, cfg, text, scope, corpus=None, k=5):
+        # code: 5 of 5 -> 1.0, the only gated class present. prd: 20 of 25 ->
+        # 0.80... deliberately 19 of 25 -> 0.76, under the bar. Pooled 24/30 =
+        # 0.80 still clears the global bar.
+        if text.startswith("ungatedprdquery"):
+            hit = int(text.removeprefix("ungatedprdquery")) < 19
+        else:
+            hit = True
+        if hit:
+            return [_pointer(path=expected_by_query[text], rank=1)]
+        return [_pointer(path="/never/matches.md", rank=1)]
+
+    _patch_common(monkeypatch, tmp_path, scripted_query)
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    report = run_harness(config, goldset_path, work_dir)
+
+    score = report.per_model["ungated-class-model"]
+    assert score.per_corpus_hit_rate["code"] == 1.0
+    assert score.per_corpus_hit_rate["prd"] == pytest.approx(0.76)
+    assert score.hit_rate == pytest.approx(0.80)
+    assert report.gate_passed is True, "an ungated class under the bar must not block"
+
+
 # --- regression: a gold entry is scored against its own corpus ---
 # GoldEntry.corpus was used only to bucket the resulting score, never to scope the
 # query it came from, so a "have I built X" code entry competed against the PRD
@@ -1304,13 +1358,16 @@ def _run_once(tmp_path, monkeypatch, work_dir, entry):
     _write_config_toml(config.config_path, [entry])
     expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
     _patch_common(
-        monkeypatch, tmp_path, _hit_or_miss_query(expected_by_query, lambda c: True)
+        monkeypatch,
+        tmp_path,
+        _hit_or_miss_query(expected_by_query, lambda c: True),
     )
     run_harness(config, goldset_path, work_dir)
 
 
 def test_score_candidate_keeps_the_candidate_database_for_the_next_run(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     work_dir = tmp_path / "work"
     work_dir.mkdir()
@@ -1329,7 +1386,8 @@ def test_score_candidate_keeps_the_candidate_database_for_the_next_run(
 
 
 def test_candidate_database_name_changes_when_the_chunking_code_changes(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     goldset = [GoldEntry(query="q", expected_path="/tmp/x", corpus="prd")]
     entry = _entry("sig-model", 8122)
@@ -1344,10 +1402,15 @@ def test_candidate_database_name_changes_when_the_chunking_code_changes(
 def test_candidate_database_name_changes_when_the_goldset_corpora_change(tmp_path):
     entry = _entry("corpora-model", 8123)
     prd_only = [GoldEntry(query="q", expected_path="/tmp/x", corpus="prd")]
-    plus_code = [*prd_only, GoldEntry(query="q2", expected_path="/tmp/y", corpus="code")]
+    plus_code = [
+        *prd_only,
+        GoldEntry(query="q2", expected_path="/tmp/y", corpus="code"),
+    ]
 
     assert harness._candidate_db(tmp_path, entry, prd_only) != harness._candidate_db(
-        tmp_path, entry, plus_code
+        tmp_path,
+        entry,
+        plus_code,
     ), "a different corpus set would leave foreign rows as distractors"
 
 
@@ -1360,7 +1423,8 @@ def test_format_report_emits_per_corpus_hit_rates():
     report = HarnessReport(
         per_model={
             "m1": ModelScore(
-                hit_rate=0.8, per_corpus_hit_rate={"memory": 0.9, "prd": 0.7}
+                hit_rate=0.8,
+                per_corpus_hit_rate={"memory": 0.9, "prd": 0.7},
             ),
         },
         winner_id="m1",
@@ -1395,7 +1459,8 @@ def test_write_pinned_fails_loud_when_no_pinned_section(tmp_path):
 
 
 def test_baseline_hit_rate_keeps_every_rg_invocation_under_the_os_arg_max(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     # Regression: _baseline_hit_rate passed every corpus file as its own argv
     # entry to a single `rg` call: subprocess.run(["rg", "-il", term,
@@ -1659,7 +1724,9 @@ def test_baseline_hit_rate_counts_a_file_once_even_when_its_path_spans_two_batch
 # --- rg baseline: the path tie-break must not decide hit or miss ---
 
 
-def test_baseline_rate_is_unchanged_when_a_corpus_file_is_renamed(tmp_path, monkeypatch):
+def test_baseline_rate_is_unchanged_when_a_corpus_file_is_renamed(
+    tmp_path, monkeypatch
+):
     # Regression: _baseline_hit_rate ranks tied match counts with
     # `sorted(match_counts.items(), key=lambda x: (-x[1], x[0]))`, so among
     # files that tie on how many query tokens rg found, which ones land
@@ -1689,7 +1756,7 @@ def test_baseline_rate_is_unchanged_when_a_corpus_file_is_renamed(tmp_path, monk
                 query=token,
                 expected_path=str(expected.resolve()),
                 corpus="memory",
-            )
+            ),
         ]
         corpus_files = [
             CorpusFile("memory", "repo", f) for f in [*competitors, expected]
@@ -1698,13 +1765,16 @@ def test_baseline_rate_is_unchanged_when_a_corpus_file_is_renamed(tmp_path, monk
 
     def patch_producers(corpus_files):
         monkeypatch.setattr(
-            "engram.harness.enumerate_corpora", lambda *a, **k: iter(corpus_files)
+            "engram.harness.enumerate_corpora",
+            lambda *a, **k: iter(corpus_files),
         )
         monkeypatch.setattr(
-            "engram.harness.transcripts.enumerate", lambda *a, **k: iter(())
+            "engram.harness.transcripts.enumerate",
+            lambda *a, **k: iter(()),
         )
         monkeypatch.setattr(
-            "engram.harness.symbols.enumerate", lambda *a, **k: iter(())
+            "engram.harness.symbols.enumerate",
+            lambda *a, **k: iter(()),
         )
 
     # Spelling A: the expected file's name sorts LATE among the six tied
@@ -1728,7 +1798,8 @@ def test_baseline_rate_is_unchanged_when_a_corpus_file_is_renamed(tmp_path, monk
 
 
 def test_baseline_rate_still_favors_a_file_that_matches_more_query_tokens(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     # Control for the rename-invariance fix above: real differences in match
     # count must still decide ranking, so a fix must not flatten every file
@@ -1761,15 +1832,17 @@ def test_baseline_rate_still_favors_a_file_that_matches_more_query_tokens(
             query=" ".join(tokens),
             expected_path=str(expected.resolve()),
             corpus="memory",
-        )
+        ),
     ]
     corpus_files = [CorpusFile("memory", "repo", f) for f in [*competitors, expected]]
 
     monkeypatch.setattr(
-        "engram.harness.enumerate_corpora", lambda *a, **k: iter(corpus_files)
+        "engram.harness.enumerate_corpora",
+        lambda *a, **k: iter(corpus_files),
     )
     monkeypatch.setattr(
-        "engram.harness.transcripts.enumerate", lambda *a, **k: iter(())
+        "engram.harness.transcripts.enumerate",
+        lambda *a, **k: iter(()),
     )
     monkeypatch.setattr("engram.harness.symbols.enumerate", lambda *a, **k: iter(()))
 
