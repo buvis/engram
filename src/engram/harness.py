@@ -249,8 +249,13 @@ def run_harness(
         gate_passed = (
             per_model[winner_id].hit_rate >= 0.80
             and per_model[winner_id].hit_rate > baseline_hit_rate
+            and all(
+                rate >= 0.80
+                for rate in per_model[winner_id].per_corpus_hit_rate.values()
+            )
         )
-        _write_pinned(config.config_path, winner_id)
+        if gate_passed:
+            _write_pinned(config.config_path, winner_id)
         return HarnessReport(per_model, winner_id, baseline_hit_rate, gate_passed)
     finally:
         for lease in leases:
