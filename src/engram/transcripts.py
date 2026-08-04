@@ -125,7 +125,7 @@ def chunk(
     return chunks
 
 
-@functools.lru_cache(maxsize=None)
+@functools.cache
 def _load_error_patterns(config_path: Path = client.DEFAULT_CONFIG_PATH) -> list[str]:
     """Read [transcripts].error_patterns, validating every regex here.
 
