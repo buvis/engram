@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import json
 import re
 import tomllib
@@ -124,7 +125,15 @@ def chunk(
     return chunks
 
 
+@functools.lru_cache(maxsize=None)
 def _load_error_patterns(config_path: Path = client.DEFAULT_CONFIG_PATH) -> list[str]:
+    """Read [transcripts].error_patterns, validating every regex here.
+
+    Cached per config path: chunk() is called once per transcript file, so an
+    uncached read re-parsed the TOML ~630 times a run. A raising call is not
+    memoized, so a bad config keeps failing rather than being cached as good.
+    A config edited mid-process is not picked up, which is fine for a CLI.
+    """
     if not config_path.exists():
         return DEFAULT_ERROR_PATTERNS
 
@@ -132,6 +141,18 @@ def _load_error_patterns(config_path: Path = client.DEFAULT_CONFIG_PATH) -> list
         raw = tomllib.load(f)
 
     patterns = raw.get("transcripts", {}).get("error_patterns")
-    if isinstance(patterns, list):
-        return patterns
-    return DEFAULT_ERROR_PATTERNS
+    if not isinstance(patterns, list):
+        return DEFAULT_ERROR_PATTERNS
+
+    # Compile here, at the config boundary, so a bad pattern names itself and
+    # its key instead of surfacing later as a bare re.error from inside a
+    # chunking pass, mid-run, with no clue where it came from.
+    for pattern in patterns:
+        try:
+            re.compile(pattern)
+        except re.error as e:
+            raise ValueError(
+                f"config {config_path} has an invalid regex in "
+                f"[transcripts] error_patterns: {pattern!r} ({e})",
+            ) from e
+    return patterns
