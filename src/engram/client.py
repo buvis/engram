@@ -458,25 +458,17 @@ def ensure_served(entry: EmbeddingEntry) -> ServerLease:
     )
 
 
-def _pid_to_release(lease: ServerLease) -> int | None:
-    """The pid `stop_served` should signal for this lease.
-
-    A lease goes stale whenever `embed()` recycles a degraded server: it keeps
-    the fresh lease in a local while the caller still holds the pre-recycle pid.
-    Signalling that dead pid left the replacement running - `harness.run_harness`
-    holds a lease per candidate across a full scoring run, so it leaked a server
-    per recycled candidate. A stale lease therefore resolves to whatever we
-    currently own at that endpoint: "release engram's server here", which is what
-    every caller means. Returns None when we own nothing there.
-    """
-    return _spawned_pids_by_endpoint.get(lease.entry.endpoint)
-
-
 def stop_served(lease: ServerLease) -> None:
     if not lease.spawned:
         return
 
-    pid = _pid_to_release(lease)
+    # Resolve by endpoint, not by the lease's own pid: `embed()` recycles a
+    # degraded server and keeps the fresh lease locally, so the caller can still
+    # be holding a pre-recycle pid. Signalling that dead pid left the
+    # replacement running - run_harness holds a lease per candidate across a
+    # whole scoring run, so it leaked a server per recycled candidate. None
+    # means we own nothing at this endpoint.
+    pid = _spawned_pids_by_endpoint.get(lease.entry.endpoint)
     if pid is None:
         return
 
