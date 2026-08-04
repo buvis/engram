@@ -225,7 +225,10 @@ def _run_status(args: argparse.Namespace) -> int:
 
     try:
         list(enumerate_corpora())
-        list(transcripts.enumerate())
+        # One next() is enough: enumerate() raises for a missing cellar root
+        # before yielding anything, so this fails loud without walking ~1,800
+        # transcript files on every status call.
+        next(transcripts.enumerate(), None)
     except FileNotFoundError as e:
         print(str(e), file=sys.stderr)
         return 1
