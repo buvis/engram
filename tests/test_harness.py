@@ -1649,3 +1649,91 @@ def test_baseline_rate_still_favors_a_file_that_matches_more_query_tokens(
     rate = _baseline_hit_rate(goldset)
 
     assert rate == 1.0
+
+
+def test_a_finished_models_score_reaches_stdout_before_a_later_model_crashes_the_run(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    # A gold-gate run scores several models in sequence and can take ~40
+    # minutes; today nothing is printed until the whole run returns, so a
+    # crash partway through discards every already-scored model's result
+    # with no record of what it scored. Once the first model finishes
+    # scoring, its score line must already be on stdout, even though the
+    # run as a whole goes on to blow up scoring the second model.
+    files = _dummy_files(tmp_path, 30)
+    entries_meta = _valid_goldset_entries(files)
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    entry_good = _entry("good-model", 8210)
+    entry_bad = _entry("bad-model", 8211)
+    config = _harness_config(tmp_path, [entry_good, entry_bad])
+    _write_config_toml(config.config_path, [entry_good, entry_bad])
+
+    expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
+
+    def scripted_query(store, config, text, scope, corpus=None, k=5):
+        if config.embeddings[0].id == "bad-model":
+            raise RuntimeError("scoring exploded on the second model")
+        return [_pointer(path=expected_by_query[text], rank=1)]
+
+    _patch_common(monkeypatch, tmp_path, scripted_query)
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    with pytest.raises(RuntimeError):
+        run_harness(config, goldset_path, work_dir)
+
+    streamed = capsys.readouterr().out
+    assert "good-model\t1.000" in streamed
+
+
+def test_a_successful_two_model_run_streams_both_score_lines_without_altering_the_final_summary(
+    tmp_path,
+    monkeypatch,
+    capsys,
+):
+    # Streaming a score line as each model finishes must not change what the
+    # run ultimately reports: format_report(report) has to come out exactly
+    # as it does today - same lines, same order, same shape - so anything
+    # parsing the final summary keeps working.
+    files = _dummy_files(tmp_path, 30)
+    entries_meta = _valid_goldset_entries(files)
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    entry_a = _entry("model-a", 8220)
+    entry_b = _entry("model-b", 8221)
+    config = _harness_config(tmp_path, [entry_a, entry_b])
+    _write_config_toml(config.config_path, [entry_a, entry_b])
+
+    expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
+    scripted_query = _hit_or_miss_query(
+        expected_by_query,
+        lambda c: c.embeddings[0].id == "model-a",
+    )
+
+    _patch_common(monkeypatch, tmp_path, scripted_query)
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    report = run_harness(config, goldset_path, work_dir)
+
+    streamed = capsys.readouterr().out
+    assert "model-a\t1.000" in streamed
+    assert "model-b\t0.000" in streamed
+
+    from engram.harness import format_report
+
+    lines = format_report(report)
+
+    assert lines[0] == "model-a\t1.000"
+    assert lines.count("model-a\t1.000") == 1
+    assert lines.count("model-b\t0.000") == 1
+    assert lines[-3] == "winner\tmodel-a"
+    assert lines[-2].startswith("baseline\t")
+    assert lines[-1].startswith("gate_passed\t")
