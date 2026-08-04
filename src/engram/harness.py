@@ -193,8 +193,17 @@ def _baseline_hit_rate(goldset) -> float:
                             matched_files.add(fp)
             for fp in matched_files:
                 match_counts[fp] = match_counts.get(fp, 0) + 1
-        ranked = sorted(match_counts.items(), key=lambda x: (-x[1], x[0]))
-        top5 = {str(Path(p).resolve()) for p, _ in ranked[:5]}
+        # rg gives us a match count and nothing else, so it cannot order files
+        # that tie. Ranking them by path made the whole baseline depend on how
+        # a file happened to be spelled (a rename once moved the rate from
+        # 0.205 to 0.068). Take the 5th-best count as a cutoff and admit every
+        # file at or above it, so a tie is resolved by admitting the whole
+        # band rather than by alphabet.
+        counts = sorted(match_counts.values(), reverse=True)
+        cutoff = counts[min(4, len(counts) - 1)] if counts else 0
+        top5 = {
+            str(Path(p).resolve()) for p, c in match_counts.items() if c >= cutoff
+        }
         if g.expected_path in top5:
             baseline_hits += 1
     return baseline_hits / len(goldset)
