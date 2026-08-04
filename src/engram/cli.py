@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from engram import corpora, symbols
+from engram import corpora, symbols, transcripts
 from engram.client import EngramConfig, embed, load_config, resolve_pinned_entry
 from engram.corpora import GITA_REPOS_CSV, enumerate_corpora
 from engram.findings import FINDINGS_CORPUS
@@ -225,6 +225,7 @@ def _run_status(args: argparse.Namespace) -> int:
 
     try:
         list(enumerate_corpora())
+        list(transcripts.enumerate())
     except FileNotFoundError as e:
         print(str(e), file=sys.stderr)
         return 1
