@@ -907,7 +907,12 @@ def test_config_names_winner_after_gate_passes(tmp_path, monkeypatch):
 # --- run_harness: lease lifecycle ---
 
 
-def test_run_harness_stops_every_lease_except_the_winners(tmp_path, monkeypatch):
+def test_run_harness_stops_every_lease_including_the_winners(tmp_path, monkeypatch):
+    # This test previously asserted the winner's server was LEFT RUNNING
+    # (`stopped_ids == {"model-b"}`). That pinned a leak: the next run leased
+    # the same endpoint as if unspawned, and a gold-gate run had to be
+    # unblocked by killing the process by hand. The assertion is inverted
+    # deliberately - the old expectation encoded the bug, not the intent.
     files = _dummy_files(tmp_path, 30)
     entries_meta = _valid_goldset_entries(files)
     goldset_path = tmp_path / "goldset.yaml"
@@ -939,7 +944,54 @@ def test_run_harness_stops_every_lease_except_the_winners(tmp_path, monkeypatch)
 
     assert report.winner_id == "model-a"
     stopped_ids = {lease.entry.id for lease in stopped}
-    assert stopped_ids == {"model-b"}
+    assert stopped_ids == {"model-a", "model-b"}
+
+
+def test_run_harness_stops_the_winners_lease_when_it_crashes_after_selection(
+    tmp_path,
+    monkeypatch,
+):
+    """A crash between winner selection and the return - here from the
+    baseline computation - must still release the winner's server. Before the
+    fix the `finally` skipped the winner unconditionally, so this path leaked
+    the one server that was actually still running."""
+    files = _dummy_files(tmp_path, 30)
+    entries_meta = _valid_goldset_entries(files)
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    entry_a = _entry("crash-winner", 8146)
+    entry_b = _entry("crash-loser", 8147)
+    config = _harness_config(tmp_path, [entry_a, entry_b])
+    _write_config_toml(config.config_path, [entry_a, entry_b])
+
+    expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
+    scripted_query = _hit_or_miss_query(
+        expected_by_query,
+        lambda c: c.embeddings[0].id == "crash-winner",
+    )
+
+    stopped = []
+    _patch_common(
+        monkeypatch,
+        tmp_path,
+        scripted_query,
+        stop_served_fn=_make_stop_served(stopped),
+    )
+
+    def exploding_baseline(*a, **k):
+        raise RuntimeError("baseline exploded after the winner was picked")
+
+    monkeypatch.setattr("engram.harness._baseline_hit_rate", exploding_baseline)
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    with pytest.raises(RuntimeError):
+        run_harness(config, goldset_path, work_dir)
+
+    stopped_ids = {lease.entry.id for lease in stopped}
+    assert stopped_ids == {"crash-winner", "crash-loser"}
 
 
 def test_run_harness_stops_lease_of_candidate_that_raises_mid_scoring(
