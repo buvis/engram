@@ -80,7 +80,7 @@ def chunk(
     if error_patterns is None:
         error_patterns = _load_error_patterns()
 
-    lines = path.read_text().split("\n")
+    lines = path.read_text(errors="replace").split("\n")
     chunks: list[Chunk] = []
     for line_number in range(1, len(lines) + 1):
         try:

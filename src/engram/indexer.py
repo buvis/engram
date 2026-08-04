@@ -17,6 +17,7 @@ class IndexReport:
     chunks_updated: int
     chunks_pruned: int
     corpora_missing: list[str]
+    files_skipped: int = 0
 
 
 def index(
@@ -42,6 +43,16 @@ def index(
     known = store.known_sources(scope, corpus)
     chunks_added = 0
     active_sources: set[tuple[str, str, str]] = set()
+
+    # Repos whose `code:` enumeration failed this run enumerated no files;
+    # carry their already-known chunks forward so prune() doesn't treat them
+    # as vanished.
+    failed_code_repos = {
+        name.split(":", 1)[1] for name in corpora_missing if name.startswith("code:")
+    }
+    active_sources |= {key for key in known if key[0] in failed_code_repos}
+
+    skipped_before = len(symbols.skipped_files)
 
     for file in files:
         h = hash_source(file.path)
@@ -71,6 +82,7 @@ def index(
         chunks_updated=0,
         chunks_pruned=chunks_pruned,
         corpora_missing=corpora_missing,
+        files_skipped=len(symbols.skipped_files) - skipped_before,
     )
 
 

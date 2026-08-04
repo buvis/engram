@@ -47,7 +47,11 @@ def chunk(path: Path, repo: str, content_hash: str) -> list[Chunk]:
     if not source.strip():
         return []
 
-    result = process(source, ProcessConfig(language, structure=True))
+    try:
+        result = process(source, ProcessConfig(language, structure=True))
+    except Exception:
+        skipped_files.append(str(path))
+        return []
     lines = source.splitlines()
 
     chunks: list[Chunk] = []
