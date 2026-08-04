@@ -11,6 +11,7 @@ from engram.harness import (
     GoldEntry,
     HarnessReport,
     ModelScore,
+    _baseline_hit_rate,
     _sanitize_for_filename,
     _write_pinned,
     load_goldset,
@@ -1526,3 +1527,125 @@ def test_baseline_hit_rate_counts_a_file_once_even_when_its_path_spans_two_batch
 
     assert report_small.baseline_hit_rate == 1 / 30
     assert report_large.baseline_hit_rate == report_small.baseline_hit_rate
+
+
+# --- rg baseline: the path tie-break must not decide hit or miss ---
+
+
+def test_baseline_rate_is_unchanged_when_a_corpus_file_is_renamed(tmp_path, monkeypatch):
+    # Regression: _baseline_hit_rate ranks tied match counts with
+    # `sorted(match_counts.items(), key=lambda x: (-x[1], x[0]))`, so among
+    # files that tie on how many query tokens rg found, which ones land
+    # inside `ranked[:5]` depends purely on alphabetical path order. Renaming
+    # a corpus file -- same content, same match count, only the path changes
+    # -- must not change whether the harness counts it as a baseline hit.
+    token = "tierenametoken"
+
+    def build_scenario(subdir, expected_name):
+        d = tmp_path / subdir
+        d.mkdir()
+        competitors = []
+        for name in (
+            "aa_comp.md",
+            "bb_comp.md",
+            "cc_comp.md",
+            "dd_comp.md",
+            "ee_comp.md",
+        ):
+            f = d / name
+            f.write_text(f"# competitor\n{token} appears once\n")
+            competitors.append(f)
+        expected = d / expected_name
+        expected.write_text(f"# expected\n{token} appears once\n")
+        goldset = [
+            GoldEntry(
+                query=token,
+                expected_path=str(expected.resolve()),
+                corpus="memory",
+            )
+        ]
+        corpus_files = [
+            CorpusFile("memory", "repo", f) for f in [*competitors, expected]
+        ]
+        return goldset, corpus_files
+
+    def patch_producers(corpus_files):
+        monkeypatch.setattr(
+            "engram.harness.enumerate_corpora", lambda *a, **k: iter(corpus_files)
+        )
+        monkeypatch.setattr(
+            "engram.harness.transcripts.enumerate", lambda *a, **k: iter(())
+        )
+        monkeypatch.setattr(
+            "engram.harness.symbols.enumerate", lambda *a, **k: iter(())
+        )
+
+    # Spelling A: the expected file's name sorts LATE among the six tied
+    # paths ("zz_..." after all five "*_comp.md" competitors) -> excluded
+    # from the top-5 cutoff under the current path-ordered tie-break.
+    goldset_late, corpus_files_late = build_scenario("late", "zz_expected.md")
+    patch_producers(corpus_files_late)
+    rate_late = _baseline_hit_rate(goldset_late)
+
+    # Spelling B: byte-identical content, only the path changes so it sorts
+    # EARLY ("00_..." before every competitor) -> included under the same
+    # tie-break.
+    goldset_early, corpus_files_early = build_scenario("early", "00_expected.md")
+    patch_producers(corpus_files_early)
+    rate_early = _baseline_hit_rate(goldset_early)
+
+    assert rate_late == rate_early
+
+
+# --- rg baseline: a file that genuinely matches more tokens still outranks ---
+
+
+def test_baseline_rate_still_favors_a_file_that_matches_more_query_tokens(
+    tmp_path, monkeypatch
+):
+    # Control for the rename-invariance fix above: real differences in match
+    # count must still decide ranking, so a fix must not flatten every file
+    # into "everyone ties". The expected file's path sorts LAST among all
+    # seven candidates, so it can only land in the top 5 because its match
+    # count (all 3 query tokens) genuinely beats every competitor's (1
+    # token each) -- never because of path order.
+    tokens = ("ctrlalpha", "ctrlbravo", "ctrlcharlie")
+    d = tmp_path / "rank"
+    d.mkdir()
+
+    competitors = []
+    for name in (
+        "aa_c0.md",
+        "bb_c1.md",
+        "cc_c2.md",
+        "dd_c3.md",
+        "ee_c4.md",
+        "ff_c5.md",
+    ):
+        f = d / name
+        f.write_text(f"# competitor\n{tokens[0]} appears here\n")
+        competitors.append(f)
+
+    expected = d / "zz_expected.md"
+    expected.write_text(f"# expected\n{' '.join(tokens)} all appear here\n")
+
+    goldset = [
+        GoldEntry(
+            query=" ".join(tokens),
+            expected_path=str(expected.resolve()),
+            corpus="memory",
+        )
+    ]
+    corpus_files = [CorpusFile("memory", "repo", f) for f in [*competitors, expected]]
+
+    monkeypatch.setattr(
+        "engram.harness.enumerate_corpora", lambda *a, **k: iter(corpus_files)
+    )
+    monkeypatch.setattr(
+        "engram.harness.transcripts.enumerate", lambda *a, **k: iter(())
+    )
+    monkeypatch.setattr("engram.harness.symbols.enumerate", lambda *a, **k: iter(()))
+
+    rate = _baseline_hit_rate(goldset)
+
+    assert rate == 1.0
