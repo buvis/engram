@@ -1,4 +1,5 @@
 import json
+import tomllib
 
 import pytest
 
@@ -504,3 +505,74 @@ def test_file_with_undecodable_bytes_is_skipped_not_raised(tmp_path):
     chunks = transcripts.chunk(path, repo="cellar", content_hash="hash-abc", error_patterns=[])
 
     assert chunks == []
+
+
+# --- _load_error_patterns(): config-supplied regexes are validated at load time ---
+
+
+def test_malformed_regex_in_error_patterns_raises_error_naming_pattern_and_config_key(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text('[transcripts]\nerror_patterns = ["[unclosed"]\n')
+
+    # Today _load_error_patterns() returns the bad pattern untouched; the
+    # re.error only surfaces later, from deep inside _has_error_match(), with
+    # no mention of the pattern or the config key. This must raise here instead.
+    with pytest.raises(Exception) as exc_info:
+        transcripts._load_error_patterns(config_path=config_path)
+
+    message = str(exc_info.value)
+    assert "[unclosed" in message
+    assert "error_patterns" in message
+
+
+def test_valid_custom_error_patterns_from_config_replace_the_defaults(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text('[transcripts]\nerror_patterns = ["CUSTOM_MARKER"]\n')
+
+    patterns = transcripts._load_error_patterns(config_path=config_path)
+
+    assert patterns == ["CUSTOM_MARKER"]
+
+
+def test_config_without_transcripts_table_falls_back_to_default_error_patterns(tmp_path):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text('[pinned]\nid = ""\n')
+
+    patterns = transcripts._load_error_patterns(config_path=config_path)
+
+    assert patterns == transcripts.DEFAULT_ERROR_PATTERNS
+
+
+def test_missing_config_file_falls_back_to_default_error_patterns(tmp_path):
+    config_path = tmp_path / "does-not-exist.toml"
+
+    patterns = transcripts._load_error_patterns(config_path=config_path)
+
+    assert patterns == transcripts.DEFAULT_ERROR_PATTERNS
+
+
+# --- _load_error_patterns(): the config is parsed once per run, not once per file ---
+
+
+def test_repeated_loader_calls_with_the_same_config_path_parse_the_toml_file_only_once(
+    tmp_path, monkeypatch
+):
+    config_path = tmp_path / "config.toml"
+    config_path.write_text('[transcripts]\nerror_patterns = ["ONCE_MARKER"]\n')
+
+    parse_count = 0
+    real_load = tomllib.load
+
+    def counting_load(f):
+        nonlocal parse_count
+        parse_count += 1
+        return real_load(f)
+
+    monkeypatch.setattr(transcripts.tomllib, "load", counting_load)
+
+    # chunk() calls _load_error_patterns() with this same config path once per
+    # transcript file in a real run; simulate several such calls here.
+    results = [transcripts._load_error_patterns(config_path=config_path) for _ in range(5)]
+
+    assert results == [["ONCE_MARKER"]] * 5
+    assert parse_count == 1
