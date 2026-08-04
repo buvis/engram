@@ -68,6 +68,20 @@ def _sanitize_for_filename(model_id: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]", "_", model_id)
 
 
+# Modules that cannot change what lands in an index: the eval that reads it and
+# the retrieval that queries it. Everything else in the package is included by
+# default, so a new module that produces chunks is covered without being listed.
+_NON_INDEXING_MODULES = frozenset({"harness.py", "query.py"})
+
+
+def _chunking_sources() -> list[Path]:
+    """The modules whose content decides what an index holds."""
+    package = Path(__file__).resolve().parent
+    return sorted(
+        p for p in package.glob("*.py") if p.name not in _NON_INDEXING_MODULES
+    )
+
+
 def _chunking_signature() -> str:
     """Fingerprint of the code that produces chunks and vectors.
 
@@ -75,10 +89,15 @@ def _chunking_signature() -> str:
     unchanged: `index()` skips a file whose *source* hash is unchanged, so a
     chunker or embedding change would leave the old chunks in place and the gate
     would score yesterday's vectors. Folding this into the database name makes
-    any engram change produce a different file rather than silently stale rows.
+    such a change produce a different file rather than silently stale rows.
+
+    Scoped to the indexing modules on purpose: hashing the whole package meant
+    editing this file invalidated all three candidate indexes and charged a
+    20-25 minute cold rebuild per candidate for a change that cannot affect a
+    single stored chunk.
     """
     digest = hashlib.sha256()
-    for path in sorted(Path(__file__).resolve().parent.glob("*.py")):
+    for path in _chunking_sources():
         digest.update(path.read_bytes())
     return digest.hexdigest()[:12]
 
@@ -134,11 +153,17 @@ def _score_candidate(
         per_corpus_hits: dict[str, int] = {}
         per_corpus_totals: dict[str, int] = {}
         for g in goldset:
+            # Scoped to the corpus the entry declares, matching how every real
+            # consumer queries. Unscoped, a "have I built X" code entry competes
+            # against the PRD specifying X and the transcript where X was built,
+            # and loses to them: measured 0.600 unscoped against 1.000 scoped for
+            # the code class, with every other class unchanged.
             pointers = query(
                 store,
                 cand_cfg,
                 g.query,
                 Scope("portfolio", None),
+                corpus=g.corpus,
                 k=RRF_DEDUP_POOL,
             )
             seen: list[str] = []

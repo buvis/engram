@@ -1225,6 +1225,68 @@ def test_score_candidate_closes_store_connection(tmp_path, monkeypatch):
     assert all(s.conn.closed for s in opened)
 
 
+# --- regression: a gold entry is scored against its own corpus ---
+# GoldEntry.corpus was used only to bucket the resulting score, never to scope the
+# query it came from, so a "have I built X" code entry competed against the PRD
+# specifying X and the transcript where X was built. Measured on the live index:
+# the code class scored 0.600 unscoped and 1.000 scoped, every other class equal.
+
+
+def test_score_candidate_scopes_each_query_to_the_entrys_corpus(tmp_path, monkeypatch):
+    files = _dummy_files(tmp_path, 30, prefix="scoped")
+    entries_meta = _valid_goldset_entries(files)
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+    entry = _entry("scope-model", 8131)
+    config = _harness_config(tmp_path, [entry])
+    _write_config_toml(config.config_path, [entry])
+
+    corpus_by_query = {e["query"]: e["corpus"] for e in entries_meta}
+    seen: list[tuple[str, str | None]] = []
+
+    def recording_query(store, cfg, text, scope, corpus=None, k=5):
+        seen.append((text, corpus))
+        return [_pointer(path=str(files[0]), rank=1)]
+
+    _patch_common(monkeypatch, tmp_path, recording_query)
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+    run_harness(config, goldset_path, work_dir)
+
+    assert seen, "no queries were issued"
+    for text, corpus in seen:
+        assert corpus == corpus_by_query[text], (
+            f"query {text!r} was scored against corpus {corpus!r}, "
+            f"not its own {corpus_by_query[text]!r}"
+        )
+
+
+# --- regression: the index fingerprint covers indexing code only ---
+# It hashed every module in the package, so editing the eval invalidated all three
+# candidate indexes and charged a 20-25 minute cold rebuild per candidate for a
+# change that cannot alter a single stored chunk.
+
+
+def test_chunking_signature_ignores_modules_that_cannot_change_an_index():
+    names = {p.name for p in harness._chunking_sources()}
+
+    assert "harness.py" not in names, "the eval itself cannot change what is indexed"
+    assert "query.py" not in names, "retrieval cannot change what is indexed"
+    # Everything that does build chunks stays in, by default rather than by listing.
+    for producer in (
+        "chunker.py",
+        "corpora.py",
+        "symbols.py",
+        "transcripts.py",
+        "indexer.py",
+        "client.py",
+    ):
+        assert producer in names, (
+            f"{producer} decides index content and must be covered"
+        )
+
+
 # --- regression: a candidate index is reused instead of rebuilt cold ---
 # _score_candidate unlinked the database on every run and eval/harness.py handed
 # it a TemporaryDirectory, so each of the three candidates paid a full 20-25
