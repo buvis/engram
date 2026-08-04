@@ -540,6 +540,262 @@ def test_run_harness_gate_fails_when_winner_ties_baseline(tmp_path, monkeypatch)
     assert report.gate_passed is False
 
 
+def test_gate_fails_when_a_corpus_class_is_below_the_bar(tmp_path, monkeypatch):
+    """PRD 00002 sets a >= 0.80 retrieval bar per corpus class, not just on
+    the global average. A run whose pooled hit rate clears 0.80 while an
+    individual class (here: code, transcripts) falls short must not be
+    reported as a pass. This is the headline regression: the harness
+    currently gates on the global average only."""
+    code_files = _dummy_files(tmp_path, 5, prefix="mixedcode")
+    transcripts_files = _dummy_files(tmp_path, 4, prefix="mixedtranscripts")
+    memory_files = _dummy_files(tmp_path, 21, prefix="mixedmemory")
+
+    entries_meta = (
+        [
+            {"query": f"mixedcodequery{i}", "expected_path": str(f), "corpus": "code"}
+            for i, f in enumerate(code_files)
+        ]
+        + [
+            {
+                "query": f"mixedtranscriptsquery{i}",
+                "expected_path": str(f),
+                "corpus": "transcripts",
+            }
+            for i, f in enumerate(transcripts_files)
+        ]
+        + [
+            {
+                "query": f"mixedmemoryquery{i}",
+                "expected_path": str(f),
+                "corpus": "memory",
+            }
+            for i, f in enumerate(memory_files)
+        ]
+    )
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    entry = _entry("mixed-quality-model", 8140)
+    config = _harness_config(tmp_path, [entry])
+    _write_config_toml(config.config_path, [entry])
+
+    expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
+
+    def scripted_query(store, config, text, scope, corpus=None, k=5):
+        # code: 3 of 5 hit -> 0.60. transcripts: 3 of 4 hit -> 0.75. memory:
+        # all 21 hit -> 1.0. Pooled: 27/30 = 0.90 clears the global 0.80 bar
+        # even though two individual classes fall short of it.
+        if text.startswith("mixedcodequery"):
+            hit = int(text.removeprefix("mixedcodequery")) < 3
+        elif text.startswith("mixedtranscriptsquery"):
+            hit = int(text.removeprefix("mixedtranscriptsquery")) < 3
+        else:
+            hit = True
+        if hit:
+            return [_pointer(path=expected_by_query[text], rank=1)]
+        return [_pointer(path="/never/matches.md", rank=1)]
+
+    _patch_common(monkeypatch, tmp_path, scripted_query)
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    report = run_harness(config, goldset_path, work_dir)
+
+    assert report.per_model["mixed-quality-model"].hit_rate == pytest.approx(0.9)
+    assert report.per_model["mixed-quality-model"].per_corpus_hit_rate[
+        "code"
+    ] == pytest.approx(0.6)
+    assert report.per_model["mixed-quality-model"].per_corpus_hit_rate[
+        "transcripts"
+    ] == pytest.approx(0.75)
+    assert report.baseline_hit_rate == 0.0
+    assert report.gate_passed is False
+
+
+def test_gate_fails_when_a_corpus_class_scores_zero_hits(tmp_path, monkeypatch):
+    """The sharpest case of the per-class bar: a class that misses every
+    query (0/N) must not be silently skipped by the per-class check just
+    because it contributes nothing to the pooled numerator."""
+    code_files = _dummy_files(tmp_path, 5, prefix="zerocode")
+    memory_files = _dummy_files(tmp_path, 25, prefix="zeromemory")
+
+    entries_meta = [
+        {"query": f"zerocodequery{i}", "expected_path": str(f), "corpus": "code"}
+        for i, f in enumerate(code_files)
+    ] + [
+        {"query": f"zeromemoryquery{i}", "expected_path": str(f), "corpus": "memory"}
+        for i, f in enumerate(memory_files)
+    ]
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    entry = _entry("zero-class-model", 8145)
+    config = _harness_config(tmp_path, [entry])
+    _write_config_toml(config.config_path, [entry])
+
+    expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
+
+    def scripted_query(store, config, text, scope, corpus=None, k=5):
+        # code: 0 of 5 hit -> 0.0. memory: all 25 hit -> 1.0. Pooled: 25/30 =
+        # 0.833 clears the global 0.80 bar even though code scores zero.
+        if text.startswith("zerocodequery"):
+            return [_pointer(path="/never/matches.md", rank=1)]
+        return [_pointer(path=expected_by_query[text], rank=1)]
+
+    _patch_common(monkeypatch, tmp_path, scripted_query)
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    report = run_harness(config, goldset_path, work_dir)
+
+    assert report.per_model["zero-class-model"].hit_rate == pytest.approx(25 / 30)
+    assert report.per_model["zero-class-model"].per_corpus_hit_rate["code"] == 0.0
+    assert report.baseline_hit_rate == 0.0
+    assert report.gate_passed is False
+
+
+def test_gate_passes_when_every_corpus_class_meets_the_bar(tmp_path, monkeypatch):
+    """The passing case the Defect A fix must preserve: when the global
+    average AND every corpus class individually clear 0.80, the gate still
+    passes."""
+    code_files = _dummy_files(tmp_path, 5, prefix="allpasscode")
+    transcripts_files = _dummy_files(tmp_path, 5, prefix="allpasstranscripts")
+    memory_files = _dummy_files(tmp_path, 20, prefix="allpassmemory")
+
+    entries_meta = (
+        [
+            {
+                "query": f"allpasscodequery{i}",
+                "expected_path": str(f),
+                "corpus": "code",
+            }
+            for i, f in enumerate(code_files)
+        ]
+        + [
+            {
+                "query": f"allpasstranscriptsquery{i}",
+                "expected_path": str(f),
+                "corpus": "transcripts",
+            }
+            for i, f in enumerate(transcripts_files)
+        ]
+        + [
+            {
+                "query": f"allpassmemoryquery{i}",
+                "expected_path": str(f),
+                "corpus": "memory",
+            }
+            for i, f in enumerate(memory_files)
+        ]
+    )
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    entry = _entry("all-classes-pass-model", 8141)
+    config = _harness_config(tmp_path, [entry])
+    _write_config_toml(config.config_path, [entry])
+
+    expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
+
+    def scripted_query(store, config, text, scope, corpus=None, k=5):
+        # code: 5 of 5 hit -> 1.0. transcripts: 5 of 5 hit -> 1.0. memory: 17
+        # of 20 hit -> 0.85. Every class individually clears 0.80.
+        if text.startswith("allpassmemoryquery"):
+            hit = int(text.removeprefix("allpassmemoryquery")) < 17
+        else:
+            hit = True
+        if hit:
+            return [_pointer(path=expected_by_query[text], rank=1)]
+        return [_pointer(path="/never/matches.md", rank=1)]
+
+    _patch_common(monkeypatch, tmp_path, scripted_query)
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    report = run_harness(config, goldset_path, work_dir)
+
+    assert report.per_model["all-classes-pass-model"].per_corpus_hit_rate["code"] == 1.0
+    assert (
+        report.per_model["all-classes-pass-model"].per_corpus_hit_rate["transcripts"]
+        == 1.0
+    )
+    assert report.per_model["all-classes-pass-model"].per_corpus_hit_rate[
+        "memory"
+    ] == pytest.approx(0.85)
+    assert report.baseline_hit_rate == 0.0
+    assert report.gate_passed is True
+
+
+def test_gate_passes_when_a_corpus_class_sits_exactly_at_the_bar(tmp_path, monkeypatch):
+    """0.80 is the bar itself, not a threshold to clear strictly: a class
+    scoring exactly 0.80 must count as passing (>=, not >)."""
+    code_files = _dummy_files(tmp_path, 5, prefix="boundarycode")
+    transcripts_files = _dummy_files(tmp_path, 5, prefix="boundarytranscripts")
+    memory_files = _dummy_files(tmp_path, 20, prefix="boundarymemory")
+
+    entries_meta = (
+        [
+            {
+                "query": f"boundarycodequery{i}",
+                "expected_path": str(f),
+                "corpus": "code",
+            }
+            for i, f in enumerate(code_files)
+        ]
+        + [
+            {
+                "query": f"boundarytranscriptsquery{i}",
+                "expected_path": str(f),
+                "corpus": "transcripts",
+            }
+            for i, f in enumerate(transcripts_files)
+        ]
+        + [
+            {
+                "query": f"boundarymemoryquery{i}",
+                "expected_path": str(f),
+                "corpus": "memory",
+            }
+            for i, f in enumerate(memory_files)
+        ]
+    )
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    entry = _entry("boundary-model", 8142)
+    config = _harness_config(tmp_path, [entry])
+    _write_config_toml(config.config_path, [entry])
+
+    expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
+
+    def scripted_query(store, config, text, scope, corpus=None, k=5):
+        # code: exactly 4 of 5 hit -> 0.80, precisely on the bar. transcripts
+        # and memory are comfortably above it.
+        if text.startswith("boundarycodequery"):
+            hit = int(text.removeprefix("boundarycodequery")) < 4
+        else:
+            hit = True
+        if hit:
+            return [_pointer(path=expected_by_query[text], rank=1)]
+        return [_pointer(path="/never/matches.md", rank=1)]
+
+    _patch_common(monkeypatch, tmp_path, scripted_query)
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    report = run_harness(config, goldset_path, work_dir)
+
+    assert report.per_model["boundary-model"].per_corpus_hit_rate[
+        "code"
+    ] == pytest.approx(0.80)
+    assert report.baseline_hit_rate == 0.0
+    assert report.gate_passed is True
+
+
 # --- run_harness: winner pinning ---
 
 
@@ -577,6 +833,75 @@ def test_run_harness_writes_winner_id_to_real_config_path_only(tmp_path, monkeyp
     # no per-candidate throwaway config was ever written anywhere under
     # tmp_path -- the only .toml file that exists is the real config_path
     assert list(tmp_path.rglob("*.toml")) == [config.config_path]
+
+
+def test_config_left_unchanged_when_gate_fails(tmp_path, monkeypatch):
+    """Defect B: a failed gate must not repoint the real config. In
+    production this repointed the live config at a model whose index had not
+    been built, and every subsequent query failed loud on a model/dimension
+    mismatch. The gate fails here on the plain global-rate check alone (10 of
+    30 hit -> 0.33, well under the 0.80 bar), so this pins Defect B without
+    depending on the Defect A per-class fix."""
+    files = _dummy_files(tmp_path, 30, prefix="pinfail")
+    entries_meta = [
+        {"query": f"pinfailquery{i}", "expected_path": str(f), "corpus": "memory"}
+        for i, f in enumerate(files)
+    ]
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    entry = _entry("low-scoring-model", 8143)
+    config = _harness_config(tmp_path, [entry])
+    _write_config_toml(config.config_path, [entry])
+    config_before = config.config_path.read_text()
+
+    expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
+
+    def scripted_query(store, config, text, scope, corpus=None, k=5):
+        hit = int(text.removeprefix("pinfailquery")) < 10
+        if hit:
+            return [_pointer(path=expected_by_query[text], rank=1)]
+        return [_pointer(path="/never/matches.md", rank=1)]
+
+    _patch_common(monkeypatch, tmp_path, scripted_query)
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    report = run_harness(config, goldset_path, work_dir)
+
+    assert report.gate_passed is False
+    assert config.config_path.read_text() == config_before
+
+
+def test_config_names_winner_after_gate_passes(tmp_path, monkeypatch):
+    """Defect B's converse, which must not regress: when the gate PASSES,
+    the winner is still pinned into the real config."""
+    files = _dummy_files(tmp_path, 30, prefix="pinpass")
+    entries_meta = [
+        {"query": f"pinpassprobe{i}", "expected_path": str(f), "corpus": "memory"}
+        for i, f in enumerate(files)
+    ]
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    entry = _entry("pin-pass-model", 8144)
+    config = _harness_config(tmp_path, [entry])
+    _write_config_toml(config.config_path, [entry])
+
+    expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
+    scripted_query = _hit_or_miss_query(expected_by_query, lambda c: True)
+
+    _patch_common(monkeypatch, tmp_path, scripted_query)
+
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    report = run_harness(config, goldset_path, work_dir)
+
+    assert report.gate_passed is True
+    reloaded = load_config(config.config_path)
+    assert reloaded.pinned_id == "pin-pass-model"
 
 
 # --- run_harness: lease lifecycle ---
