@@ -258,9 +258,11 @@ def run_harness(
             _write_pinned(config.config_path, winner_id)
         return HarnessReport(per_model, winner_id, baseline_hit_rate, gate_passed)
     finally:
+        # Every lease, winner included. Server ownership is in-process only,
+        # so a winner left running is not reusable by the next run - it just
+        # holds the endpoint until someone kills it by hand.
         for lease in leases:
-            if lease.entry.id != winner_id:
-                stop_served(lease)
+            stop_served(lease)
 
 
 def format_report(report: HarnessReport) -> list[str]:
