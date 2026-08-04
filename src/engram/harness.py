@@ -246,6 +246,10 @@ def run_harness(
             per_model[entry.id] = _score_candidate(
                 entry, config.config_path, goldset, work_dir
             )
+            # Emit as we go: a full run takes ~40 minutes, and a crash in a
+            # later candidate used to discard every score already computed.
+            for line in _model_lines(entry.id, per_model[entry.id]):
+                print(line, flush=True)
 
         best_rate = -1.0
         for entry in config.embeddings:
@@ -274,14 +278,20 @@ def run_harness(
             stop_served(lease)
 
 
+def _model_lines(model_id: str, score: ModelScore) -> list[str]:
+    """One model's block of report lines. Shared by the summary and by the
+    per-candidate lines run_harness streams as it goes, so the two can be
+    diffed against each other."""
+    lines = [f"{model_id}\t{score.hit_rate:.3f}"]
+    for corpus in sorted(score.per_corpus_hit_rate):
+        lines.append(f"{model_id}\t{corpus}\t{score.per_corpus_hit_rate[corpus]:.3f}")
+    return lines
+
+
 def format_report(report: HarnessReport) -> list[str]:
     lines: list[str] = []
     for model_id, score in report.per_model.items():
-        lines.append(f"{model_id}\t{score.hit_rate:.3f}")
-        for corpus in sorted(score.per_corpus_hit_rate):
-            lines.append(
-                f"{model_id}\t{corpus}\t{score.per_corpus_hit_rate[corpus]:.3f}"
-            )
+        lines.extend(_model_lines(model_id, score))
     lines.append(f"winner\t{report.winner_id}")
     lines.append(f"baseline\t{report.baseline_hit_rate:.3f}")
     lines.append(f"gate_passed\t{report.gate_passed}")
