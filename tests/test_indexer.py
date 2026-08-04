@@ -826,3 +826,37 @@ def test_index_skips_file_that_fails_to_parse_completes_and_reports_the_skip(
         "surviving_marker", Scope("portfolio", None), corpus=None, k=10
     )
     assert len(hits) == 1
+
+
+# --- Defect A: a non-code corpus file (memory/prd/decision/discovery) that
+# fails to decode as UTF-8 goes through chunk_markdown, not symbols.chunk, so
+# it must be skipped by index()'s own try/except rather than kill the run ---
+
+
+def test_index_skips_an_undecodable_markdown_file_and_completes_the_run(
+    tmp_path, monkeypatch
+):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+
+    repo_dir = tmp_path / "repoA"
+    repo_dir.mkdir()
+    good_file = repo_dir / "good.md"
+    good_file.write_text("# Heading\nsurviving-markdown-marker\n")
+    bad_file = repo_dir / "bad.md"
+    bad_file.write_bytes(b"# Heading\nbroken \xe9 byte marker\n")
+
+    def fake_enum(*a, **k):
+        yield CorpusFile("memory", "repoA", good_file)
+        yield CorpusFile("memory", "repoA", bad_file)
+
+    monkeypatch.setattr("engram.indexer.enumerate_corpora", fake_enum)
+    monkeypatch.setattr("engram.indexer.embed", fake_embed)
+
+    report = index(store, config, Scope("portfolio", None))
+
+    assert report.files_skipped >= 1
+    hits = store.search_bm25(
+        "surviving-markdown-marker", Scope("portfolio", None), corpus=None, k=10
+    )
+    assert len(hits) == 1
