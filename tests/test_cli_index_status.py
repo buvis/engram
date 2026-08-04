@@ -1,7 +1,7 @@
 import pytest
 from _cli_helpers import _refuse
 
-from engram import corpora
+from engram import corpora, transcripts
 from engram.cli import main
 from engram.indexer import IndexReport
 from engram.store import CorpusStatus, StatusReport, StoreModelMismatchError
@@ -387,10 +387,18 @@ def test_index_file_not_found_error_prints_the_producer_supplied_message(
     assert "custom-cellar-marker" in captured.err
 
 
-def test_status_file_not_found_error_prints_the_producer_supplied_message(
+def test_status_repos_csv_producer_prints_its_raised_message_verbatim(
     monkeypatch,
     capsys,
 ):
+    # Renamed from ..._file_not_found_error_..._message (originally used a
+    # "custom-cellar-marker" literal). enumerate_corpora is the repos.csv
+    # producer, not the cellar-path producer, so it cannot exercise the
+    # cellar case; this now names and asserts only what it actually covers:
+    # that _run_status prints whatever message the repos.csv producer
+    # raises, verbatim. See
+    # test_status_missing_cellar_path_from_transcripts_producer_fails_loud
+    # for the real cellar-path case.
     report = StatusReport(
         per_corpus={
             "docs": CorpusStatus(row_count=42, stale_files=[], dead_rows=0),
@@ -398,7 +406,7 @@ def test_status_file_not_found_error_prints_the_producer_supplied_message(
     )
 
     def fake_enumerate_corpora(*args, **kwargs):
-        raise FileNotFoundError("custom-cellar-marker not found")
+        raise FileNotFoundError("custom-repos-csv-marker not found")
 
     monkeypatch.setattr(
         "engram.cli.enumerate_corpora",
@@ -414,7 +422,131 @@ def test_status_file_not_found_error_prints_the_producer_supplied_message(
 
     captured = capsys.readouterr()
     assert exit_code != 0
-    assert "custom-cellar-marker" in captured.err
+    assert "custom-repos-csv-marker" in captured.err
+
+
+# --- status must consult the transcripts producer for the cellar path ---
+
+
+def test_status_missing_cellar_path_from_transcripts_producer_fails_loud(
+    monkeypatch,
+    capsys,
+):
+    # PRD 00002 Test Strategy: "cellar path missing -> loud status failure,
+    # not a silent empty corpus". transcripts.enumerate() is the producer
+    # that raises FileNotFoundError when the cellar path is absent (see
+    # src/engram/transcripts.py). _run_status must consult it and fail loud
+    # when it does. This must fail against the current code: _run_status
+    # never calls transcripts.enumerate() today, so the stub never fires
+    # and status exits 0.
+    report = StatusReport(
+        per_corpus={
+            "docs": CorpusStatus(row_count=42, stale_files=[], dead_rows=0),
+        },
+    )
+    monkeypatch.setattr(corpora, "missing_dirs", [])
+    monkeypatch.setattr(
+        "engram.cli.enumerate_corpora",
+        lambda *a, **k: iter([]),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "engram.cli.open_store",
+        lambda *a, **k: _FakeStoreForStatus(report),
+    )
+
+    def fake_transcripts_enumerate(*args, **kwargs):
+        raise FileNotFoundError("distinctive-cellar-path-missing-marker not found")
+
+    monkeypatch.setattr(transcripts, "enumerate", fake_transcripts_enumerate)
+
+    exit_code = main(["status", "--scope", "portfolio"])
+
+    captured = capsys.readouterr()
+    assert exit_code != 0
+    assert "distinctive-cellar-path-missing-marker" in captured.err
+
+
+def test_status_exits_zero_when_transcripts_producer_is_healthy(
+    monkeypatch,
+    capsys,
+):
+    # Guards against an over-eager fix: a healthy transcripts producer must
+    # not force status to fail loud. The fix for the case above cannot
+    # simply be "always fail" - it must actually check the producer.
+    report = StatusReport(
+        per_corpus={
+            "docs": CorpusStatus(row_count=42, stale_files=[], dead_rows=0),
+        },
+    )
+    monkeypatch.setattr(corpora, "missing_dirs", [])
+    monkeypatch.setattr(
+        "engram.cli.enumerate_corpora",
+        lambda *a, **k: iter([]),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "engram.cli.open_store",
+        lambda *a, **k: _FakeStoreForStatus(report),
+    )
+    monkeypatch.setattr(transcripts, "enumerate", lambda *a, **k: iter([]))
+
+    exit_code = main(["status", "--scope", "portfolio"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 0
+    assert captured.err == ""
+
+
+def test_index_and_status_agree_a_missing_cellar_path_fails_loud_in_both(
+    monkeypatch,
+    capsys,
+):
+    # indexer.index() already enumerates transcripts.enumerate() alongside
+    # enumerate_corpora and symbols.enumerate(), so `engram index` already
+    # fails loud on a missing cellar path. `engram status` must reach the
+    # same producer so the two commands agree on which corpora exist,
+    # instead of index failing while status silently reports nothing.
+    marker = "distinctive-agreement-cellar-marker not found"
+
+    def fake_index(*args, **kwargs):
+        raise FileNotFoundError(marker)
+
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.index", fake_index)
+
+    index_exit_code = main(["index", "--scope", "portfolio"])
+    index_err = capsys.readouterr().err
+
+    report = StatusReport(
+        per_corpus={
+            "docs": CorpusStatus(row_count=42, stale_files=[], dead_rows=0),
+        },
+    )
+    monkeypatch.setattr(corpora, "missing_dirs", [])
+    monkeypatch.setattr(
+        "engram.cli.enumerate_corpora",
+        lambda *a, **k: iter([]),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        "engram.cli.open_store",
+        lambda *a, **k: _FakeStoreForStatus(report),
+    )
+
+    def fake_transcripts_enumerate(*args, **kwargs):
+        raise FileNotFoundError(marker)
+
+    monkeypatch.setattr(transcripts, "enumerate", fake_transcripts_enumerate)
+
+    status_exit_code = main(["status", "--scope", "portfolio"])
+    status_err = capsys.readouterr().err
+
+    assert index_exit_code != 0
+    assert marker in index_err
+    assert status_exit_code != 0
+    assert marker in status_err
 
 
 # --- index --rebuild is mutually exclusive with --scope and --corpus ---
