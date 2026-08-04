@@ -42,17 +42,21 @@ def index(
     # 2. Diff, chunk, embed, and upsert per-file (commit as we go)
     known = store.known_sources(scope, corpus)
     chunks_added = 0
-    active_sources: set[tuple[str, str, str]] = set()
 
     # Repos whose `code:` enumeration failed this run enumerated no files;
-    # carry their already-known chunks forward so prune() doesn't treat them
-    # as vanished.
+    # carry their already-known code chunks forward so prune() doesn't treat
+    # them as vanished. Scoped to the code corpus specifically so a code
+    # enumeration failure doesn't also exempt the repo's other corpora.
     failed_code_repos = {
         name.split(":", 1)[1] for name in corpora_missing if name.startswith("code:")
     }
-    active_sources |= {key for key in known if key[0] in failed_code_repos}
+    known_code = store.known_sources(scope, "code")
+    active_sources: set[tuple[str, str, str]] = {
+        key for key in known_code if key[0] in failed_code_repos
+    }
 
     skipped_before = len(symbols.skipped_files)
+    dispatch_skipped = 0
 
     for file in files:
         h = hash_source(file.path)
@@ -62,7 +66,11 @@ def index(
             active_sources.add(key)
             continue
 
-        chunks = _chunk_file(file, h)
+        try:
+            chunks = _chunk_file(file, h)
+        except Exception:
+            dispatch_skipped += 1
+            continue
         if not chunks:
             continue
 
@@ -82,7 +90,7 @@ def index(
         chunks_updated=0,
         chunks_pruned=chunks_pruned,
         corpora_missing=corpora_missing,
-        files_skipped=len(symbols.skipped_files) - skipped_before,
+        files_skipped=dispatch_skipped + (len(symbols.skipped_files) - skipped_before),
     )
 
 
