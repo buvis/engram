@@ -24,6 +24,20 @@ CELLAR_PROJECTS_DIR: Path = (
     / "projects"
 )
 
+# Turns that are machine scaffolding rather than conversation. PRD 00002's corpus
+# spec is "keep only turns worth recalling", and these are not: they arrive as
+# user-type messages, so the text-turn filter below would otherwise keep them, and
+# being near-identical across every session makes them beat real prose on vague
+# queries. Matched as a *prefix* of the turn, never as a substring — 6 turns in the
+# live corpus discuss these markers in real analysis prose, and a substring test
+# would delete exactly those.
+SCAFFOLDING_PREFIXES: tuple[str, ...] = (
+    "<task-notification>",
+    "<system-reminder>",
+    "<local-command-stdout>",
+    "Caveat: The messages below were generated",
+)
+
 DEFAULT_ERROR_PATTERNS: list[str] = [
     r"Traceback \(most recent call last\)",
     r"panic:",
@@ -105,6 +119,8 @@ def chunk(
         content = message.get("content")
         text = _extract_text(content)
         if not text.strip() and not _has_error_match(content, error_patterns):
+            continue
+        if text.lstrip().startswith(SCAFFOLDING_PREFIXES):
             continue
 
         chunks.append(
