@@ -136,6 +136,40 @@
 - query: "architecture assessment of the exchanger rss feed service scheduler timezone and api auth"
   expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-container-images/a7921781-c409-46c2-8ef5-fac1d0bbece6.jsonl"
   corpus: transcripts
+# Entries below added 2026-08-05 to make the >=80% bar expressible: at n=4 the only
+# reachable scores are 0.00/0.25/0.50/0.75/1.00, so ">=0.80" silently demanded a
+# perfect 4/4. At n=12 the bar means what it says (10/12 = 0.833 passes, two misses
+# allowed). Sessions were drawn by a fixed-seed sample (seed 20260805, 30 of the 625
+# unused transcripts) BEFORE anything was scored; the only rejection reasons applied
+# were "no distinct incident" and "incident not uniquely owned by this session",
+# never how a candidate ranked. Queries are paraphrases written from the incident,
+# and were never restated in session prose - the chunker keeps only `type: "text"`
+# blocks, so writing them through tool input alone keeps them out of the very corpus
+# they are scored against. Do not reword these to close a gap.
+- query: "switched the obsidian zettelkasten repo to https personal access token auth and turned off gpg signing"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-bim/14355b3c-e7a8-4ec0-8c35-a77ee047669e.jsonl"
+  corpus: transcripts
+- query: "how does this sqlite project differ from datasette and what should we borrow from it"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-doogat-ddb/cf1f02c4-8ed3-4dc3-abdd-4653afb685ec.jsonl"
+  corpus: transcripts
+- query: "abap rest api exploration skill never read the endpoint registry rows so the handler classes were missing"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--local-tmp-explain-rest-apis/fe929768-2166-4a58-a348-b16f47bc6942.jsonl"
+  corpus: transcripts
+- query: "designed a product quality assurance agent pack covering journeys integrations ux and releases"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--claude/2d3ae68f-47f5-4a65-acf1-d6a5b1c2b593.jsonl"
+  corpus: transcripts
+- query: "which of our own skills and plugins undermine following instructions to the letter"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--claude/1d0d3342-a35d-4739-b953-1d166cd4abed.jsonl"
+  corpus: transcripts
+- query: "review of the rescue ledger writer flagged directory creation on refused transitions"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--claude/f0a88357-e4a1-4557-83f0-04bc00122fb1.jsonl"
+  corpus: transcripts
+- query: "design review of the blocking loop repair found a hidden stall recovery dependency across prds"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--claude/713b760c-c42c-4989-8e93-c3b7dde82354.jsonl"
+  corpus: transcripts
+- query: "refreshed an agents md with build commands two graphql schemas and pruned stale project memories"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-doogat-jink/4b8e7f80-dfdd-458b-a105-cfd7bdade03a.jsonl"
+  corpus: transcripts
 
 # --- code corpus (cross-repo reuse seeds) ---
 - query: "have I built a notification dispatcher that posts to Slack, Discord, a generic webhook, and email"
