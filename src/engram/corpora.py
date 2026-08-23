@@ -47,8 +47,11 @@ def _enumerate_repo_corpora(root: Path, name: str) -> Iterator[CorpusFile]:
     else:
         missing_dirs.append(f"prd:{name}")
 
-    # Decision (single file)
-    decisions_file = root / "dev" / "local" / "decisions.md"
+    # Decision (single file; meta/ is canonical since 2026-08-23, root is the
+    # compat-symlink era fallback for unmigrated stores)
+    decisions_file = root / "dev" / "local" / "meta" / "decisions.md"
+    if not decisions_file.is_file():
+        decisions_file = root / "dev" / "local" / "decisions.md"
     if decisions_file.is_file():
         yield CorpusFile("decision", name, decisions_file)
     else:

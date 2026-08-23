@@ -161,6 +161,28 @@ def test_missing_prds_dir_appends_prd_entry_to_missing_dirs_without_raising(tmp_
     assert not any(cf.corpus == "prd" for cf in results)
 
 
+def test_decision_corpus_prefers_meta_decisions_over_root(tmp_path):
+    """meta/ is the keepers' canonical home (2026-08-23); a root decisions.md
+    is the compat-symlink era fallback and must lose when both exist."""
+    repo_root = tmp_path / "repos" / "acme"
+    meta_file = repo_root / "dev" / "local" / "meta" / "decisions.md"
+    meta_file.parent.mkdir(parents=True)
+    meta_file.write_text("canonical decisions")
+    (repo_root / "dev" / "local" / "decisions.md").write_text("stale root")
+    (repo_root / "dev" / "local" / "prds").mkdir()
+    (repo_root / "dev" / "local" / "discovery").mkdir()
+
+    repos_csv = tmp_path / "repos.csv"
+    _write_repos_csv(repos_csv, [(str(repo_root), "acme")])
+    projects_dir = tmp_path / "projects"
+    projects_dir.mkdir()
+
+    results = list(enumerate_corpora(repos_csv=repos_csv, projects_dir=projects_dir))
+
+    decision_paths = [cf.path for cf in results if cf.corpus == "decision"]
+    assert decision_paths == [meta_file]
+
+
 def test_missing_decisions_file_appends_decision_entry_to_missing_dirs(tmp_path):
     repo_root = tmp_path / "repos" / "acme"
     prds_dir = repo_root / "dev" / "local" / "prds"

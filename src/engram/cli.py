@@ -324,9 +324,15 @@ def _resolve_pack_prd_and_capsule(
     if args.capsule is not None:
         capsule_path = Path(args.capsule)
     else:
-        default_capsule = repo_root / "dev" / "local" / "project-capsule.md"
-        if default_capsule.exists():
-            capsule_path = default_capsule
+        # meta/ is canonical since 2026-08-23; root is the compat-symlink era
+        # fallback for unmigrated stores.
+        for default_capsule in (
+            repo_root / "dev" / "local" / "meta" / "project-capsule.md",
+            repo_root / "dev" / "local" / "project-capsule.md",
+        ):
+            if default_capsule.exists():
+                capsule_path = default_capsule
+                break
 
     return prd_path, capsule_path
 

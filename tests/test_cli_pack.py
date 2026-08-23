@@ -777,6 +777,39 @@ def test_pack_capsule_omitted_defaults_to_repo_root_capsule_when_file_exists(
     assert calls[0]["capsule_path"].resolve() == capsule_file.resolve()
 
 
+def test_pack_capsule_omitted_prefers_meta_capsule_over_root(
+    monkeypatch,
+    tmp_path,
+):
+    """meta/ is the keepers' canonical home (2026-08-23); the root file is the
+    compat-symlink era fallback and must lose when both exist."""
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    toplevel = _init_git_repo(repo_dir)
+    _register_repo(monkeypatch, tmp_path, toplevel)
+    monkeypatch.chdir(toplevel)
+
+    meta_dir = toplevel / "dev" / "local" / "meta"
+    meta_dir.mkdir(parents=True)
+    meta_capsule = meta_dir / "project-capsule.md"
+    meta_capsule.write_text("# Capsule (meta)\n")
+    (toplevel / "dev" / "local" / "project-capsule.md").write_text("# stale root\n")
+    _stage_diff(toplevel)
+
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+
+    calls = []
+    report = _make_pack_report(toplevel / "dev/local/tmp/engram-pack-cyc1.md")
+    monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
+
+    exit_code = main(["pack", "--cycle", "cyc1"])
+
+    assert exit_code == 0
+    assert len(calls) == 1
+    assert calls[0]["capsule_path"].resolve() == meta_capsule.resolve()
+
+
 # --- pack: repo scope resolution failure ---
 
 
