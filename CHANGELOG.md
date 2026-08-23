@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **harvest**: resolve the claude-home corpus for files reached through the `~/.claude/dev/local` symlink target - callers that realpath their store (purge-devlocal GC) got `no_repo` for every review satellite, which blocked their trash-first GC forever
+
 ### Added
 
 - **client**: local embedding client - loopback-only config with default shortlist, real-call preflight, on-demand `llama-server` spawn/stop, and batched OpenAI-compatible embedding with model-identity verification

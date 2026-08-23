@@ -148,6 +148,29 @@ def test_resolve_repo_for_path_outside_git_returns_claude_home_sentinel_only_und
     assert result == ("claude-home" if under_claude_home else None)
 
 
+def test_resolve_repo_for_path_maps_resolved_devlocal_symlink_target_to_claude_home(
+    tmp_path,
+    monkeypatch,
+):
+    """~/.claude/dev/local is a symlink into ~/.local/tmp; a caller that
+    realpaths its store (purge-devlocal) passes the target path, which must
+    still resolve to the claude-home corpus."""
+    fake_home = tmp_path / "home"
+    (fake_home / ".claude" / "dev").mkdir(parents=True)
+    target = tmp_path / "local-tmp" / "claude-dev"
+    target.mkdir(parents=True)
+    (fake_home / ".claude" / "dev" / "local").symlink_to(target)
+    monkeypatch.setattr("pathlib.Path.home", lambda: fake_home)
+    file_path = target / "reviews" / "00042-foo-review-1.md"
+    file_path.parent.mkdir()
+    file_path.write_text("content")
+    repos_csv = tmp_path / "repos.csv"
+
+    result = _resolve_repo_for_path(file_path, repos_csv=repos_csv)
+
+    assert result == "claude-home"
+
+
 # --- harvest: idempotent re-harvest and amended-file replace ---
 
 
