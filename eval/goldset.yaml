@@ -8,7 +8,7 @@
 # entries.
 #
 # Corpora present: memory, prd, discovery, transcripts, code. The "decision" corpus
-# (<repo>/dev/local/decisions.md) currently has no files anywhere in the
+# (<repo>/docs/dev/project-management/meta/decisions.md) currently has no files anywhere in the
 # portfolio, so it is unrepresented here — add decision entries once a real
 # decisions.md exists.
 
@@ -76,102 +76,54 @@
 
 # --- prd corpus ---
 - query: "engram PRD for the core local retrieval pipeline and eval gate"
-  expected_path: "/Users/bob/git/src/github.com/buvis/engram/dev/local/prds/done/00001-engram-core-v1.md"
+  expected_path: "/Users/bob/git/src/github.com/buvis/engram/docs/dev/project-management/prds/done/00001-engram-core-v1.md"
   corpus: prd
 - query: "make the ddb git merge tree construction three-way"
-  expected_path: "/Users/bob/git/src/github.com/doogat/ddb/dev/local/prds/done/00200-make-merge-tree-three-way-v1.md"
+  expected_path: "/Users/bob/git/src/github.com/doogat/ddb/docs/dev/project-management/prds/done/00200-make-merge-tree-three-way-v1.md"
   corpus: prd
 - query: "cross-process write lock for ddb"
-  expected_path: "/Users/bob/git/src/github.com/doogat/ddb/dev/local/prds/done/00162-cross-process-write-lock-v1.md"
+  expected_path: "/Users/bob/git/src/github.com/doogat/ddb/docs/dev/project-management/prds/done/00162-cross-process-write-lock-v1.md"
   corpus: prd
 - query: "deterministic CRDT conflict resolution in ddb"
-  expected_path: "/Users/bob/git/src/github.com/doogat/ddb/dev/local/prds/done/00165-deterministic-crdt-resolution-v1.md"
+  expected_path: "/Users/bob/git/src/github.com/doogat/ddb/docs/dev/project-management/prds/done/00165-deterministic-crdt-resolution-v1.md"
   corpus: prd
 - query: "SQL identifier escaping in the ddb materializer"
-  expected_path: "/Users/bob/git/src/github.com/doogat/ddb/dev/local/prds/backlog/00179-sql-identifier-escaping-materializer-v1.md"
+  expected_path: "/Users/bob/git/src/github.com/doogat/ddb/docs/dev/project-management/prds/hold/00179-sql-identifier-escaping-materializer-v1.md"
   corpus: prd
-- query: "add If-Match preconditions to calendar event writes"
-  expected_path: "/Users/bob/git/src/github.com/buvis/calcard-mcp/dev/local/prds/backlog/00032-add-if-match-preconditions-to-event-writes.md"
+- query: "show live progress and a quiet flag for parallel backup runs"
+  expected_path: "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/prds/backlog/00112-backup-live-progress-and-quiet-v1.md"
   corpus: prd
-- query: "fix find-free-time naive datetime anchoring bug"
-  expected_path: "/Users/bob/git/src/github.com/buvis/calcard-mcp/dev/local/prds/backlog/00036-fix-find-free-time-naive-datetime-anchoring.md"
+- query: "pin freestanding uv tools to the global python minor so sysup upgrades stay resolvable"
+  expected_path: "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/prds/done/00105-sysup-uv-tool-python-pin-v1.md"
   corpus: prd
 - query: "warden should scan heredoc script bodies for dangerous commands"
-  expected_path: "/Users/bob/git/src/github.com/buvis/claude-warden/dev/local/prds/done/00016-scan-heredoc-script-bodies-v1.md"
+  expected_path: "/Users/bob/git/src/github.com/buvis/claude-warden/docs/dev/project-management/prds/done/00016-scan-heredoc-script-bodies-v1.md"
   corpus: prd
 - query: "operator retain PVC data loss risk in container-images"
-  expected_path: "/Users/bob/git/src/github.com/buvis/container-images/dev/local/prds/backlog/00029-operator-retain-pvc-data-loss-v1.md"
+  expected_path: "/Users/bob/git/src/github.com/buvis/container-images/docs/dev/project-management/prds/backlog/00029-operator-retain-pvc-data-loss-v1.md"
   corpus: prd
-- query: "retire the pidash TUI"
-  expected_path: "/Users/bob/git/src/github.com/buvis/gems/dev/local/prds/backlog/00071-retire-pidash-v1.md"
+- query: "sysup expiry registry tracking credentials and certificates with a guided refresh"
+  expected_path: "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/prds/done/00096-sysup-expiry-registry-v1.md"
   corpus: prd
-- query: "add an rm safety guard to the dot command"
-  expected_path: "/Users/bob/git/src/github.com/buvis/gems/dev/local/prds/backlog/00045-dot-rm-safety-v1.md"
+- query: "dot pull saves local divergence before letting upstream win"
+  expected_path: "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/prds/done/00095-dot-pull-divergence-report-v1.md"
   corpus: prd
 - query: "harden the jink favicon fetch pipeline"
-  expected_path: "/Users/bob/git/src/github.com/doogat/jink/dev/local/prds/backlog/00029-harden-favicon-fetch-pipeline-v1.md"
+  expected_path: "/Users/bob/git/src/github.com/doogat/jink/docs/dev/project-management/prds/backlog/00029-harden-favicon-fetch-pipeline-v1.md"
   corpus: prd
 - query: "block invisible unicode characters in aegis"
-  expected_path: "/Users/bob/git/src/github.com/buvis/claude-aegis/dev/local/prds/backlog/00008-block-invisible-unicode-v1.md"
+  expected_path: "/Users/bob/git/src/github.com/buvis/claude-aegis/docs/dev/project-management/prds/backlog/00008-block-invisible-unicode-v1.md"
   corpus: prd
 
 # --- discovery corpus ---
-- query: "portfolio standup gem that runs without an LLM and absorbs pidash"
-  expected_path: "/Users/bob/git/src/github.com/buvis/gems/dev/local/discovery/00062-postup-gem.md"
+- query: "cut the overhead autopilot spends in review and test loops"
+  expected_path: "/Users/bob/git/src/github.com/buvis/claude-autopilot/docs/dev/project-management/discovery/00177-cut-review-and-test-loop-overhead.md"
   corpus: discovery
 - query: "convert between circuit schematic, breadboard, and wokwi diagram formats"
-  expected_path: "/Users/bob/git/src/github.com/tbouska/playground/dev/local/discovery/00006-format-interop-netlist-hub.md"
+  expected_path: "/Users/bob/git/src/github.com/tbouska/playground/docs/dev/project-management/discovery/00006-format-interop-netlist-hub.md"
   corpus: discovery
 
 # --- transcripts corpus (past-incident paraphrases) ---
-- query: "neovim mason plugin update hung and timed out after 600 seconds during sysup"
-  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/aaf89ba6-ad81-4b40-9377-12985ab8d2a5.jsonl"
-  corpus: transcripts
-- query: "sysup mac failed scanning the mise node global path for npm package updates"
-  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/a6adbf1e-8538-430f-99c8-8848bfe7e762.jsonl"
-  corpus: transcripts
-- query: "generated standalone phaser html kids games came out broken and unplayable"
-  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-tbouska-bobiste/b9c99c47-daa6-4390-9c84-513b2cb60361.jsonl"
-  corpus: transcripts
-- query: "architecture assessment of the exchanger rss feed service scheduler timezone and api auth"
-  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-container-images/a7921781-c409-46c2-8ef5-fac1d0bbece6.jsonl"
-  corpus: transcripts
-# Entries below added 2026-08-05 to make the >=80% bar expressible: at n=4 the only
-# reachable scores are 0.00/0.25/0.50/0.75/1.00, so ">=0.80" silently demanded a
-# perfect 4/4. At n=12 the bar means what it says (10/12 = 0.833 passes, two misses
-# allowed). Sessions were drawn by a fixed-seed sample (seed 20260805, 30 of the 625
-# unused transcripts) BEFORE anything was scored; the only rejection reasons applied
-# were "no distinct incident" and "incident not uniquely owned by this session",
-# never how a candidate ranked. Queries are paraphrases written from the incident,
-# and were never restated in session prose - the chunker keeps only `type: "text"`
-# blocks, so writing them through tool input alone keeps them out of the very corpus
-# they are scored against. Do not reword these to close a gap.
-- query: "switched the obsidian zettelkasten repo to https personal access token auth and turned off gpg signing"
-  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-bim/14355b3c-e7a8-4ec0-8c35-a77ee047669e.jsonl"
-  corpus: transcripts
-- query: "how does this sqlite project differ from datasette and what should we borrow from it"
-  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-doogat-ddb/cf1f02c4-8ed3-4dc3-abdd-4653afb685ec.jsonl"
-  corpus: transcripts
-- query: "abap rest api exploration skill never read the endpoint registry rows so the handler classes were missing"
-  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--local-tmp-explain-rest-apis/fe929768-2166-4a58-a348-b16f47bc6942.jsonl"
-  corpus: transcripts
-- query: "designed a product quality assurance agent pack covering journeys integrations ux and releases"
-  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--claude/2d3ae68f-47f5-4a65-acf1-d6a5b1c2b593.jsonl"
-  corpus: transcripts
-- query: "which of our own skills and plugins undermine following instructions to the letter"
-  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--claude/1d0d3342-a35d-4739-b953-1d166cd4abed.jsonl"
-  corpus: transcripts
-- query: "review of the rescue ledger writer flagged directory creation on refused transitions"
-  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--claude/f0a88357-e4a1-4557-83f0-04bc00122fb1.jsonl"
-  corpus: transcripts
-- query: "design review of the blocking loop repair found a hidden stall recovery dependency across prds"
-  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--claude/713b760c-c42c-4989-8e93-c3b7dde82354.jsonl"
-  corpus: transcripts
-- query: "refreshed an agents md with build commands two graphql schemas and pruned stale project memories"
-  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-doogat-jink/4b8e7f80-dfdd-458b-a105-cfd7bdade03a.jsonl"
-  corpus: transcripts
-
-# --- code corpus (cross-repo reuse seeds) ---
 - query: "have I built a notification dispatcher that posts to Slack, Discord, a generic webhook, and email"
   expected_path: "/Users/bob/git/src/github.com/buvis/container-images/apps/mkdocs-git-sync/container-files/syncer/linkcheck/notifiers.py"
   corpus: code
@@ -187,3 +139,46 @@
 - query: "have I built a console adapter that renders styled text and markdown to the terminal"
   expected_path: "/Users/bob/git/src/github.com/buvis/gems/src/lib/buvis/pybase/adapters/console/console.py"
   corpus: code
+
+# Transcript entries rebuilt 2026-10-31: cellar sync prunes old sessions, which deleted
+# all 12 earlier anchors and made load_goldset fail. The 12 below were drawn with seed
+# 20261031 from human-driven sessions (first turn not a subagent prompt) BEFORE scoring;
+# rejection reasons were only "no distinct incident" or "not uniquely owned". Queries
+# paraphrase the incident and were not copied from session prose. Do not reword to
+# close a gap. If cellar prunes these too, rebuild the same way.
+- query: "git rebase origin master failed because a leftover repo-local gpg program and signing key overrode the global ssh signing"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/c0e70656-a139-4b1b-8407-f8989807631e.jsonl"
+  corpus: transcripts
+- query: "autopilot loop launcher edited to go through the sandbox runner and the pasted source command broke across two lines"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-claude-autopilot/1991b0db-52d4-4aa8-9a1d-623bb916cbf1.jsonl"
+  corpus: transcripts
+- query: "why the sandboxed claude cannot update itself in place"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/9e96514d-ca3e-4c79-ac79-30d25a11e7bb.jsonl"
+  corpus: transcripts
+- query: "pnpm global bin directory missing from path and a hardcoded work machine home in the upstream bashrc"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/8da8260b-77cf-4e5e-bc64-0dce47f66376.jsonl"
+  corpus: transcripts
+- query: "ctrl h j k l pane navigation passing through the terminal multiplexer into neovim splits"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--config-herdr/4f39ace6-586d-4eba-851c-f970991568fc.jsonl"
+  corpus: transcripts
+- query: "added an escape hatch flag to the sandbox launcher and moved it into the home bin directory"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--local-bin/dc8d9076-817d-474f-a9fc-190a61b5cd6e.jsonl"
+  corpus: transcripts
+- query: "checked whether the public dotfiles ever exposed a token in the github cli hosts file or codex config"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/c448f52d-d9e3-4161-9bb5-a9d46f7a0bdb.jsonl"
+  corpus: transcripts
+- query: "record local changes that a dotfiles pull will overwrite and keep the machine specific repo list as a symlink to a local file"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/3c8bd81c-1ed1-4e9c-913a-d904af2e19ec.jsonl"
+  corpus: transcripts
+- query: "reporting a suspected phone number scam to the czech police electronically through the data box"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-container-images/1b9ca89d-5f2d-497f-b11b-4292f18b00e4.jsonl"
+  corpus: transcripts
+- query: "let sandboxed agents write into the personal notes vault directory"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/54028013-2983-4968-a152-5dd0b0ee04dc.jsonl"
+  corpus: transcripts
+- query: "repo structure skill must tell the agent to deviate when the template is too rigid for the repository"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-agent-skills/5a656567-eccb-474e-833a-8ca6a7601e5a.jsonl"
+  corpus: transcripts
+- query: "sandboxed agent could not install a built macOS app into the user applications folder"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/821762c9-8c93-4a1a-80e9-db949e2c5f90.jsonl"
+  corpus: transcripts
