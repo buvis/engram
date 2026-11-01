@@ -89,6 +89,14 @@ def open_store(db_path: Path = DEFAULT_DB_PATH) -> "Store":
         "heading, body, content='chunks', content_rowid='id')",
     )
     conn.execute("CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT)")
+    # Sources that chunked to nothing (no grammar, no symbols, no kept turns).
+    # Without a record they look new on every run and get re-parsed: 16k code
+    # files cost 84s of an unchanged-portfolio reindex against a 60s budget.
+    conn.execute(
+        "CREATE TABLE IF NOT EXISTS empty_sources ("
+        "corpus TEXT, repo TEXT, path TEXT, content_hash TEXT, "
+        "PRIMARY KEY(corpus, repo, path))",
+    )
 
     return Store(conn)
 
@@ -331,6 +339,43 @@ class Store:
             params,
         ).fetchall()
         return {(r[0], r[1], r[2]) for r in rows}
+
+    def known_empty_sources_by_corpus(
+        self,
+        scope: Scope,
+        corpus: str | None,
+    ) -> set[tuple[str, str, str, str]]:
+        where, params = self._scope_conditions(scope, corpus, "empty_sources")
+        rows = self.conn.execute(
+            "SELECT corpus, repo, path, content_hash FROM empty_sources "
+            f"WHERE {where}",
+            params,
+        ).fetchall()
+        return {(r[0], r[1], r[2], r[3]) for r in rows}
+
+    def mark_empty_source(
+        self, corpus: str, repo: str, path: str, content_hash: str
+    ) -> None:
+        self.conn.execute(
+            "INSERT OR REPLACE INTO empty_sources (corpus, repo, path, content_hash) "
+            "VALUES (?, ?, ?, ?)",
+            (corpus, repo, path, content_hash),
+        )
+
+    def prune_empty_sources(
+        self,
+        scope: Scope,
+        corpus: str | None,
+        active: set[tuple[str, str, str, str]],
+    ) -> None:
+        where, params = self._scope_conditions(scope, corpus, "empty_sources")
+        rows = self.conn.execute(
+            "SELECT rowid, corpus, repo, path, content_hash FROM empty_sources "
+            f"WHERE {where}",
+            params,
+        ).fetchall()
+        stale = [(r[0],) for r in rows if (r[1], r[2], r[3], r[4]) not in active]
+        self.conn.executemany("DELETE FROM empty_sources WHERE rowid = ?", stale)
 
     def prune(
         self,

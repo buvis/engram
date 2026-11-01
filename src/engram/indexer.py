@@ -41,6 +41,7 @@ def index(
 
     # 2. Diff, chunk, embed, and upsert per-file (commit as we go)
     known = store.known_sources(scope, corpus)
+    known_empty = store.known_empty_sources_by_corpus(scope, corpus)
     chunks_added = 0
 
     # Repos whose `code:` enumeration failed this run enumerated no files;
@@ -54,6 +55,9 @@ def index(
     active_sources: set[tuple[str, str, str]] = {
         key for key in known_code if key[0] in failed_code_repos
     }
+    active_empty: set[tuple[str, str, str, str]] = {
+        key for key in known_empty if key[0] == "code" and key[1] in failed_code_repos
+    }
 
     skipped_before = len(symbols.skipped_files)
     dispatch_skipped = 0
@@ -61,17 +65,24 @@ def index(
     for file in files:
         h = hash_source(file.path)
         key = (file.repo, str(file.path), h)
+        empty_key = (file.corpus, *key)
 
         if key in known:
             active_sources.add(key)
+            continue
+        if empty_key in known_empty:
+            active_empty.add(empty_key)
             continue
 
         try:
             chunks = _chunk_file(file, h)
         except Exception:
+            # Not recorded as empty: a chunker failure is retried next run.
             dispatch_skipped += 1
             continue
         if not chunks:
+            store.mark_empty_source(*empty_key)
+            active_empty.add(empty_key)
             continue
 
         texts = [c.text_for_embedding for c in chunks]
@@ -83,6 +94,7 @@ def index(
 
     # 3. Prune (only reached here if the loop completed without exception)
     chunks_pruned = store.prune(scope, corpus, active_sources)
+    store.prune_empty_sources(scope, corpus, active_empty)
 
     return IndexReport(
         files_scanned=len(files),

@@ -108,6 +108,84 @@ def test_new_file_is_chunked_embedded_and_retrievable(tmp_path, monkeypatch):
 # --- deleted file gets pruned on next index() ---
 
 
+def _count_chunker_calls(monkeypatch):
+    calls = []
+
+    def fake_chunk(file, content_hash):
+        calls.append(file.path)
+        return []
+
+    monkeypatch.setattr("engram.indexer._chunk_file", fake_chunk)
+    monkeypatch.setattr("engram.indexer.embed", fake_embed)
+    return calls
+
+
+def test_unchanged_zero_chunk_file_is_not_rechunked(tmp_path, monkeypatch):
+    # Grammarless code files chunk to nothing; re-parsing all of them every run
+    # pushed an unchanged-portfolio reindex past its 60s budget.
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+    src = tmp_path / "data.bin"
+    src.write_bytes(b"\x00\x01")
+    monkeypatch.setattr(
+        "engram.indexer.symbols.enumerate", lambda *a, **k: iter([CorpusFile("code", "r", src)])
+    )
+    monkeypatch.setattr("engram.indexer.enumerate_corpora", lambda *a, **k: iter(()))
+    calls = _count_chunker_calls(monkeypatch)
+
+    index(store, config, Scope("portfolio", None))
+    index(store, config, Scope("portfolio", None))
+    assert calls == [src]
+
+    src.write_bytes(b"\x00\x02")
+    index(store, config, Scope("portfolio", None))
+    assert calls == [src, src]
+
+
+def test_vanished_zero_chunk_file_record_is_pruned(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+    src = tmp_path / "data.bin"
+    src.write_bytes(b"\x00")
+    present = [CorpusFile("code", "r", src)]
+    monkeypatch.setattr("engram.indexer.symbols.enumerate", lambda *a, **k: iter(present))
+    monkeypatch.setattr("engram.indexer.enumerate_corpora", lambda *a, **k: iter(()))
+    _count_chunker_calls(monkeypatch)
+
+    index(store, config, Scope("portfolio", None))
+    assert store.known_empty_sources_by_corpus(Scope("portfolio", None), None)
+    present.clear()
+    index(store, config, Scope("portfolio", None))
+
+    assert store.known_empty_sources_by_corpus(Scope("portfolio", None), None) == set()
+
+
+def test_chunker_failure_is_retried_not_recorded_as_empty(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+    src = tmp_path / "a.py"
+    src.write_text("x")
+    monkeypatch.setattr(
+        "engram.indexer.symbols.enumerate", lambda *a, **k: iter([CorpusFile("code", "r", src)])
+    )
+    monkeypatch.setattr("engram.indexer.enumerate_corpora", lambda *a, **k: iter(()))
+    calls = []
+
+    def boom(file, content_hash):
+        calls.append(file.path)
+        raise RuntimeError("parse failed")
+
+    monkeypatch.setattr("engram.indexer._chunk_file", boom)
+
+    index(store, config, Scope("portfolio", None))
+    index(store, config, Scope("portfolio", None))
+
+    assert calls == [src, src]
+
+
+# --- deleted file gets pruned on next index() ---
+
+
 def test_deleted_file_is_pruned_on_next_index(tmp_path, monkeypatch):
     store = open_store(tmp_path / "engram.db")
     config = _config(tmp_path)
