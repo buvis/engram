@@ -220,3 +220,16 @@ gold-set paths had rotted after the docs move and cellar pruning, an unmerged
 merge index crashed the code enumerator, nomic's 2048-token context overflowed,
 zero-chunk files were re-parsed on every run (94 s), and a tie in the harness
 repointed production away from the live index's model.
+
+## Completion review (2026-11-01)
+
+Fresh-session review 3 covers the seven finalization commits over
+`7610ef5..1a3b49f`. Consensus, blind, and independent Codex doubt lenses ran;
+the optional Gemini route was unavailable. The empty-source cache regression
+was repaired in `ce71263`, along with the requested core follow-ups. See
+`../../reviews/00002-engram-heavy-corpora-v1-review-3.md` for all findings and
+dispositions. Existing spec gaps are retained there, not claimed resolved.
+
+The historical harness used 52 entries (corrected from 64). The gold set now
+contains 55 entries after adding decision coverage; these load successfully,
+but no live score is claimed for the enlarged set. Production remains on bge-m3.
