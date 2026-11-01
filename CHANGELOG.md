@@ -16,6 +16,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **harvest**: resolve tracked `~/.claude/docs/dev/project-management/`
   artifacts as the `claude-home` corpus.
+- **indexer**: an unchanged-portfolio reindex takes 13 seconds instead of 94, inside the 60-second bound. A file that chunks to nothing (no grammar, no symbols, no kept turns) is now remembered by content hash, so it is not parsed again on every run. About 16,000 such code files were costing 84 seconds per run. A chunker failure is still retried.
+- **symbols**: a repo with an unresolved merge conflict lists the conflicted path once per index stage. The code enumerator now yields that path once, so the duplicate no longer crashes the whole index run on the chunks unique key.
+- **client**: a small-context embedding model no longer gets text past its context. Minified JS measured 0.81 tokens per character, above the assumed 0.75 worst case, so the budget now assumes 1.0. A `/props` miss while the server is still loading is no longer cached, because caching it pinned the full 8000-character budget for the whole run.
+- **eval**: a tie now keeps the currently pinned model. Config order used to break ties, which swapped production to a different model at an equal score. The live index then failed every query on the model-mismatch check until a full rebuild.
+- **eval**: the gold set's expected paths resolve again. The `dev/local` to `docs/dev/project-management` move and PRD lifecycle moves had broken the PRD and discovery anchors, and cellar pruning had deleted every transcript anchor. The transcript entries were redrawn by a fixed-seed sample before any scoring.
 
 ### Added
 
