@@ -283,7 +283,6 @@ def test_index_scope_and_corpus_without_rebuild_is_accepted(monkeypatch):
         return IndexReport(
             files_scanned=0,
             chunks_added=0,
-            chunks_updated=0,
             chunks_pruned=0,
             corpora_missing=[],
         )
@@ -312,7 +311,6 @@ def test_index_prints_missing_corpora_from_report(monkeypatch, capsys):
         lambda *a, **k: IndexReport(
             files_scanned=1,
             chunks_added=1,
-            chunks_updated=0,
             chunks_pruned=0,
             corpora_missing=["prd:repoB"],
         ),
@@ -333,7 +331,6 @@ def test_index_corpus_scopes_missing_dir_warnings_to_that_corpus(monkeypatch, ca
         lambda *a, **k: IndexReport(
             files_scanned=1,
             chunks_added=1,
-            chunks_updated=0,
             chunks_pruned=0,
             corpora_missing=["prd:repoB", "decision:repoB", "discovery:repoB"],
         ),
@@ -612,7 +609,6 @@ def test_index_rebuild_swaps_live_db_only_after_successful_build(monkeypatch, tm
         lambda *a, **k: IndexReport(
             files_scanned=1,
             chunks_added=1,
-            chunks_updated=0,
             chunks_pruned=0,
             corpora_missing=[],
         ),
@@ -645,7 +641,6 @@ def test_index_rebuild_closes_temp_store_connection_before_os_replace(
         lambda *a, **k: IndexReport(
             files_scanned=1,
             chunks_added=1,
-            chunks_updated=0,
             chunks_pruned=0,
             corpora_missing=[],
         ),
@@ -691,7 +686,6 @@ def test_index_rebuild_removes_leftover_tmp_db_before_building(monkeypatch, tmp_
         lambda *a, **k: IndexReport(
             files_scanned=1,
             chunks_added=1,
-            chunks_updated=0,
             chunks_pruned=0,
             corpora_missing=[],
         ),

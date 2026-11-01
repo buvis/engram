@@ -1,75 +1,64 @@
 # Project Capsule: engram
 
-Generated: 2026-08-03 (sixth full catchup, new batch `202608032231`, HEAD moved 7b0466e → 3f99e46. **00002 un-parked by hand from `hold/` → `backlog/`, re-selected into `wip/`** — its gold-gate blocker was resolved interactively by `4119722`.)
+Updated: 2026-11-01, after PRD 00002 finalization and completion review.
 
 ## Key Invariants
 
-- Engram is a standalone uv-managed Python CLI (`engram query|index|status`), NOT a Claude plugin — explicit user decision 2026-07-31, no `claude-` prefix, no plugin structure, no marketplace entry. Claude integration happens later via consumer skills (claude-git-ferry catchup, purge-devlocal) editing themselves to call the bare `engram` binary, never via engram shipping skills.
-- Embeddings are served by engram-spawned `llama-server --embedding` instances (one port per model, 8081-8083), config in engram-owned `~/.local/share/engram/config.toml`. This reverses the source discovery doc's "never launches a server" constraint (its LlamaBarn premise was dead — no such app is installed on this machine). `~/.pi/agent/models.json` is pi's chat registry and must stay untouched by engram.
-- A query without `--scope repo|portfolio` must be a hard usage error — unscoped retrieval is treated as a correctness bug, not a convenience gap.
-- Zero off-machine network calls at query/index/harness time, except the one-time GGUF download on first spawn of a not-yet-cached embedding model.
-- Store records the embedding model id + dimension; any mismatch between recorded and configured model must fail loud and require a full re-embed — no silent partial-index states.
-- Results are pointers (`file:line` + heading), never chunk bodies — callers read the source themselves.
-- Embedding requests are budgeted by BOTH a text-count cap and a total-character budget, and `ensure_served` sizes the spawned server (`-c`/`-b`/`--ubatch-size`) to hold a full request (fd1b727). This is load-bearing, not tuning: `indexer.index()` upserts once at the END of a run, so a server that closes the connection mid-run persists nothing. Any future change to batching must keep the size budget or re-introduce total index loss on token-dense corpora.
-
-## Architecture Decisions
-
-- Package layout is frozen by the PRD's Structural Decomposition: `src/engram/{client,chunker,corpora,store,indexer,query,cli}.py`, `eval/{goldset.yaml,harness.py}`, `tests/`. Dependency graph is layered: Foundation (client, store) → Core (indexing, query) → Integration (cli, eval); no upward deps.
-- `config.toml` schema is frozen (tests bind to it): `[[embedding]]` array of `{id, endpoint}` entries plus a `[pinned]` table the eval harness writes to. Treat this schema as a contract, not an implementation detail.
-- Incremental indexing keys on content hash (git blob hash for tracked files, `git hash-object` for untracked prose) — reindexing unchanged content must embed zero chunks.
-- This repo owns the CLI contract (`engram query|index|status`, installed via `uv tool install .`); later PRDs (00002-00004) edit their own consumer skills to call it, never edit this contract from outside.
+- Standalone uv-managed Python CLI, not a Claude plugin.
+- Local llama-server embedding endpoints; engram owns its embedding config.
+- Queries require explicit repo or portfolio scope.
+- Model/dimension mismatches fail loud. Production remains pinned to
+  `ggml-org/bge-m3-Q8_0-GGUF:Q8_0`; never repin or rebuild without explicit request.
+- Equal harness scores keep the current pin. The harness pins only on a passing gate.
+- Retrieval returns source pointers; findings additionally carry their durable body.
+- Index commits per file. Unchanged sources are not re-embedded.
+- Read/parser failures are retried, not stored as successful empty sources.
+- Project documents live under `docs/dev/project-management/`; transient packs
+  live under globally ignored `docs/dev/tmp/`.
 
 ## Component Boundaries
 
-- **client.py**: embedding access only (endpoint resolution, preflight, batch embed, server-ensure lifecycle). Nothing else talks to llama-server directly.
-- **store.py**: sole owner of the sqlite-vec + FTS5 schema, model versioning, and scope filters (`search_bm25`, `search_knn`).
-- **chunker.py / corpora.py / indexer.py**: indexing pipeline — enumerate corpora, chunk markdown by heading, hash, incrementally sync into store. No embedding or query logic here.
-- **transcripts.py / symbols.py**: the two heavy corpora added by PRD 00002 — cellar JSONL turn chunking (pointer = path + JSONL line) and tree-sitter symbol chunking across gita repos (grammarless files skipped-and-counted). Both plug into `corpora.py`'s registration, adding no new foundation.
-- **findings.py / harvest.py**: PRD 00003's durable review-record corpus — parse review-contract files into records that outlive their source file, stored prune-exempt and carried across `index --rebuild`. `findings` is the one corpus whose hits carry a body; every other corpus stays pointer-only.
-- **query.py**: hybrid RRF fusion over `store`'s BM25 + KNN search, scope-enforced.
-- **cli.py**: argument parsing and scope enforcement only; delegates to indexing/query/store. Five verbs now: `query|index|status|harvest` (+ `--rebuild`).
-- **eval/harness.py**: scores engram vs an rg baseline across the configured embedding shortlist, pins the winner back into `config.toml`. Depends on cli.
+- `client.py`: config, model identity, server leases, context budgets, embeddings.
+- `store.py`: SQLite/FTS5/sqlite-vec, source caches, scopes, model checks.
+- `corpora.py`, `chunker.py`, `transcripts.py`, `symbols.py`: enumeration and chunking.
+- `indexer.py`: incremental indexing and pruning; `query.py`: hybrid retrieval.
+- `findings.py`, `harvest.py`: durable review records.
+- `diffmap.py`, `pack.py`: review context packs; `cli.py`: CLI entry points.
+- `harness.py`, `eval/`: candidate scoring, gold set, and rg baseline.
 
 ## Active Work
 
-### Batch 202608032231 (current)
+PRDs 00001–00004 are in `done/`; no PRD or plan is active. Backlog 00005–00007
+requires a new user request.
 
-- [~] 00002-engram-heavy-corpora-v1 — **un-parked and re-selected into `wip/`**. Fresh state file (the prior batch's was archived at drain), so tasks are re-planned from scratch; the plan must not re-implement committed work.
-  - **The gold-gate blocker is CLOSED.** `4119722` reads each endpoint's real context from `/props` at lease time and sets that endpoint's char budget to `n_ctx / 0.75` (worst-case density), capped by `EMBED_MAX_CHARS` and cached per endpoint; `-c 8192` is silently clamped by llama.cpp to the model's trained context, so `/props` is authoritative. nomic 2048→2730 chars (150/150 embedded), Qwen 8192→8000 chars **unchanged, so the live index does not need rebuilding**. Full record: `dev/local/reviews/00002-task3-shortlist-context-blocker.md` § "Update 2026-08-03".
-  - **Done and committed**: PRD Phase 0 + Phase 1 code (`transcripts.py`, `symbols.py`, corpora registration, goldset entries) and the initial heavy index (transcripts 18,740 chunks, code 41,716 chunks; second full portfolio index 20s against the 60s bound, `stale=0`).
-  - **What remains**: (a) the harness gold gate — top-5 ≥80% on transcript paraphrases and cross-repo duplicate seeds; (b) PRD Phase 2 capsule integration — `uv tool install .` then the claude-git-ferry catchup SKILL.md "Related context" edit + release, premise re-check first.
-  - **Carry into the gate task**: ~20-25 min per candidate × 3 candidates, plus first-download for nomic and bge-m3 (uncached); `harness._score_candidate` builds a throwaway DB per candidate and never reads the live index, so that cost is paid every run. The ~13 GB RSS figure is Qwen-specific (nomic idles at 215 MB) — re-measure per model rather than planning on 39 GB. Read as a caveat on the result: nomic sees ~2048 tokens of a chunk where Qwen sees 8192, so candidates are scored on different amounts of text.
+PRD 00002's historical gate used 52 entries: all candidates scored 0.962 versus
+rg 0.519. bge-m3 scored transcripts 1.000 and code 0.800. The unchanged portfolio
+index took 12.6 seconds. Catchup integration shipped in git-ferry 0.3.0.
+See the done PRD's Completion section and review 3 for evidence and limitations.
 
-### Batch 202608012229 (closed, drained)
+The gold set now has 55 entries, including three decision queries. These were
+validated by `load_goldset`; the expensive live harness was not rerun for them.
+Its historical gate score must not be presented as a score for the enlarged set.
 
-- [x] 00001-engram-core-v1 (5 cycles, converged, moved to done/)
-- [x] 00003-engram-findings-corpus-v1 (2 cycles, converged-with-deferrals, moved to done/). 23 items deferred to batch-end review (critical: `no_repo` blocks trash forever for unregistered repos; pre-trash sweep selects by path shape not contract shape; plus a task-15 regression, an unproven purge-to-query chain, and 19 lower-severity cap-overflow items) — see `dev/local/reviews/00003-engram-findings-corpus-v1-audit.md` and the batch deferred JSON.
-- [x] 00004-engram-review-packs-v1 (2 cycles, cap-out-with-deferrals, moved to done/). All 19 tasks committed (diffmap.py, pack.py composer, `engram pack` CLI verb, review-work-completion reviewer wiring in both engram and the external `~/.buvis` bare repo). Cycle 2 hit the rework cap without full convergence: 2 CRITICALs were judged resolved-by-decision/delivery-record rather than defects (doubt lens gets the full pack — design-gate-accepted; 3/4 pack sections render empty because the deployed store still has no code/findings rows, upstream-blocked on 00002) and both are flagged OVERTURNABLE. ~34 lower-severity items (task 10/11/16/18 residuals, a store-mutation robustness concern, a diff-content path-traversal concern, the codex no-edit probe skill defect) went to batch-end review — see `dev/local/reviews/00004-engram-review-packs-v1-audit.md` and the batch deferred JSON. `engram` is still not registered in `~/.config/gita/repos.csv`, so no review cycle has ever run `engram pack` against its own repo — deliberately left to the user.
-- [→] 00002-engram-heavy-corpora-v1 — stalled out of this batch (`blocking_escalation`, 2026-08-03) and carried into batch 202608032231 above. Planned 3 tasks; task 1 done and committed, task 2 blocked, task 3 never started.
-  - **The blocker is a decision, not a task**: engram spawns and truncates *every* shortlist model with Qwen-sized constants (`-c/-b/--ubatch 8192`, `EMBED_MAX_CHARS = 8000`, `src/engram/client.py:20-28`), so the gold gate dies on candidate 2 (`nomic-embed-text-v1.5`) with `HTTP 400` on a **single** text. Changing the truncation budget changes what gets embedded, i.e. it bends the very measurement the harness exists to make — so it must not be self-certified unattended. Four options with tradeoffs, the measured per-candidate cost, and resume steps: `dev/local/reviews/00002-task3-shortlist-context-blocker.md`.
-  - **Landed and keeping its value**: `a0efbe9` (`symbols.enumerate` skips submodule gitlinks and tracked-but-deleted paths — either aborted the whole portfolio index; found live on `claude-git-ferry/tests/lib/bats-core`) and `87f9498` (a server-side **5xx** now recycles the spawned server, not just null vectors — proven in production this session: the retry recycled mid-run and got a full candidate through where the prior run died. A **4xx deliberately does not** recycle, which is what let candidate 2's 400 surface as a real finding instead of an endless respawn). Both with regression tests; 392 tests pass.
-  - **Heavy corpora are now indexed** (task 1 acceptance met): transcripts 18,740 chunks, code 41,716 chunks, and a second full portfolio index took **20s** against the 60s bound with `stale=0` and unchanged counts on memory/prd/discovery/code. `transcripts` can never read `stale=0` while any Claude session runs — cellar JSONL is appended live.
-  - **Cost to size in before resuming**: ~20-25 min per harness candidate × 3, plus first-download for candidates 2 and 3 (only the Qwen embedding model is in `~/.cache/huggingface/hub`). Each spawned server sits at **~13 GB RSS** and `run_harness` holds all three open to the end.
+Completion review fixed a regression that cached parser/read failures as empty.
+The next normal index invalidates old empty-code markers once and reparses those
+sources; later unchanged runs retain the cache. Existing embedded chunks remain.
 
-- Original selection notes (still accurate):
-  - Both embedding blockers are **closed**. `fd1b727` sized the spawned server; `38f1f4e`+`7b0466e` make engram own its spawned server across calls, reap a sick one, and respawn+retry a batch on a null-bearing response. Final soak: 200/200 real transcript turns in 8s, one recycle. Read `dev/local/reviews/00002-task2-null-embedding-blocker.md` § "Update 2026-08-03" before touching `client.py`.
-  - **Code work already committed** (`cae0af9`..`8d34e05`): `transcripts.py` (enumerate/filter/chunk), `symbols.py` (tree-sitter symbol chunking + `read_repos_csv`), corpora registration in index/status/harness/cli, and goldset transcript+code entries. A fresh plan must NOT re-implement these.
-  - **What actually remains**: (a) the initial full portfolio index — `engram status --scope portfolio` shows transcripts at 48 chunks/5 files of ~594, and code at **0 chunks / 3253 skipped**, so neither heavy corpus is populated; (b) the harness gold-set gate (top-5 ≥80% on both new classes, <60s unchanged reindex); (c) Phase 2 catchup wiring, which needs `uv tool install .` first.
-  - Open risk on the index task is **duration, not correctness** — watch the respawn rate; if respawns dominate, switch shortlist model / upgrade llama.cpp / tune `-np` rather than grinding.
-  - Cost trap for the harness task: `harness._score_candidate` (`src/engram/harness.py:74-84`) builds a **throwaway DB per candidate model** and re-indexes every goldset corpus into it, for all 3 shortlist models — i.e. 3 more full indexes on top of the initial one. Size that in before starting; consider scoring against a shared index.
-  - `[pinned] id = ""` in `~/.local/share/engram/config.toml` — nothing pinned, so the live index used the first shortlist entry. If the harness pins a different model the live index must be rebuilt (the store fails loud on model/dim mismatch by design).
-
-Observations: the foundational embedding-batching risk that shadowed 00002/00003/00004 is **resolved** (fd1b727), but 00002's remaining tasks are the first to actually exercise it at full corpus scale (~638 transcript files/~900MB, 11,402 code files across 26 repos, ~146 embeds/s) — treat the size-budget invariant above as a contract. `indexer.index()` still upserts once at the END of a run, so a long initial index is all-or-nothing: a mid-run kill persists nothing. `engram` is still NOT installed on PATH (`which engram` fails; runs only via `uv run engram`), so PRD 00002's catchup-wiring task needs `uv tool install .` first, and PRD 00003's shipped integrations stay dormant until then. A global default-ruff/isort PostToolUse hook (repo has no `[tool.ruff]` config) reformats any `.py` on Write/Edit and has bitten every PRD in this batch at least once (formatter reflow re-broke task 14's and task 15's own line-limit fixes in 00004 cycle 2) — check `git diff --stat` for pure-reflow noise before every commit, and commit style-only reflow separately from behavior changes. Qwen advisory lens (quinn) failed all 5 PRD-00001 cycles and PRD-00003 cycle 1 (root cause found in 00003: a model id registered under two providers in `~/.pi/agent/models.json` makes `pi` ignore the `-P` pin) — graceful-degradation skip each time, no consensus impact; worth fixing in use-qwen before qwen advisory input is wanted. The codex no-edit probe in `~/.claude/skills/work/SKILL.md` step 5.5 uses a cwd-relative pathspec and false-latches `codex_no_edit:true` for any task whose files live outside the invocation cwd (confirmed live on 00004 task 7) — use absolute pathspecs when re-running it by hand. 10+23+~36 items deferred from PRD 00001/00003/00004 to batch-end review (see `dev/local/autopilot/deferred/202608012229-deferred.json`, 85 items total) — none block 00002. `engram` is not installed on PATH in this environment, so PRD 00003's Phase 2 integrations (purge pre-trash sweep, catchup harvest) are dormant as deployed until it is installed.
-
-## GitHub State
-
-No GitHub remote configured (`gh` reports "not a GitHub repository") — skipped.
+The requested PRD 00001 follow-ups are triaged in
+`reviews/2026-11-01-follow-ups.md`. Older findings from other PRDs remain separate.
+Autopilot runtime state remains local and ignored; retain its unresolved ledger.
 
 ## Project Health
 
-CI: none configured yet. Tests: **395 passing in 28.7s** on 3f99e46 (verified this catchup, `uv run pytest -q`, zero skips); `/work` re-runs the suite per task. Working tree again carried uncommitted **pure formatter reflow** at selection (`client.py` + two embed test files, left by the previous session's `4119722`); committed standalone as `3f99e46 style:` — never fold reflow into a work commit. Two stashes stay parked (`stash@{0}` formatter churn, `stash@{1}` a PRD-00001 reflow); neither must be popped. Untracked `.serena/` remains (Serena MCP cache dir, not in `.gitignore` — cosmetic, flagged not fixed, never stage it). PRD 00002's remaining tasks need a **live embedding server and the real corpora** and cannot be faked — this is the batch's highest operational risk (hours of embedding, external repos read, ~900MB of transcripts). `engram status --scope portfolio` currently **exits 1** while printing per-corpus counts plus a long `corpus:repo` list — the loud "corpus path missing" reporting for unregistered repos, expected, not a new defect.
+Local `master`; no remote or CI. Run `.venv/bin/python -m pytest -q`.
+Two pre-existing formatter-only stashes remain untouched. No extra worktree or
+executed plan belongs to this session.
 
-## Project Memories
+The completion review's context-pack command could not resolve engram in the
+installed registry. This is already recorded in the PRD 00004 review; no registry
+configuration was changed here.
 
-- [[engram-is-cli-not-plugin]]: standalone CLI, not a plugin — don't reopen.
-- [[embedding-serving-is-llama-server]]: LlamaBarn is doc drift; engram spawns its own llama-server instances on demand; engram-owned `config.toml`; `models.json` stays chat-only.
+## User Decisions Still Open
+
+- Keep or drop the extra query `-k`/`--k` and index `--rebuild` flags.
+- Resolve the unrelated merge conflict in `buvis/home`.

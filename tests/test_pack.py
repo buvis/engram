@@ -34,7 +34,6 @@ def test_reindex_runs_before_the_first_retrieval_and_its_report_is_carried_throu
     known_report = IndexReport(
         files_scanned=3,
         chunks_added=2,
-        chunks_updated=1,
         chunks_pruned=0,
         corpora_missing=["x"],
     )
@@ -80,7 +79,7 @@ def test_symbols_beyond_the_cap_are_counted_and_noted_in_the_rendered_pack(
     out_dir.mkdir()
 
     monkeypatch.setattr(
-        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, [])
     )
     monkeypatch.setattr(
         "engram.pack.embed",
@@ -122,7 +121,7 @@ def test_all_capped_symbol_query_texts_are_embedded_in_exactly_one_batched_call(
         return [_vec([1.0, 0.0, 0.0, 0.0]) for _ in texts]
 
     monkeypatch.setattr(
-        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, [])
     )
     monkeypatch.setattr("engram.pack.embed", spy_embed)
     monkeypatch.setattr(
@@ -158,7 +157,7 @@ def test_self_sibling_and_beyond_cap_changed_symbol_hits_are_excluded_from_every
 
     query_vector = _vec([1.0, 0.0, 0.0, 0.0])
     monkeypatch.setattr(
-        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, [])
     )
     monkeypatch.setattr(
         "engram.pack.embed", lambda texts, entry: [query_vector for _ in texts]
@@ -232,7 +231,7 @@ def test_similar_code_hit_body_comes_from_the_stored_chunk_not_the_worktree_file
 
     query_vector = _vec([1.0, 0.0, 0.0, 0.0])
     monkeypatch.setattr(
-        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, [])
     )
     monkeypatch.setattr(
         "engram.pack.embed", lambda texts, entry: [query_vector for _ in texts]
@@ -280,7 +279,7 @@ def test_section_over_its_cap_drops_the_lowest_scored_item_and_is_flagged_as_tri
     out_dir.mkdir()
 
     monkeypatch.setattr(
-        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, [])
     )
     monkeypatch.setattr(
         "engram.pack.embed",
@@ -333,7 +332,7 @@ def test_tied_score_items_are_ordered_by_the_full_tiebreak_tuple(tmp_path, monke
 
     query_vector = _vec([1.0, 0.0, 0.0, 0.0])
     monkeypatch.setattr(
-        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, [])
     )
     monkeypatch.setattr(
         "engram.pack.embed", lambda texts, entry: [query_vector for _ in texts]
@@ -408,7 +407,7 @@ def test_hard_cap_is_enforced_by_dropping_items_when_the_first_render_overshoots
 
     query_vector = _vec([1.0, 0.0, 0.0, 0.0])
     monkeypatch.setattr(
-        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, [])
     )
     monkeypatch.setattr(
         "engram.pack.embed", lambda texts, entry: [query_vector for _ in texts]
@@ -477,7 +476,7 @@ def test_rendered_pack_carries_freshness_line_section_headings_and_origin_labels
 
     query_vector = _vec([1.0, 0.0, 0.0, 0.0])
     monkeypatch.setattr(
-        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, [])
     )
     monkeypatch.setattr(
         "engram.pack.embed", lambda texts, entry: [query_vector for _ in texts]
@@ -555,7 +554,7 @@ def test_two_builds_over_identical_fixture_state_produce_byte_identical_output(
 
     query_vector = _vec([1.0, 0.0, 0.0, 0.0])
     monkeypatch.setattr(
-        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, 0, [])
+        "engram.pack.index", lambda *a, **k: IndexReport(0, 0, 0, [])
     )
     monkeypatch.setattr(
         "engram.pack.embed", lambda texts, entry: [query_vector for _ in texts]

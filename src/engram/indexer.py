@@ -14,7 +14,6 @@ from engram.store import Chunk, ChunkWithVector, Scope, Store
 class IndexReport:
     files_scanned: int
     chunks_added: int
-    chunks_updated: int
     chunks_pruned: int
     corpora_missing: list[str]
     files_skipped: int = 0
@@ -99,7 +98,6 @@ def index(
     return IndexReport(
         files_scanned=len(files),
         chunks_added=chunks_added,
-        chunks_updated=0,
         chunks_pruned=chunks_pruned,
         corpora_missing=corpora_missing,
         files_skipped=dispatch_skipped + (len(symbols.skipped_files) - skipped_before),

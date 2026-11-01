@@ -29,7 +29,6 @@ def _make_pack_report(path, total_tokens=100, files_scanned=1, chunks_added=2):
         index_report=IndexReport(
             files_scanned=files_scanned,
             chunks_added=chunks_added,
-            chunks_updated=0,
             chunks_pruned=0,
             corpora_missing=[],
         ),
@@ -774,38 +773,6 @@ def test_pack_capsule_omitted_defaults_to_project_management_meta_capsule_when_f
     assert exit_code == 0
     assert len(calls) == 1
     assert calls[0]["capsule_path"].resolve() == capsule_file.resolve()
-
-
-def test_pack_capsule_omitted_reads_project_management_meta_capsule(
-    monkeypatch,
-    tmp_path,
-):
-    """meta/ is the keepers' canonical home (2026-08-23); the root file is the
-    compat-symlink era fallback and must lose when both exist."""
-    repo_dir = tmp_path / "repo"
-    repo_dir.mkdir()
-    toplevel = _init_git_repo(repo_dir)
-    _register_repo(monkeypatch, tmp_path, toplevel)
-    monkeypatch.chdir(toplevel)
-
-    meta_dir = toplevel / "docs" / "dev" / "project-management" / "meta"
-    meta_dir.mkdir(parents=True)
-    meta_capsule = meta_dir / "project-capsule.md"
-    meta_capsule.write_text("# Capsule (meta)\n")
-    _stage_diff(toplevel)
-
-    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
-    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
-
-    calls = []
-    report = _make_pack_report(toplevel / "docs/dev/tmp/engram-pack-cyc1.md")
-    monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
-
-    exit_code = main(["pack", "--cycle", "cyc1"])
-
-    assert exit_code == 0
-    assert len(calls) == 1
-    assert calls[0]["capsule_path"].resolve() == meta_capsule.resolve()
 
 
 # --- pack: repo scope resolution failure ---

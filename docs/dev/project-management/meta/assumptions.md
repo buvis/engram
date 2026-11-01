@@ -1,5 +1,12 @@
 # Implementor assumptions ledger — PRD 00002 (engram heavy corpora v1)
 
+Historical build ledger. PRD 00002 was finalized on 2026-11-01; current evidence
+is in its done PRD and review 3. The task-4 assumption that `symbols.chunk()`
+must swallow read/parser failures is superseded: those failures now propagate
+to the indexer's per-file guard so the empty-source cache cannot remember them.
+The release and installation holds below describe past sessions, not current
+instructions.
+
 Per-plan ledger of assumptions the implementors made where the task, tests, or
 listed files were silent. Input to the review phase. Replaced at the first
 completed task of a full-plan pass (the prior contents belonged to PRD 00004,

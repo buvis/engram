@@ -552,7 +552,7 @@ def test_index_rebuild_preserves_findings_with_freshly_embedded_vectors(tmp_path
     monkeypatch.setattr(
         "engram.cli.index",
         lambda *a, **k: IndexReport(
-            files_scanned=0, chunks_added=0, chunks_updated=0, chunks_pruned=0, corpora_missing=[],
+            files_scanned=0, chunks_added=0, chunks_pruned=0, corpora_missing=[],
         ),
     )
 
@@ -590,7 +590,7 @@ def test_index_rebuild_succeeds_with_zero_findings_when_no_existing_database(tmp
     monkeypatch.setattr(
         "engram.cli.index",
         lambda *a, **k: IndexReport(
-            files_scanned=0, chunks_added=0, chunks_updated=0, chunks_pruned=0, corpora_missing=[],
+            files_scanned=0, chunks_added=0, chunks_pruned=0, corpora_missing=[],
         ),
     )
 
@@ -628,7 +628,7 @@ def test_index_rebuild_reports_failure_when_findings_preservation_fails(
     monkeypatch.setattr(
         "engram.cli.index",
         lambda *a, **k: IndexReport(
-            files_scanned=0, chunks_added=0, chunks_updated=0, chunks_pruned=0, corpora_missing=[],
+            files_scanned=0, chunks_added=0, chunks_pruned=0, corpora_missing=[],
         ),
     )
 
@@ -661,7 +661,7 @@ def test_index_rebuild_failure_leaves_existing_database_untouched(tmp_path, monk
     monkeypatch.setattr(
         "engram.cli.index",
         lambda *a, **k: IndexReport(
-            files_scanned=0, chunks_added=0, chunks_updated=0, chunks_pruned=0, corpora_missing=[],
+            files_scanned=0, chunks_added=0, chunks_pruned=0, corpora_missing=[],
         ),
     )
 
@@ -700,7 +700,7 @@ def test_index_rebuild_failure_removes_temporary_rebuild_database(tmp_path, monk
     monkeypatch.setattr(
         "engram.cli.index",
         lambda *a, **k: IndexReport(
-            files_scanned=0, chunks_added=0, chunks_updated=0, chunks_pruned=0, corpora_missing=[],
+            files_scanned=0, chunks_added=0, chunks_pruned=0, corpora_missing=[],
         ),
     )
 

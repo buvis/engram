@@ -40,20 +40,14 @@ def chunk(path: Path, repo: str, content_hash: str) -> list[Chunk]:
         skipped_files.append(str(path))
         return []
 
-    try:
-        source = path.read_text(errors="replace")
-    except OSError:
-        skipped_files.append(str(path))
-        return []
+    # Let the indexer count and retry failures. Returning [] would persist a
+    # successful-empty result and suppress retries until the source changes.
+    source = path.read_text(errors="replace")
 
     if not source.strip():
         return []
 
-    try:
-        result = process(source, ProcessConfig(language, structure=True))
-    except Exception:
-        skipped_files.append(str(path))
-        return []
+    result = process(source, ProcessConfig(language, structure=True))
     lines = source.splitlines()
 
     chunks: list[Chunk] = []

@@ -8,7 +8,14 @@ import sys
 from pathlib import Path
 
 from engram import corpora, symbols, transcripts
-from engram.client import EngramConfig, embed, load_config, resolve_pinned_entry
+from engram.client import (
+    EmbeddingPreflightError,
+    EmbeddingServerError,
+    EngramConfig,
+    embed,
+    load_config,
+    resolve_pinned_entry,
+)
 from engram.corpora import GITA_REPOS_CSV, enumerate_corpora
 from engram.findings import FINDINGS_CORPUS
 from engram.harvest import _resolve_repo_for_path, harvest
@@ -101,6 +108,9 @@ def _run_query(args: argparse.Namespace) -> int:
             f"{e}; run `engram index --rebuild` to rebuild the store",
             file=sys.stderr,
         )
+        return 1
+    except (EmbeddingServerError, EmbeddingPreflightError) as e:
+        print(str(e), file=sys.stderr)
         return 1
 
     for p in pointers:
@@ -199,7 +209,7 @@ def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
             file=sys.stderr,
         )
         return 1
-    except FileNotFoundError as e:
+    except (FileNotFoundError, EmbeddingServerError, EmbeddingPreflightError) as e:
         print(str(e), file=sys.stderr)
         return 1
 
@@ -326,17 +336,16 @@ def _resolve_pack_prd_and_capsule(
     if args.capsule is not None:
         capsule_path = Path(args.capsule)
     else:
-        for default_capsule in (
+        default_capsule = (
             repo_root
             / "docs"
             / "dev"
             / "project-management"
             / "meta"
-            / "project-capsule.md",
-        ):
-            if default_capsule.exists():
-                capsule_path = default_capsule
-                break
+            / "project-capsule.md"
+        )
+        if default_capsule.exists():
+            capsule_path = default_capsule
 
     return prd_path, capsule_path
 

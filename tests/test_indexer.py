@@ -105,7 +105,7 @@ def test_new_file_is_chunked_embedded_and_retrievable(tmp_path, monkeypatch):
     assert len(hits) == 1
 
 
-# --- deleted file gets pruned on next index() ---
+# --- unchanged zero-chunk sources are cached ---
 
 
 def _count_chunker_calls(monkeypatch):
@@ -318,7 +318,6 @@ def test_empty_enumeration_yields_all_zero_report(tmp_path, monkeypatch):
     assert report == IndexReport(
         files_scanned=0,
         chunks_added=0,
-        chunks_updated=0,
         chunks_pruned=0,
         corpora_missing=[],
     )

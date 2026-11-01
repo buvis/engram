@@ -20,7 +20,7 @@ def _prose_fixture(tmp_path, monkeypatch):
     config = _config(tmp_path, _small_budget())
     monkeypatch.setattr(
         "engram.pack.index",
-        lambda *a, **k: IndexReport(0, 0, 0, 0, []),
+        lambda *a, **k: IndexReport(0, 0, 0, []),
     )
     monkeypatch.setattr(
         "engram.pack.embed",
@@ -435,7 +435,7 @@ def test_a_high_scoring_foreign_repo_chunk_never_reaches_the_similar_code_sectio
     query_vector = _vec([1.0, 0.0, 0.0, 0.0])
     monkeypatch.setattr(
         "engram.pack.index",
-        lambda *a, **k: IndexReport(0, 0, 0, 0, []),
+        lambda *a, **k: IndexReport(0, 0, 0, []),
     )
     monkeypatch.setattr(
         "engram.pack.embed",

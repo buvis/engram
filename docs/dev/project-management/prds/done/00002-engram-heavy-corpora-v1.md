@@ -203,7 +203,7 @@ foundation; already built.
 
 All tasks done. Gate evidence, all measured on 2026-11-01:
 
-- Eval harness (`eval/harness.py`, 64 gold entries) passed the gate. All three
+- Eval harness (`eval/harness.py`, 52 gold entries) passed the gate. All three
   candidates scored 0.962 overall against an rg baseline of 0.519. The pinned
   bge-m3 scored transcripts 1.000 and code 0.800; Qwen and nomic scored
   transcripts 0.917 and code 1.000. Every gated class is at or above 0.80.

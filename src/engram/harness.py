@@ -299,6 +299,18 @@ def _write_pinned(config_path: Path, winner_id: str) -> None:
     config_path.write_text("\n".join(new_lines))
 
 
+def _select_winner(per_model: dict[str, ModelScore], pinned_id: str | None) -> str:
+    # Dict order preserves shortlist order when the pin is not tied for best.
+    winner_id = max(per_model, key=lambda model_id: per_model[model_id].hit_rate)
+    # Equal scores must not repoint config away from the live index's model.
+    if (
+        pinned_id in per_model
+        and per_model[pinned_id].hit_rate == per_model[winner_id].hit_rate
+    ):
+        return pinned_id
+    return winner_id
+
+
 def run_harness(
     config: EngramConfig,
     goldset_path: Path,
@@ -307,7 +319,6 @@ def run_harness(
     goldset = load_goldset(goldset_path)
     leases = []
     per_model: dict[str, ModelScore] = {}
-    winner_id: str | None = None
     try:
         for entry in config.embeddings:
             leases.append(ensure_served(entry))
@@ -322,22 +333,7 @@ def run_harness(
             for line in _model_lines(entry.id, per_model[entry.id]):
                 print(line, flush=True)
 
-        best_rate = -1.0
-        for entry in config.embeddings:
-            rate = per_model[entry.id].hit_rate
-            if rate > best_rate:
-                best_rate = rate
-                winner_id = entry.id
-        # A tie keeps the current pin. Config order used to break it, and on
-        # 2026-10-31 that swapped production from bge-m3 to Qwen at an equal
-        # 0.962: the live index was bge-m3-built, so every query and index died
-        # on the model-mismatch check until a multi-hour --rebuild.
-        if (
-            config.pinned_id in per_model
-            and per_model[config.pinned_id].hit_rate == best_rate
-        ):
-            winner_id = config.pinned_id
-
+        winner_id = _select_winner(per_model, config.pinned_id)
         baseline_hit_rate = _baseline_hit_rate(goldset)
         gate_passed = (
             per_model[winner_id].hit_rate >= 0.80

@@ -116,7 +116,6 @@ def _noop_index(store, config, scope, corpus=None):
     return IndexReport(
         files_scanned=0,
         chunks_added=0,
-        chunks_updated=0,
         chunks_pruned=0,
         corpora_missing=[],
     )

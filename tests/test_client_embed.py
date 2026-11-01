@@ -370,7 +370,9 @@ def test_embed_truncates_to_the_context_the_server_reports(mock_server, monkeypa
 
     embed(["x" * EMBED_MAX_CHARS], entry)
 
-    assert _longest_sent(mock_server) == int(2048 / client.WORST_CASE_TOKENS_PER_CHAR)
+    # Pin the measured safety boundary independently of the implementation
+    # constant: the old 0.75 ratio allowed 2730 chars and overflowed nomic.
+    assert _longest_sent(mock_server) == 2048
 
 
 def test_embed_keeps_the_full_ceiling_for_a_roomy_context(mock_server, monkeypatch):
@@ -380,7 +382,7 @@ def test_embed_keeps_the_full_ceiling_for_a_roomy_context(mock_server, monkeypat
 
     embed(["x" * (EMBED_MAX_CHARS * 2)], entry)
 
-    # 8192 / 0.75 exceeds the ceiling, so the corpus-wide cap still governs and
+    # 8192 exceeds the ceiling, so the corpus-wide cap still governs and
     # nothing changes for the model the live index was built with.
     assert _longest_sent(mock_server) == EMBED_MAX_CHARS
 
@@ -412,7 +414,7 @@ def test_embed_rereads_props_after_a_miss_instead_of_caching_the_ceiling(
     mock_server.props = {"default_generation_settings": {"n_ctx": 2048}}
     embed(["x" * EMBED_MAX_CHARS], entry)
 
-    assert _longest_sent(mock_server) == int(2048 / client.WORST_CASE_TOKENS_PER_CHAR)
+    assert _longest_sent(mock_server) == 2048
 
 
 def test_embed_never_restarts_a_server_it_did_not_spawn(mock_server, monkeypatch):

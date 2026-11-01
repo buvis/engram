@@ -97,8 +97,32 @@ def open_store(db_path: Path = DEFAULT_DB_PATH) -> "Store":
         "corpus TEXT, repo TEXT, path TEXT, content_hash TEXT, "
         "PRIMARY KEY(corpus, repo, path))",
     )
+    _invalidate_legacy_empty_code(conn)
 
     return Store(conn)
+
+
+def _invalidate_legacy_empty_code(conn: sqlite3.Connection) -> None:
+    # The first cache version also remembered read/parser failures as empty.
+    # Retry those sources once on a normal index; embedded chunks stay intact.
+    if conn.execute(
+        "SELECT 1 FROM meta WHERE key = 'empty_code_cache_version'"
+    ).fetchone():
+        return
+    conn.execute("BEGIN IMMEDIATE")
+    try:
+        conn.execute(
+            "DELETE FROM empty_sources WHERE corpus = 'code' AND NOT EXISTS "
+            "(SELECT 1 FROM meta WHERE key = 'empty_code_cache_version')"
+        )
+        conn.execute(
+            "INSERT OR IGNORE INTO meta (key, value) "
+            "VALUES ('empty_code_cache_version', '2')"
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
 
 
 class Store:

@@ -7,10 +7,18 @@
 # if any path is missing, any corpus is unknown, or there are fewer than 30
 # entries.
 #
-# Corpora present: memory, prd, discovery, transcripts, code. The "decision" corpus
-# (<repo>/docs/dev/project-management/meta/decisions.md) currently has no files anywhere in the
-# portfolio, so it is unrepresented here — add decision entries once a real
-# decisions.md exists.
+# Corpora present: memory, prd, decision, discovery, transcripts, code.
+# Decision entries added 2026-11-01 from the agent-plugins decision record,
+# before scoring. They cover distinct decisions in the portfolio's one current
+# decisions.md; this checks file retrieval, not independent-document diversity.
+#
+# PRD/discovery re-anchoring in 3bad0f2: calcard-mcp 00032 and gems 00071/00045
+# no longer exist by their original basenames. calcard-mcp 00036 moved to
+# intake/new/ and gems 00062 to research/; neither directory is indexed as the
+# original corpus. Verified across those repositories on 2026-11-01. The old
+# dev/local files were ignored, so there is no tracked deletion history. Four
+# PRD queries and one discovery query were replaced; the historical score is
+# specific to that revised set and is not a before/after quality comparison.
 
 # --- memory corpus ---
 - query: "does engram serve embeddings with llama-server or LlamaBarn"
@@ -123,7 +131,7 @@
   expected_path: "/Users/bob/git/src/github.com/tbouska/playground/docs/dev/project-management/discovery/00006-format-interop-netlist-hub.md"
   corpus: discovery
 
-# --- transcripts corpus (past-incident paraphrases) ---
+# --- code corpus (cross-repo reuse seeds) ---
 - query: "have I built a notification dispatcher that posts to Slack, Discord, a generic webhook, and email"
   expected_path: "/Users/bob/git/src/github.com/buvis/container-images/apps/mkdocs-git-sync/container-files/syncer/linkcheck/notifiers.py"
   corpus: code
@@ -140,6 +148,7 @@
   expected_path: "/Users/bob/git/src/github.com/buvis/gems/src/lib/buvis/pybase/adapters/console/console.py"
   corpus: code
 
+# --- transcripts corpus (past-incident paraphrases) ---
 # Transcript entries rebuilt 2026-10-31: cellar sync prunes old sessions, which deleted
 # all 12 earlier anchors and made load_goldset fail. The 12 below were drawn with seed
 # 20261031 from human-driven sessions (first turn not a subagent prompt) BEFORE scoring;
@@ -182,3 +191,14 @@
 - query: "sandboxed agent could not install a built macOS app into the user applications folder"
   expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/821762c9-8c93-4a1a-80e9-db949e2c5f90.jsonl"
   corpus: transcripts
+
+# --- decision corpus ---
+- query: "where do raw specflow requirements go before and after formalization"
+  expected_path: "/Users/bob/git/src/github.com/buvis/agent-plugins/docs/dev/project-management/meta/decisions.md"
+  corpus: decision
+- query: "why did specflow replace the upstream updater pipeline with manual source catchup"
+  expected_path: "/Users/bob/git/src/github.com/buvis/agent-plugins/docs/dev/project-management/meta/decisions.md"
+  corpus: decision
+- query: "which safeguards must specflow pass before a personal skill can retire"
+  expected_path: "/Users/bob/git/src/github.com/buvis/agent-plugins/docs/dev/project-management/meta/decisions.md"
+  corpus: decision

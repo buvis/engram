@@ -106,18 +106,17 @@ def test_file_with_no_grammar_yields_no_chunks_and_is_recorded_as_skipped(
     assert str(path) in symbols.skipped_files
 
 
-# --- chunk(): a file that cannot be read is skipped, not raised ---
+# --- chunk(): failures reach the indexer so they are retried ---
 
 
-def test_unreadable_path_yields_no_chunks_and_is_recorded_as_skipped(tmp_path):
+def test_unreadable_path_raises_instead_of_looking_empty(tmp_path):
     symbols.skipped_files.clear()
     path = tmp_path / "phantom.py"
     path.mkdir()  # a directory where a file is expected: reading it raises OSError
 
-    chunks = symbols.chunk(path, "widget", "h1")
-
-    assert chunks == []
-    assert str(path) in symbols.skipped_files
+    with pytest.raises(OSError):
+        symbols.chunk(path, "widget", "h1")
+    assert str(path) not in symbols.skipped_files
 
 
 # --- chunk(): non-UTF-8 bytes are replaced, not treated as unreadable ---
@@ -139,10 +138,10 @@ def test_file_with_invalid_utf8_bytes_is_parsed_with_replacement_and_not_skipped
     assert "�" in chunks[0].body
 
 
-# --- chunk(): a file that raises while being parsed is skipped, not raised ---
+# --- chunk(): parser failures must not become successful empty results ---
 
 
-def test_file_that_raises_during_parsing_is_skipped_and_recorded(tmp_path, monkeypatch):
+def test_parser_failure_raises_instead_of_looking_empty(tmp_path, monkeypatch):
     symbols.skipped_files.clear()
     path = tmp_path / "pathological.py"
     path.write_text("def f():\n    pass\n")
@@ -152,10 +151,9 @@ def test_file_that_raises_during_parsing_is_skipped_and_recorded(tmp_path, monke
 
     monkeypatch.setattr(symbols, "process", raising_process)
 
-    chunks = symbols.chunk(path, "widget", "h1")
-
-    assert chunks == []
-    assert str(path) in symbols.skipped_files
+    with pytest.raises(RuntimeError, match="tree-sitter blew up"):
+        symbols.chunk(path, "widget", "h1")
+    assert str(path) not in symbols.skipped_files
 
 
 # --- chunk(): empty / whitespace-only source has no symbols and is not a skip ---

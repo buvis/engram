@@ -8,12 +8,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **indexer**: remove the unused `IndexReport.chunks_updated` field; changed
+  chunks continue to count as added and pruned.
 - **corpora/cli**: index tracked PRDs, decisions, discovery notes, and capsules
   under `docs/dev/project-management/`; write disposable context packs under
   globally ignored `docs/dev/tmp/`.
 
 ### Fixed
 
+- **symbols**: retry transient read and parser failures instead of caching them
+  as empty sources. Existing empty-code markers are invalidated once; the next
+  normal index reparses those sources without rebuilding embedded chunks.
+- **cli**: query and index print embedding-server and preflight failures as
+  concise errors with exit status 1 instead of uncaught tracebacks.
+- **eval**: add three decision queries from the agent-plugins decision record,
+  restore the code-corpus heading, and document the replaced prose anchors.
+- **docs**: correct the historical gate sample size to 52 and refresh the
+  project capsule after PRD 00002 completion.
 - **harvest**: resolve tracked `~/.claude/docs/dev/project-management/`
   artifacts as the `claude-home` corpus.
 - **indexer**: an unchanged-portfolio reindex takes 13 seconds instead of 94, inside the 60-second bound. A file that chunks to nothing (no grammar, no symbols, no kept turns) is now remembered by content hash, so it is not parsed again on every run. About 16,000 such code files were costing 84 seconds per run. A chunker failure is still retried.
