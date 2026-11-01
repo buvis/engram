@@ -906,6 +906,32 @@ def test_config_names_winner_after_gate_passes(tmp_path, monkeypatch):
     assert reloaded.pinned_id == "pin-pass-model"
 
 
+def test_a_tie_keeps_the_current_pin_instead_of_config_order(tmp_path, monkeypatch):
+    # Repointing production to an equal-scoring model strands the live index on
+    # the old model, so every query fails the model-mismatch check.
+    files = _dummy_files(tmp_path, 30, prefix="tie")
+    entries_meta = [
+        {"query": f"tieprobe{i}", "expected_path": str(f), "corpus": "memory"}
+        for i, f in enumerate(files)
+    ]
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, entries_meta)
+
+    first, second = _entry("first-model", 8145), _entry("pinned-model", 8146)
+    config = _harness_config(tmp_path, [first, second], pinned_id="pinned-model")
+    _write_config_toml(config.config_path, [first, second])
+
+    expected_by_query = {e["query"]: e["expected_path"] for e in entries_meta}
+    _patch_common(monkeypatch, tmp_path, _hit_or_miss_query(expected_by_query, lambda c: True))
+    work_dir = tmp_path / "work"
+    work_dir.mkdir()
+
+    report = run_harness(config, goldset_path, work_dir)
+
+    assert report.winner_id == "pinned-model"
+    assert load_config(config.config_path).pinned_id == "pinned-model"
+
+
 # --- run_harness: lease lifecycle ---
 
 

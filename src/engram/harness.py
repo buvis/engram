@@ -328,6 +328,15 @@ def run_harness(
             if rate > best_rate:
                 best_rate = rate
                 winner_id = entry.id
+        # A tie keeps the current pin. Config order used to break it, and on
+        # 2026-10-31 that swapped production from bge-m3 to Qwen at an equal
+        # 0.962: the live index was bge-m3-built, so every query and index died
+        # on the model-mismatch check until a multi-hour --rebuild.
+        if (
+            config.pinned_id in per_model
+            and per_model[config.pinned_id].hit_rate == best_rate
+        ):
+            winner_id = config.pinned_id
 
         baseline_hit_rate = _baseline_hit_rate(goldset)
         gate_passed = (
