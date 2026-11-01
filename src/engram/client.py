@@ -27,11 +27,13 @@ EMBED_BATCH_SIZE = 64
 EMBED_BATCH_MAX_CHARS = EMBED_MAX_CHARS
 EMBED_SERVER_CTX_TOKENS = 8192
 
-# Measured token density of the corpora, worst case: dense chunks (JSON dumps,
-# tracebacks, minified code) run ~0.65 tokens per character and prose ~0.17, so
-# 0.75 keeps a margin over the densest content seen. Used to turn a server's
-# reported context into a character budget without carrying a tokenizer.
-WORST_CASE_TOKENS_PER_CHAR = 0.75
+# Worst-case token density of the corpora, used to turn a server's reported
+# context into a character budget without carrying a tokenizer. Prose runs ~0.17
+# tokens per character; minified JS bundles in the code corpus measured 0.81
+# (2207 tokens from 2730 chars on nomic, 2026-10-31), past the 0.75 once assumed.
+# 1.0 holds for ASCII-dense text; only small-context models feel it, since
+# 8192 / 1.0 still exceeds EMBED_MAX_CHARS.
+WORST_CASE_TOKENS_PER_CHAR = 1.0
 EMBED_REQUEST_TIMEOUT_S = 120
 STOP_WAIT_TIMEOUT_S = 5
 
@@ -353,7 +355,11 @@ def _max_chars_for(entry: EmbeddingEntry) -> int:
     budget = EMBED_MAX_CHARS
     if tokens is not None:
         budget = min(EMBED_MAX_CHARS, int(tokens / WORST_CASE_TOKENS_PER_CHAR))
-    _max_chars_by_endpoint[entry.endpoint] = budget
+    # Only a server-reported context is cached. /props answers 503 while the
+    # model is still loading, and caching that miss pinned the full 8000-char
+    # budget for the whole run on a 2048-token model.
+    if tokens is not None:
+        _max_chars_by_endpoint[entry.endpoint] = budget
     return budget
 
 

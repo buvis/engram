@@ -398,6 +398,23 @@ def test_embed_falls_back_to_the_ceiling_when_props_is_unavailable(
     assert _longest_sent(mock_server) == EMBED_MAX_CHARS
 
 
+def test_embed_rereads_props_after_a_miss_instead_of_caching_the_ceiling(
+    mock_server,
+    monkeypatch,
+):
+    # /props answers 503 while llama.cpp is still loading the model; caching that
+    # miss kept the 8000-char ceiling for a 2048-token model for the whole run.
+    entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
+    monkeypatch.setattr(client, "_max_chars_by_endpoint", {})
+    mock_server.props = None
+    embed(["x"], entry)
+
+    mock_server.props = {"default_generation_settings": {"n_ctx": 2048}}
+    embed(["x" * EMBED_MAX_CHARS], entry)
+
+    assert _longest_sent(mock_server) == int(2048 / client.WORST_CASE_TOKENS_PER_CHAR)
+
+
 def test_embed_never_restarts_a_server_it_did_not_spawn(mock_server, monkeypatch):
     entry = EmbeddingEntry(id=mock_server.model_id, endpoint=mock_server.base_url)
     calls = _fake_lifecycle(monkeypatch, spawned=False)
