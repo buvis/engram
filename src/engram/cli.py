@@ -19,7 +19,7 @@ from engram.client import (
 from engram.corpora import GITA_REPOS_CSV, enumerate_corpora
 from engram.findings import FINDINGS_CORPUS
 from engram.harvest import _resolve_repo_for_path, harvest
-from engram.indexer import index
+from engram.indexer import index, reembed_code
 from engram.pack import build
 from engram.query import query
 from engram.store import (
@@ -73,6 +73,11 @@ def _build_parser() -> argparse.ArgumentParser:
     index_parser.add_argument("--scope", choices=["repo", "portfolio"], default=None)
     index_parser.add_argument("--corpus", default=None)
     index_parser.add_argument("--rebuild", action="store_true")
+    index_parser.add_argument(
+        "--reembed-code",
+        action="store_true",
+        help="regenerate vectors of indexed code chunks without a full rebuild",
+    )
 
     status_parser = subparsers.add_parser("status")
     status_parser.add_argument("--scope", choices=["repo", "portfolio"], default=None)
@@ -143,6 +148,11 @@ def _print_missing(missing: list[str], scope: Scope, corpus: str | None = None) 
         print(m)
 
 
+def _print_failed(failed: list[str]) -> None:
+    for path in failed:
+        print(f"failed (existing rows kept): {path}", file=sys.stderr)
+
+
 def _preserve_findings(tmp_store: Store, config: EngramConfig) -> None:
     findings_chunks: list[Chunk] = []
     if DEFAULT_DB_PATH.exists():
@@ -192,6 +202,21 @@ def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
         tmp_store.conn.close()
         os.replace(tmp_path, DEFAULT_DB_PATH)
         _print_missing(report.corpora_missing, Scope("portfolio", None))
+        _print_failed(report.failed_sources)
+        return 0
+
+    if args.reembed_code:
+        if args.scope is not None or args.corpus is not None:
+            parser.error("--reembed-code cannot be combined with --scope or --corpus")
+        try:
+            count = reembed_code(open_store(), load_config())
+        except StoreModelMismatchError as e:
+            print(f"{e}; run `engram index --rebuild` to rebuild the store", file=sys.stderr)
+            return 1
+        except (EmbeddingServerError, EmbeddingPreflightError) as e:
+            print(str(e), file=sys.stderr)
+            return 1
+        print(f"re-embedded {count} code chunks")
         return 0
 
     scope = _resolve_scope(args.scope or "repo")
@@ -214,6 +239,7 @@ def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
         return 1
 
     _print_missing(report.corpora_missing, scope, args.corpus)
+    _print_failed(report.failed_sources)
     return 0
 
 

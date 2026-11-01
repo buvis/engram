@@ -28,7 +28,18 @@ class Chunk:
 
     @property
     def text_for_embedding(self) -> str:
+        if self.corpus == "code":
+            # Path first so it survives the embed-input truncation cap.
+            return f"{self.heading}\n{_repo_relative(self.repo, self.path)}\n{self.body}"
         return f"{self.heading}\n{self.body}" if self.heading else self.body
+
+
+def _repo_relative(repo: str, path: str) -> str:
+    """`repo/rel/path` when the path contains the repo directory, else the path."""
+    parts = Path(path).parts
+    if repo in parts:
+        return "/".join(parts[parts.index(repo) :])
+    return path
 
 
 @dataclass(frozen=True)

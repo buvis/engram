@@ -70,20 +70,23 @@ def _extract_text(content) -> str:
     return ""
 
 
-def _has_error_match(content, error_patterns: list[str]) -> bool:
+def _tool_result_text(block: dict) -> str:
+    """Text of a tool_result block, whether content is a string or a block list."""
+    return _extract_text(block.get("content"))
+
+
+def _error_result_text(content, error_patterns: list[str]) -> str:
+    """Joined text of tool_result blocks matching any error pattern."""
     if not isinstance(content, list):
-        return False
+        return ""
+    matched = []
     for block in content:
-        if not isinstance(block, dict):
+        if not isinstance(block, dict) or block.get("type") != "tool_result":
             continue
-        if block.get("type") != "tool_result":
-            continue
-        text = block.get("content")
-        if not isinstance(text, str):
-            continue
+        text = _tool_result_text(block)
         if any(re.search(pat, text) for pat in error_patterns):
-            return True
-    return False
+            matched.append(text)
+    return "\n".join(matched)
 
 
 def chunk(
@@ -118,9 +121,12 @@ def chunk(
 
         content = message.get("content")
         text = _extract_text(content)
-        if not text.strip() and not _has_error_match(content, error_patterns):
-            continue
         if text.lstrip().startswith(SCAFFOLDING_PREFIXES):
+            continue
+        error_text = _error_result_text(content, error_patterns)
+        if error_text:
+            text = f"{text}\n{error_text}" if text.strip() else error_text
+        if not text.strip():
             continue
 
         chunks.append(

@@ -142,7 +142,7 @@ def test_tool_result_matching_error_pattern_is_kept_with_empty_body_at_correct_l
             doc_type="turn",
             path=str(path),
             heading="assistant turn",
-            body="",
+            body='Traceback (most recent call last):\n  File "x.py"\nKeyError',
             line_start=3,
             line_end=3,
             content_hash="hash-abc",

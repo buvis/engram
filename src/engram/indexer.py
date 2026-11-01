@@ -1,6 +1,6 @@
 """Incremental indexer: enumerate, diff, chunk, embed, upsert, prune."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import engram.corpora as corpora
 from engram import symbols, transcripts
@@ -17,6 +17,7 @@ class IndexReport:
     chunks_pruned: int
     corpora_missing: list[str]
     files_skipped: int = 0
+    failed_sources: list[str] = field(default_factory=list)
 
 
 def index(
@@ -26,7 +27,11 @@ def index(
     corpus: str | None = None,
 ) -> IndexReport:
     # 1. Enumerate and filter
-    files = list(enumerate_corpora()) + list(transcripts.enumerate()) + list(symbols.enumerate())
+    files = list(enumerate_corpora())
+    # Cellar is only required when the requested scope can include transcripts.
+    if _needs_transcripts(scope, corpus):
+        files += list(transcripts.enumerate())
+    files += list(symbols.enumerate())
     if scope.kind == "repo":
         files = [f for f in files if f.repo == scope.repo]
     if corpus is not None:
@@ -60,9 +65,14 @@ def index(
 
     skipped_before = len(symbols.skipped_files)
     dispatch_skipped = 0
+    failed_sources: list[str] = []
 
     for file in files:
-        h = hash_source(file.path)
+        try:
+            h = hash_source(file.path)
+        except OSError:
+            failed_sources.append(str(file.path))
+            continue
         key = (file.repo, str(file.path), h)
         empty_key = (file.corpus, *key)
 
@@ -78,6 +88,7 @@ def index(
         except Exception:
             # Not recorded as empty: a chunker failure is retried next run.
             dispatch_skipped += 1
+            failed_sources.append(str(file.path))
             continue
         if not chunks:
             store.mark_empty_source(*empty_key)
@@ -91,6 +102,12 @@ def index(
         active_sources.add(key)
         chunks_added += len(chunks)
 
+    # A source that failed to read, hash, or parse keeps its previously indexed
+    # rows (any hash) rather than being pruned as if it had vanished.
+    failed = set(failed_sources)
+    active_sources |= {key for key in known if key[1] in failed}
+    active_empty |= {key for key in known_empty if key[2] in failed}
+
     # 3. Prune (only reached here if the loop completed without exception)
     chunks_pruned = store.prune(scope, corpus, active_sources)
     store.prune_empty_sources(scope, corpus, active_empty)
@@ -101,7 +118,14 @@ def index(
         chunks_pruned=chunks_pruned,
         corpora_missing=corpora_missing,
         files_skipped=dispatch_skipped + (len(symbols.skipped_files) - skipped_before),
+        failed_sources=failed_sources,
     )
+
+
+def _needs_transcripts(scope: Scope, corpus: str | None) -> bool:
+    if corpus is not None and corpus != "transcripts":
+        return False
+    return scope.kind == "portfolio" or scope.repo == "cellar"
 
 
 def _chunk_file(file: CorpusFile, content_hash: str) -> list[Chunk]:
@@ -110,3 +134,42 @@ def _chunk_file(file: CorpusFile, content_hash: str) -> list[Chunk]:
     if file.corpus == "code":
         return symbols.chunk(file.path, file.repo, content_hash)
     return chunk_markdown(file.path, file.corpus, file.repo, content_hash)
+
+
+def reembed_code(store: Store, config: EngramConfig, batch_size: int = 64) -> int:
+    """Regenerate the vector of every indexed code chunk from its current embedding text.
+
+    Targeted migration for embedding-text changes (e.g. path enrichment): chunk rows
+    and content hashes are kept, only vectors are replaced, one source at a time, so
+    an interrupted run is safe to repeat. Returns the number of chunks re-embedded.
+    """
+    entry = resolve_pinned_entry(config)
+    store.assert_configured_model(entry.id)
+
+    by_path: dict[str, list[Chunk]] = {}
+    for c in store.chunks_for_corpus("code"):
+        by_path.setdefault(c.path, []).append(c)
+
+    done = 0
+    pending: list[tuple[str, list[Chunk]]] = []
+    pending_count = 0
+
+    def flush() -> None:
+        nonlocal done, pending, pending_count
+        if not pending:
+            return
+        texts = [c.text_for_embedding for _, cs in pending for c in cs]
+        vectors = iter(embed(texts, entry))
+        for path, cs in pending:
+            items = [ChunkWithVector(chunk=c, vector=next(vectors)) for c in cs]
+            store.replace_chunks_for_source("code", path, items)
+            done += len(cs)
+        pending, pending_count = [], 0
+
+    for path, cs in by_path.items():
+        pending.append((path, cs))
+        pending_count += len(cs)
+        if pending_count >= batch_size:
+            flush()
+    flush()
+    return done
