@@ -48,16 +48,7 @@ def _resolve_repo_for_path(path: Path, repos_csv: Path = GITA_REPOS_CSV) -> str 
         home = Path.home()
         try:
             resolved = path.resolve()
-            # ~/.claude/dev/local is a symlink into ~/.local/tmp; callers that
-            # realpath their store (purge-devlocal) hand us the target, which
-            # is outside ~/.claude but still the claude-home corpus.
-            claude_targets = (
-                home / ".claude",
-                (home / ".claude" / "dev" / "local").resolve(),
-            )
-            under_claude_home = any(
-                resolved.is_relative_to(t) for t in claude_targets
-            )
+            under_claude_home = resolved.is_relative_to((home / ".claude").resolve())
         except (OSError, RuntimeError):
             return None
         if under_claude_home:

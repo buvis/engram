@@ -39,7 +39,7 @@ def _enumerate_memory_corpora(
 
 def _enumerate_repo_corpora(root: Path, name: str) -> Iterator[CorpusFile]:
     # PRD (recursive)
-    prds_dir = root / "dev" / "local" / "prds"
+    prds_dir = root / "docs" / "dev" / "project-management" / "prds"
     if prds_dir.is_dir():
         for md_file in sorted(prds_dir.rglob("*.md")):
             if md_file.is_file():
@@ -47,18 +47,17 @@ def _enumerate_repo_corpora(root: Path, name: str) -> Iterator[CorpusFile]:
     else:
         missing_dirs.append(f"prd:{name}")
 
-    # Decision (single file; meta/ is canonical since 2026-08-23, root is the
-    # compat-symlink era fallback for unmigrated stores)
-    decisions_file = root / "dev" / "local" / "meta" / "decisions.md"
-    if not decisions_file.is_file():
-        decisions_file = root / "dev" / "local" / "decisions.md"
+    # Decision (single file)
+    decisions_file = (
+        root / "docs" / "dev" / "project-management" / "meta" / "decisions.md"
+    )
     if decisions_file.is_file():
         yield CorpusFile("decision", name, decisions_file)
     else:
         missing_dirs.append(f"decision:{name}")
 
     # Discovery (non-recursive)
-    discovery_dir = root / "dev" / "local" / "discovery"
+    discovery_dir = root / "docs" / "dev" / "project-management" / "discovery"
     if discovery_dir.is_dir():
         for md_file in sorted(discovery_dir.glob("*.md")):
             if md_file.is_file():

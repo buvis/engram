@@ -463,7 +463,7 @@ def build(
     source_ref: str | None = None,
     prd_path: Path | None = None,
     capsule_path: Path | None = None,
-    out_dir: Path = Path("dev/local/tmp"),
+    out_dir: Path = Path("docs/dev/tmp"),
 ) -> PackReport:
     index_report, changed_spans, query_symbols, symbols_omitted = (
         _reindex_and_resolve_symbols(

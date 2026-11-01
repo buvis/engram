@@ -15,7 +15,7 @@ def _write_repos_csv(csv_path: Path, rows: list[tuple[str, str]]) -> None:
 
 def test_enumerate_corpora_yields_prd_decision_and_discovery_files_for_repo(tmp_path):
     repo_root = tmp_path / "repos" / "widget"
-    prds_dir = repo_root / "dev" / "local" / "prds"
+    prds_dir = repo_root / "docs" / "dev" / "project-management" / "prds"
     nested_prd_dir = prds_dir / "backlog"
     nested_prd_dir.mkdir(parents=True)
     prd_top = prds_dir / "00001-top.md"
@@ -23,10 +23,13 @@ def test_enumerate_corpora_yields_prd_decision_and_discovery_files_for_repo(tmp_
     prd_nested = nested_prd_dir / "00002-nested.md"
     prd_nested.write_text("nested prd")
 
-    decisions_file = repo_root / "dev" / "local" / "decisions.md"
+    decisions_file = (
+        repo_root / "docs" / "dev" / "project-management" / "meta" / "decisions.md"
+    )
+    decisions_file.parent.mkdir()
     decisions_file.write_text("decisions log")
 
-    discovery_dir = repo_root / "dev" / "local" / "discovery"
+    discovery_dir = repo_root / "docs" / "dev" / "project-management" / "discovery"
     discovery_dir.mkdir(parents=True)
     discovery_file = discovery_dir / "notes.md"
     discovery_file.write_text("discovery notes")
@@ -76,7 +79,9 @@ def test_memory_dir_matching_repos_csv_slug_resolves_to_repo_name(tmp_path):
     assert results == {("memory", "gadget", memory_file)}
 
 
-def test_memory_corpus_paths_are_symlink_resolved_when_projects_dir_is_a_symlink(tmp_path):
+def test_memory_corpus_paths_are_symlink_resolved_when_projects_dir_is_a_symlink(
+    tmp_path,
+):
     repo_root = tmp_path / "repos" / "gadget"
     slug = str(repo_root).replace("/", "-")
 
@@ -120,7 +125,9 @@ def test_memory_dir_matching_no_repos_csv_row_resolves_to_unmapped(tmp_path):
     assert results == {("memory", "_unmapped", memory_file)}
 
 
-def test_memory_dir_for_hyphenated_repo_name_resolves_to_full_name_not_last_segment(tmp_path):
+def test_memory_dir_for_hyphenated_repo_name_resolves_to_full_name_not_last_segment(
+    tmp_path,
+):
     projects_dir = tmp_path / "projects"
     memory_dir = projects_dir / "-some-base-audit-tools" / "memory"
     memory_dir.mkdir(parents=True)
@@ -144,10 +151,12 @@ def test_memory_dir_for_hyphenated_repo_name_resolves_to_full_name_not_last_segm
 
 def test_missing_prds_dir_appends_prd_entry_to_missing_dirs_without_raising(tmp_path):
     repo_root = tmp_path / "repos" / "acme"
-    decisions_file = repo_root / "dev" / "local" / "decisions.md"
+    decisions_file = (
+        repo_root / "docs" / "dev" / "project-management" / "meta" / "decisions.md"
+    )
     decisions_file.parent.mkdir(parents=True)
     decisions_file.write_text("decisions")
-    discovery_dir = repo_root / "dev" / "local" / "discovery"
+    discovery_dir = repo_root / "docs" / "dev" / "project-management" / "discovery"
     discovery_dir.mkdir()
 
     repos_csv = tmp_path / "repos.csv"
@@ -161,16 +170,15 @@ def test_missing_prds_dir_appends_prd_entry_to_missing_dirs_without_raising(tmp_
     assert not any(cf.corpus == "prd" for cf in results)
 
 
-def test_decision_corpus_prefers_meta_decisions_over_root(tmp_path):
-    """meta/ is the keepers' canonical home (2026-08-23); a root decisions.md
-    is the compat-symlink era fallback and must lose when both exist."""
+def test_decision_corpus_reads_project_management_meta(tmp_path):
     repo_root = tmp_path / "repos" / "acme"
-    meta_file = repo_root / "dev" / "local" / "meta" / "decisions.md"
+    meta_file = (
+        repo_root / "docs" / "dev" / "project-management" / "meta" / "decisions.md"
+    )
     meta_file.parent.mkdir(parents=True)
     meta_file.write_text("canonical decisions")
-    (repo_root / "dev" / "local" / "decisions.md").write_text("stale root")
-    (repo_root / "dev" / "local" / "prds").mkdir()
-    (repo_root / "dev" / "local" / "discovery").mkdir()
+    (repo_root / "docs" / "dev" / "project-management" / "prds").mkdir()
+    (repo_root / "docs" / "dev" / "project-management" / "discovery").mkdir()
 
     repos_csv = tmp_path / "repos.csv"
     _write_repos_csv(repos_csv, [(str(repo_root), "acme")])
@@ -185,9 +193,9 @@ def test_decision_corpus_prefers_meta_decisions_over_root(tmp_path):
 
 def test_missing_decisions_file_appends_decision_entry_to_missing_dirs(tmp_path):
     repo_root = tmp_path / "repos" / "acme"
-    prds_dir = repo_root / "dev" / "local" / "prds"
+    prds_dir = repo_root / "docs" / "dev" / "project-management" / "prds"
     prds_dir.mkdir(parents=True)
-    discovery_dir = repo_root / "dev" / "local" / "discovery"
+    discovery_dir = repo_root / "docs" / "dev" / "project-management" / "discovery"
     discovery_dir.mkdir()
 
     repos_csv = tmp_path / "repos.csv"
@@ -203,9 +211,12 @@ def test_missing_decisions_file_appends_decision_entry_to_missing_dirs(tmp_path)
 
 def test_missing_discovery_dir_appends_discovery_entry_to_missing_dirs(tmp_path):
     repo_root = tmp_path / "repos" / "acme"
-    prds_dir = repo_root / "dev" / "local" / "prds"
+    prds_dir = repo_root / "docs" / "dev" / "project-management" / "prds"
     prds_dir.mkdir(parents=True)
-    decisions_file = repo_root / "dev" / "local" / "decisions.md"
+    decisions_file = (
+        repo_root / "docs" / "dev" / "project-management" / "meta" / "decisions.md"
+    )
+    decisions_file.parent.mkdir()
     decisions_file.write_text("decisions")
 
     repos_csv = tmp_path / "repos.csv"
@@ -234,9 +245,11 @@ def test_missing_dirs_resets_to_empty_on_each_call(tmp_path):
     assert corpora.missing_dirs  # sanity: first call populated missing entries
 
     full_repo_root = tmp_path / "repos" / "full"
-    (full_repo_root / "dev" / "local" / "prds").mkdir(parents=True)
-    (full_repo_root / "dev" / "local" / "decisions.md").write_text("decisions")
-    (full_repo_root / "dev" / "local" / "discovery").mkdir()
+    pm_root = full_repo_root / "docs" / "dev" / "project-management"
+    (pm_root / "prds").mkdir(parents=True)
+    (pm_root / "meta").mkdir()
+    (pm_root / "meta" / "decisions.md").write_text("decisions")
+    (pm_root / "discovery").mkdir()
     repos_csv_full = tmp_path / "repos_full.csv"
     _write_repos_csv(repos_csv_full, [(str(full_repo_root), "full")])
 
@@ -250,7 +263,7 @@ def test_missing_dirs_resets_to_empty_on_each_call(tmp_path):
 
 def test_discovery_corpus_ignores_files_in_nested_subdirectories(tmp_path):
     repo_root = tmp_path / "repos" / "widget"
-    discovery_dir = repo_root / "dev" / "local" / "discovery"
+    discovery_dir = repo_root / "docs" / "dev" / "project-management" / "discovery"
     nested_dir = discovery_dir / "archive"
     nested_dir.mkdir(parents=True)
     top_file = discovery_dir / "top.md"
@@ -311,10 +324,12 @@ def test_hash_source_matches_git_hash_object_for_non_ascii_content(tmp_path):
 
 def test_blank_line_in_repos_csv_is_skipped_without_raising(tmp_path):
     repo_root = tmp_path / "repos" / "widget"
-    (repo_root / "dev" / "local" / "prds").mkdir(parents=True)
-    decisions_file = repo_root / "dev" / "local" / "decisions.md"
+    pm_root = repo_root / "docs" / "dev" / "project-management"
+    (pm_root / "prds").mkdir(parents=True)
+    decisions_file = pm_root / "meta" / "decisions.md"
+    decisions_file.parent.mkdir()
     decisions_file.write_text("decisions")
-    (repo_root / "dev" / "local" / "discovery").mkdir()
+    (pm_root / "discovery").mkdir()
 
     repos_csv = tmp_path / "repos.csv"
     # stray blank lines are plausible in a hand-edited gita csv; they must be
@@ -338,7 +353,7 @@ def test_missing_dirs_updates_are_visible_through_a_direct_name_import(tmp_path)
     from engram.corpora import missing_dirs as bound
 
     repo_root = tmp_path / "repos" / "acme"
-    repo_root.mkdir(parents=True)  # no dev/local -> all three sources missing
+    repo_root.mkdir(parents=True)  # no project-management tree -> all sources missing
 
     repos_csv = tmp_path / "repos.csv"
     _write_repos_csv(repos_csv, [(str(repo_root), "acme")])

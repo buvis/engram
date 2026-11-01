@@ -8,11 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- **corpora/cli**: keeper files moved to `dev/local/meta/` (2026-08-23 layout change) - the decision corpus and the `pack` default capsule now resolve `meta/decisions.md` / `meta/project-capsule.md` first, falling back to the old root paths for unmigrated stores
+- **corpora/cli**: index tracked PRDs, decisions, discovery notes, and capsules
+  under `docs/dev/project-management/`; write disposable context packs under
+  globally ignored `docs/dev/tmp/`.
 
 ### Fixed
 
-- **harvest**: resolve the claude-home corpus for files reached through the `~/.claude/dev/local` symlink target - callers that realpath their store (purge-devlocal GC) got `no_repo` for every review satellite, which blocked their trash-first GC forever
+- **harvest**: resolve tracked `~/.claude/docs/dev/project-management/`
+  artifacts as the `claude-home` corpus.
 
 ### Added
 

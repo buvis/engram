@@ -19,9 +19,9 @@ download the first time an embedding server starts.
 
 | Corpus | Source | Pointer |
 |---|---|---|
-| `prd` | `dev/local/prds/**/*.md` in every registered repo | heading |
-| `decision` | `dev/local/decisions.md` | heading |
-| `discovery` | `dev/local/discovery/*.md` | heading |
+| `prd` | `docs/dev/project-management/prds/**/*.md` in every registered repo | heading |
+| `decision` | `docs/dev/project-management/meta/decisions.md` | heading |
+| `discovery` | `docs/dev/project-management/discovery/*.md` | heading |
 | `memory` | `~/.claude/projects/*/memory/*.md` | heading |
 | `findings` | review files ingested by `engram harvest` | record |
 | `transcripts` | session JSONL, one turn per chunk | JSONL line |
@@ -53,7 +53,7 @@ engram index --rebuild                  # re-embed from scratch, atomic swap
 engram status --scope portfolio         # per-corpus counts, stale and dead rows
 engram query --scope repo "retry a flaky embedding server"
 engram query --scope portfolio --corpus findings -k 10 "token budget overflow"
-engram harvest dev/local/reviews/00003-audit.md
+engram harvest docs/dev/project-management/reviews/00003-audit.md
 engram pack --diff HEAD~5..HEAD         # reviewer context pack for a diff
 ```
 
@@ -140,4 +140,6 @@ job.
 uv run pytest
 ```
 
-Working documents, PRDs, and reviews live under `dev/local/` and are gitignored.
+Working documents, PRDs, and reviews live under tracked
+`docs/dev/project-management/`; disposable packs live under globally ignored
+`docs/dev/tmp/`.

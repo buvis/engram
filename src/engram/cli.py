@@ -314,7 +314,9 @@ def _resolve_pack_prd_and_capsule(
     if args.prd is not None:
         prd_path = Path(args.prd)
     else:
-        wip_dir = repo_root / "dev" / "local" / "prds" / "wip"
+        wip_dir = (
+            repo_root / "docs" / "dev" / "project-management" / "prds" / "wip"
+        )
         if wip_dir.is_dir():
             prd_files = list(wip_dir.glob("*.md"))
             if len(prd_files) == 1:
@@ -324,11 +326,13 @@ def _resolve_pack_prd_and_capsule(
     if args.capsule is not None:
         capsule_path = Path(args.capsule)
     else:
-        # meta/ is canonical since 2026-08-23; root is the compat-symlink era
-        # fallback for unmigrated stores.
         for default_capsule in (
-            repo_root / "dev" / "local" / "meta" / "project-capsule.md",
-            repo_root / "dev" / "local" / "project-capsule.md",
+            repo_root
+            / "docs"
+            / "dev"
+            / "project-management"
+            / "meta"
+            / "project-capsule.md",
         ):
             if default_capsule.exists():
                 capsule_path = default_capsule
@@ -348,7 +352,7 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         return 1
     repo_name, repo_root = repo
 
-    out_dir = repo_root / "dev" / "local" / "tmp"
+    out_dir = repo_root / "docs" / "dev" / "tmp"
 
     diff_resolved = _resolve_pack_diff(args, repo_root, out_dir)
     if diff_resolved is None:

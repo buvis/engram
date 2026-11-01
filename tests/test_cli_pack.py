@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 from _cli_helpers import _init_git_repo, _refuse
-
 from engram.cli import main
 from engram.indexer import IndexReport
 from engram.pack import PackReport
@@ -48,7 +47,7 @@ def _capturing_pack_build(calls, report):
         source_ref=None,
         prd_path=None,
         capsule_path=None,
-        out_dir=Path("dev/local/tmp"),
+        out_dir=Path("docs/dev/tmp"),
     ):
         calls.append(
             {
@@ -88,7 +87,7 @@ def _make_fake_git_diff_run(stdout, returncode=0):
 
 
 def _stage_diff(toplevel, cycle_id="cyc1"):
-    diff_path = toplevel / "dev" / "local" / "tmp" / f"review-diff-{cycle_id}.diff"
+    diff_path = toplevel / "docs" / "dev" / "tmp" / f"review-diff-{cycle_id}.diff"
     diff_path.parent.mkdir(parents=True, exist_ok=True)
     diff_path.write_text("diff --git a/foo b/foo\n+added line\n")
     return diff_path
@@ -138,7 +137,7 @@ def test_pack_resolves_repo_root_to_git_toplevel_when_run_from_a_subdirectory(
     monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
 
     calls = []
-    report = _make_pack_report(toplevel / "dev/local/tmp/engram-pack-cyc1.md")
+    report = _make_pack_report(toplevel / "docs/dev/tmp/engram-pack-cyc1.md")
     monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
 
     exit_code = main(["pack", "--cycle", "cyc1"])
@@ -184,7 +183,7 @@ def test_pack_cycle_reads_staged_diff_from_repo_root_when_invoked_from_a_subdire
     subdir = toplevel / "sub"
     subdir.mkdir()
 
-    root_tmp_dir = toplevel / "dev" / "local" / "tmp"
+    root_tmp_dir = toplevel / "docs" / "dev" / "tmp"
     root_tmp_dir.mkdir(parents=True)
     staged_diff = root_tmp_dir / "review-diff-cyc1.diff"
     staged_diff.write_text("real staged diff\n")
@@ -206,10 +205,10 @@ def test_pack_cycle_reads_staged_diff_from_repo_root_when_invoked_from_a_subdire
         source_ref=None,
         prd_path=None,
         capsule_path=None,
-        out_dir=Path("dev/local/tmp"),
+        out_dir=Path("docs/dev/tmp"),
     ):
         read_contents.append(Path(diff_path).read_text())
-        return _make_pack_report(toplevel / "dev/local/tmp/engram-pack-cyc1.md")
+        return _make_pack_report(toplevel / "docs/dev/tmp/engram-pack-cyc1.md")
 
     monkeypatch.setattr("engram.cli.build", fake_build)
 
@@ -241,7 +240,7 @@ def test_pack_diff_materializes_diff_under_repo_root_when_invoked_from_a_subdire
 
     calls = []
     report = _make_pack_report(
-        toplevel / "dev/local/tmp/engram-pack-abc123--def456.md",
+        toplevel / "docs/dev/tmp/engram-pack-abc123--def456.md",
     )
     monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
 
@@ -251,10 +250,10 @@ def test_pack_diff_materializes_diff_under_repo_root_when_invoked_from_a_subdire
     assert len(diff_calls) == 1
     assert len(calls) == 1
     written_at_repo_root = (
-        toplevel / "dev/local/tmp/engram-pack-diff-abc123--def456.diff"
+        toplevel / "docs/dev/tmp/engram-pack-diff-abc123--def456.diff"
     )
     assert written_at_repo_root.read_text() == fake_stdout
-    assert not (subdir / "dev/local/tmp/engram-pack-diff-abc123--def456.diff").exists()
+    assert not (subdir / "docs/dev/tmp/engram-pack-diff-abc123--def456.diff").exists()
 
 
 def test_pack_out_dir_default_anchors_to_repo_root_when_invoked_from_a_subdirectory(
@@ -275,14 +274,14 @@ def test_pack_out_dir_default_anchors_to_repo_root_when_invoked_from_a_subdirect
     monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
 
     calls = []
-    report = _make_pack_report(toplevel / "dev/local/tmp/engram-pack-cyc1.md")
+    report = _make_pack_report(toplevel / "docs/dev/tmp/engram-pack-cyc1.md")
     monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
 
     exit_code = main(["pack", "--cycle", "cyc1"])
 
     assert exit_code == 0
     assert len(calls) == 1
-    assert calls[0]["out_dir"].resolve() == (toplevel / "dev/local/tmp").resolve()
+    assert calls[0]["out_dir"].resolve() == (toplevel / "docs/dev/tmp").resolve()
 
 
 # --- pack: --cycle missing staged diff file fails loud before reindex ---
@@ -299,7 +298,7 @@ def test_pack_cycle_missing_staged_diff_fails_loud_before_reindex(
     _register_repo(monkeypatch, tmp_path, toplevel)
     monkeypatch.chdir(toplevel)
 
-    # No dev/local/tmp/review-diff-cyc1.diff is staged.
+    # No docs/dev/tmp/review-diff-cyc1.diff is staged.
     monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
     monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
     monkeypatch.setattr("engram.cli.build", _refuse)
@@ -307,10 +306,10 @@ def test_pack_cycle_missing_staged_diff_fails_loud_before_reindex(
     exit_code = main(["pack", "--cycle", "cyc1"])
 
     captured = capsys.readouterr()
-    expected_diff_path = toplevel / "dev" / "local" / "tmp" / "review-diff-cyc1.diff"
+    expected_diff_path = toplevel / "docs" / "dev" / "tmp" / "review-diff-cyc1.diff"
     assert exit_code == 1
     assert str(expected_diff_path) in captured.err
-    assert not (toplevel / "dev/local/tmp/engram-pack-cyc1.md").exists()
+    assert not (toplevel / "docs/dev/tmp/engram-pack-cyc1.md").exists()
 
 
 # --- pack: --cycle derives diff_path/id_/source_ref and prints summary ---
@@ -337,7 +336,7 @@ def test_pack_cycle_success_passes_expected_build_args_and_prints_summary_to_std
     explicit_capsule.write_text("# Capsule\n")
 
     calls = []
-    pack_path = toplevel / "dev" / "local" / "tmp" / "engram-pack-cyc1.md"
+    pack_path = toplevel / "docs" / "dev" / "tmp" / "engram-pack-cyc1.md"
     report = _make_pack_report(
         pack_path,
         total_tokens=4242,
@@ -365,7 +364,7 @@ def test_pack_cycle_success_passes_expected_build_args_and_prints_summary_to_std
     assert call["id_"] == "cyc1"
     assert (
         call["diff_path"].resolve()
-        == (toplevel / "dev/local/tmp/review-diff-cyc1.diff").resolve()
+        == (toplevel / "docs/dev/tmp/review-diff-cyc1.diff").resolve()
     )
     assert call["source_ref"] is None
     assert call["prd_path"].resolve() == explicit_prd.resolve()
@@ -415,11 +414,11 @@ def test_pack_cycle_traversal_attempt_is_slugged_and_stays_under_repo_tmp_dir(
         source_ref=None,
         prd_path=None,
         capsule_path=None,
-        out_dir=Path("dev/local/tmp"),
+        out_dir=Path("docs/dev/tmp"),
     ):
         ids_seen.append(id_)
         read_contents.append(Path(diff_path).read_text())
-        return _make_pack_report(toplevel / "dev/local/tmp" / f"engram-pack-{id_}.md")
+        return _make_pack_report(toplevel / "docs/dev/tmp" / f"engram-pack-{id_}.md")
 
     monkeypatch.setattr("engram.cli.build", fake_build)
 
@@ -430,11 +429,11 @@ def test_pack_cycle_traversal_attempt_is_slugged_and_stays_under_repo_tmp_dir(
     # is the slug, never the raw traversal string.
     assert ids_seen == [slug]
     # The diff actually read is the one staged under the sanitized name,
-    # under dev/local/tmp -- proving the read never escaped via "..".
+    # under docs/dev/tmp -- proving the read never escaped via "..".
     assert read_contents == ["diff --git a/foo b/foo\n+added line\n"]
-    # Nothing escaped to a sibling of dev/local/tmp.
-    dev_local_entries = {p.name for p in (toplevel / "dev" / "local").iterdir()}
-    assert dev_local_entries == {"tmp"}
+    # Nothing escaped to a sibling of docs/dev/tmp.
+    docs_dev_entries = {p.name for p in (toplevel / "docs" / "dev").iterdir()}
+    assert docs_dev_entries == {"tmp"}
 
 
 # --- pack: --diff materializes git diff and derives slug/source_ref ---
@@ -459,7 +458,7 @@ def test_pack_diff_materializes_git_diff_and_slugs_id_per_given_example(
 
     calls = []
     report = _make_pack_report(
-        toplevel / "dev/local/tmp/engram-pack-abc123--def456.md",
+        toplevel / "docs/dev/tmp/engram-pack-abc123--def456.md",
     )
     monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
 
@@ -473,10 +472,10 @@ def test_pack_diff_materializes_git_diff_and_slugs_id_per_given_example(
     assert call["source_ref"] == "def456"
     assert (
         call["diff_path"].resolve()
-        == (toplevel / "dev/local/tmp/engram-pack-diff-abc123--def456.diff").resolve()
+        == (toplevel / "docs/dev/tmp/engram-pack-diff-abc123--def456.diff").resolve()
     )
     written = (
-        toplevel / "dev/local/tmp/engram-pack-diff-abc123--def456.diff"
+        toplevel / "docs/dev/tmp/engram-pack-diff-abc123--def456.diff"
     ).read_text()
     assert written == fake_stdout
 
@@ -500,7 +499,7 @@ def test_pack_diff_keeps_raw_source_ref_while_slugging_special_characters_in_id(
 
     calls = []
     report = _make_pack_report(
-        toplevel / "dev/local/tmp/engram-pack-feature-foo--bugfix-bar.md",
+        toplevel / "docs/dev/tmp/engram-pack-feature-foo--bugfix-bar.md",
     )
     monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
 
@@ -649,7 +648,7 @@ def test_pack_prd_omitted_defaults_to_none_when_wip_dir_has_zero_prds(
     monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
 
     calls = []
-    report = _make_pack_report(toplevel / "dev/local/tmp/engram-pack-cyc1.md")
+    report = _make_pack_report(toplevel / "docs/dev/tmp/engram-pack-cyc1.md")
     monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
 
     exit_code = main(["pack", "--cycle", "cyc1"])
@@ -670,7 +669,7 @@ def test_pack_prd_omitted_defaults_to_single_wip_prd_when_exactly_one_exists(
     monkeypatch.chdir(toplevel)
     _stage_diff(toplevel)
 
-    wip_dir = toplevel / "dev" / "local" / "prds" / "wip"
+    wip_dir = toplevel / "docs" / "dev" / "project-management" / "prds" / "wip"
     wip_dir.mkdir(parents=True)
     prd_file = wip_dir / "00042-example.md"
     prd_file.write_text("# Example PRD\n")
@@ -679,7 +678,7 @@ def test_pack_prd_omitted_defaults_to_single_wip_prd_when_exactly_one_exists(
     monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
 
     calls = []
-    report = _make_pack_report(toplevel / "dev/local/tmp/engram-pack-cyc1.md")
+    report = _make_pack_report(toplevel / "docs/dev/tmp/engram-pack-cyc1.md")
     monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
 
     exit_code = main(["pack", "--cycle", "cyc1"])
@@ -700,7 +699,7 @@ def test_pack_prd_omitted_defaults_to_none_when_wip_dir_has_two_prds(
     monkeypatch.chdir(toplevel)
     _stage_diff(toplevel)
 
-    wip_dir = toplevel / "dev" / "local" / "prds" / "wip"
+    wip_dir = toplevel / "docs" / "dev" / "project-management" / "prds" / "wip"
     wip_dir.mkdir(parents=True)
     (wip_dir / "00042-first.md").write_text("# First PRD\n")
     (wip_dir / "00043-second.md").write_text("# Second PRD\n")
@@ -709,7 +708,7 @@ def test_pack_prd_omitted_defaults_to_none_when_wip_dir_has_two_prds(
     monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
 
     calls = []
-    report = _make_pack_report(toplevel / "dev/local/tmp/engram-pack-cyc1.md")
+    report = _make_pack_report(toplevel / "docs/dev/tmp/engram-pack-cyc1.md")
     monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
 
     exit_code = main(["pack", "--cycle", "cyc1"])
@@ -737,7 +736,7 @@ def test_pack_capsule_omitted_defaults_to_none_when_capsule_file_missing(
     monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
 
     calls = []
-    report = _make_pack_report(toplevel / "dev/local/tmp/engram-pack-cyc1.md")
+    report = _make_pack_report(toplevel / "docs/dev/tmp/engram-pack-cyc1.md")
     monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
 
     exit_code = main(["pack", "--cycle", "cyc1"])
@@ -747,7 +746,7 @@ def test_pack_capsule_omitted_defaults_to_none_when_capsule_file_missing(
     assert calls[0]["capsule_path"] is None
 
 
-def test_pack_capsule_omitted_defaults_to_repo_root_capsule_when_file_exists(
+def test_pack_capsule_omitted_defaults_to_project_management_meta_capsule_when_file_exists(
     monkeypatch,
     tmp_path,
 ):
@@ -757,7 +756,7 @@ def test_pack_capsule_omitted_defaults_to_repo_root_capsule_when_file_exists(
     _register_repo(monkeypatch, tmp_path, toplevel)
     monkeypatch.chdir(toplevel)
 
-    capsule_dir = toplevel / "dev" / "local"
+    capsule_dir = toplevel / "docs" / "dev" / "project-management" / "meta"
     capsule_dir.mkdir(parents=True)
     capsule_file = capsule_dir / "project-capsule.md"
     capsule_file.write_text("# Capsule\n")
@@ -767,7 +766,7 @@ def test_pack_capsule_omitted_defaults_to_repo_root_capsule_when_file_exists(
     monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
 
     calls = []
-    report = _make_pack_report(toplevel / "dev/local/tmp/engram-pack-cyc1.md")
+    report = _make_pack_report(toplevel / "docs/dev/tmp/engram-pack-cyc1.md")
     monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
 
     exit_code = main(["pack", "--cycle", "cyc1"])
@@ -777,7 +776,7 @@ def test_pack_capsule_omitted_defaults_to_repo_root_capsule_when_file_exists(
     assert calls[0]["capsule_path"].resolve() == capsule_file.resolve()
 
 
-def test_pack_capsule_omitted_prefers_meta_capsule_over_root(
+def test_pack_capsule_omitted_reads_project_management_meta_capsule(
     monkeypatch,
     tmp_path,
 ):
@@ -789,18 +788,17 @@ def test_pack_capsule_omitted_prefers_meta_capsule_over_root(
     _register_repo(monkeypatch, tmp_path, toplevel)
     monkeypatch.chdir(toplevel)
 
-    meta_dir = toplevel / "dev" / "local" / "meta"
+    meta_dir = toplevel / "docs" / "dev" / "project-management" / "meta"
     meta_dir.mkdir(parents=True)
     meta_capsule = meta_dir / "project-capsule.md"
     meta_capsule.write_text("# Capsule (meta)\n")
-    (toplevel / "dev" / "local" / "project-capsule.md").write_text("# stale root\n")
     _stage_diff(toplevel)
 
     monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
     monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
 
     calls = []
-    report = _make_pack_report(toplevel / "dev/local/tmp/engram-pack-cyc1.md")
+    report = _make_pack_report(toplevel / "docs/dev/tmp/engram-pack-cyc1.md")
     monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
 
     exit_code = main(["pack", "--cycle", "cyc1"])

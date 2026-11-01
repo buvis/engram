@@ -3,13 +3,6 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from engram.harvest import (
-    FileHarvestResult,
-    HarvestReport,
-    _resolve_repo_for_path,
-    harvest,
-)
-
 from engram import findings
 from engram.cli import main as cli_main
 from engram.client import (
@@ -19,6 +12,12 @@ from engram.client import (
     Vector,
 )
 from engram.findings import FINDINGS_CORPUS
+from engram.harvest import (
+    FileHarvestResult,
+    HarvestReport,
+    _resolve_repo_for_path,
+    harvest,
+)
 from engram.store import open_store
 
 
@@ -109,7 +108,8 @@ def test_resolve_repo_for_path_returns_registered_name_for_git_toplevel(tmp_path
 
 @pytest.mark.parametrize("csv_state", ["missing", "not_registered"])
 def test_resolve_repo_for_path_returns_none_when_repo_not_registered(
-    tmp_path, csv_state
+    tmp_path,
+    csv_state,
 ):
     repo_dir = tmp_path / "repo"
     repo_dir.mkdir()
@@ -148,18 +148,13 @@ def test_resolve_repo_for_path_outside_git_returns_claude_home_sentinel_only_und
     assert result == ("claude-home" if under_claude_home else None)
 
 
-def test_resolve_repo_for_path_maps_resolved_devlocal_symlink_target_to_claude_home(
+def test_resolve_repo_for_path_maps_claude_project_management_to_claude_home(
     tmp_path,
     monkeypatch,
 ):
-    """~/.claude/dev/local is a symlink into ~/.local/tmp; a caller that
-    realpaths its store (purge-devlocal) passes the target path, which must
-    still resolve to the claude-home corpus."""
     fake_home = tmp_path / "home"
-    (fake_home / ".claude" / "dev").mkdir(parents=True)
-    target = tmp_path / "local-tmp" / "claude-dev"
+    target = fake_home / ".claude" / "docs" / "dev" / "project-management"
     target.mkdir(parents=True)
-    (fake_home / ".claude" / "dev" / "local").symlink_to(target)
     monkeypatch.setattr("pathlib.Path.home", lambda: fake_home)
     file_path = target / "reviews" / "00042-foo-review-1.md"
     file_path.parent.mkdir()
@@ -284,7 +279,8 @@ def test_harvest_embed_failure_leaves_existing_records_untouched(tmp_path, monke
 
 
 def test_harvest_embed_programming_error_propagates_instead_of_being_swallowed(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     store = open_store(tmp_path / "engram.db")
     config = _config(tmp_path)
@@ -344,7 +340,8 @@ def test_harvest_no_repo_outcome_without_crash(tmp_path, monkeypatch, scenario):
 
 
 def test_harvest_claude_home_path_upserts_under_claude_home_repo_name(
-    tmp_path, monkeypatch
+    tmp_path,
+    monkeypatch,
 ):
     store = open_store(tmp_path / "engram.db")
     config = _config(tmp_path)
@@ -596,7 +593,14 @@ def test_harvest_via_cli_then_source_deleted_finding_still_queryable_via_cli_que
     repo_dir = tmp_path / "repo"
     repo_dir.mkdir()
     toplevel = _init_git_repo(repo_dir)
-    review_path = toplevel / "dev" / "local" / "reviews" / "feature-review-1.md"
+    review_path = (
+        toplevel
+        / "docs"
+        / "dev"
+        / "project-management"
+        / "reviews"
+        / "feature-review-1.md"
+    )
     review_path.parent.mkdir(parents=True)
     _write_review_file(review_path, body_marker="zeroloss-marker-token")
     repos_csv = tmp_path / "repos.csv"
