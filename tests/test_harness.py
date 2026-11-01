@@ -1962,3 +1962,20 @@ def test_a_successful_two_model_run_streams_both_score_lines_without_altering_th
     assert lines[-3] == "winner\tmodel-a"
     assert lines[-2].startswith("baseline\t")
     assert lines[-1].startswith("gate_passed\t")
+
+
+def test_eval_entry_runs_on_an_isolated_config_copy(tmp_path):
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "eval_harness", Path(__file__).resolve().parent.parent / "eval" / "harness.py"
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    source = tmp_path / "config.toml"
+    source.write_text('[[embedding]]\nid = "m"\nendpoint = "http://127.0.0.1:9/v1"\n\n[pinned]\nid = "m"\n')
+    copy = mod.isolated_config_path(tmp_path / "work", source)
+
+    assert copy != source
+    assert copy.read_text() == source.read_text()
