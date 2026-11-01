@@ -14,8 +14,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   under `docs/dev/project-management/`; write disposable context packs under
   globally ignored `docs/dev/tmp/`.
 
+### Added
+
+- **cli**: `engram index --reembed-code` regenerates vectors of indexed code
+  chunks in place (rows and hashes kept; resumable) without a full rebuild.
+
 ### Fixed
 
+- **transcripts**: error-bearing tool results (string or list-form content) now
+  contribute their text to the chunk body instead of an empty body.
+- **indexer**: a source that fails to read, hash, or parse keeps its existing
+  rows and is reported on stderr (`failed (existing rows kept): PATH`) instead
+  of being pruned silently.
+- **indexer**: a missing cellar checkout only fails scopes that include
+  transcripts; unrelated scoped indexing works.
+- **symbols/store**: code chunk embeddings include the repo-relative file path.
+  Existing vectors need `engram index --reembed-code` once.
+- **eval**: `eval/harness.py` runs on a copy of the config so a gate pass cannot
+  repoint the production pin.
 - **symbols**: retry transient read and parser failures instead of caching them
   as empty sources. Existing empty-code markers are invalidated once; the next
   normal index reparses those sources without rebuilding embedded chunks.

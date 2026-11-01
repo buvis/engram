@@ -145,3 +145,30 @@ change access controls.
 Redacted evidence is retained outside the repository at
 `~/.local/state/engram/reviews/00002-20261101-205601/redacted-index-audit-20261101.json`
 with mode `0600`.
+
+## Implementation of the four approved defects — 2026-11-01
+
+Each defect was reproduced against `4cbac26` with a failing test before any fix
+(`tests/test_followup_fixes.py`): empty bodies for error tool results and
+list-form results unmatched; hash/chunk failures pruning or hiding rows
+(`IndexReport.failed_sources` added; CLI prints `failed (existing rows kept):
+PATH` to stderr); absent cellar failing `--corpus prd` and non-cellar repo scope;
+code embedding text lacking the path (now `heading\nrepo/rel/path\nbody`).
+Scopes that include transcripts (portfolio, `--corpus transcripts`, repo
+`cellar`) still fail with the producer's clear message.
+
+Migration: new `engram index --reembed-code` replaces code vectors per source
+without touching rows or hashes. Run on production after a `0600` backup at
+`~/.local/state/engram/db-backup/engram-pre-reembed-20261101.db`: 65,529 chunks
+re-embedded in about 40 minutes; chunk count unchanged (163,739); no rebuild.
+
+Retrieval recheck on production (55-entry set, corpus-scoped, top-5): before and
+after both 52/55 — code 4/5, decision 3/3, discovery 2/2, memory 20/20, prd 11/13,
+transcripts 12/12. Same three misses: one code query (unchanged), the engram core
+PRD query, and the gems 00112 query (PRD moved backlog→wip; gold re-anchored,
+index not yet refreshed by a normal index). Path enrichment is neutral on this set.
+
+Harness isolation: `eval/harness.py` now runs on a copy of the config under the
+work dir, so a gate pass cannot repoint production. The full cold harness run
+(~75 min) was not repeated; the production pin is unchanged. Gita registration
+remains deferred.

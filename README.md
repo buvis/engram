@@ -50,6 +50,7 @@ engram.
 engram index --scope portfolio          # index everything (incremental)
 engram index --scope repo --corpus prd  # index one corpus in the current repo
 engram index --rebuild                  # re-embed from scratch, atomic swap
+engram index --reembed-code             # refresh code vectors in place
 engram status --scope portfolio         # per-corpus counts, stale and dead rows
 engram query --scope repo "retry a flaky embedding server"
 engram query --scope portfolio --corpus findings -k 10 "token budget overflow"
