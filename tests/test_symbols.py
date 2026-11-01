@@ -212,6 +212,31 @@ def test_enumerate_yields_corpusfile_per_tracked_file_and_resets_skipped_files(
     assert "stale.py" not in symbols.skipped_files
 
 
+def test_enumerate_yields_an_unmerged_path_once(tmp_path):
+    repo_dir = _init_git_repo(tmp_path / "repo", {"a.py": "def f():\n    pass\n"})
+    ident = ["-c", "user.email=t@e", "-c", "user.name=t"]
+
+    def git(*args):
+        return subprocess.run(
+            ["git", *ident, *args], cwd=repo_dir, capture_output=True, text=True
+        )
+
+    base = git("rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+    git("checkout", "-b", "side")
+    (repo_dir / "a.py").write_text("def f():\n    return 1\n")
+    git("commit", "-am", "side")
+    git("checkout", base)
+    (repo_dir / "a.py").write_text("def f():\n    return 2\n")
+    git("commit", "-am", "base")
+    assert git("merge", "side").returncode != 0
+    repos_csv = tmp_path / "repos.csv"
+    repos_csv.write_text(f"{repo_dir},widget,,\n")
+
+    paths = [cf.path for cf in symbols.enumerate(repos_csv=repos_csv)]
+
+    assert paths.count(repo_dir / "a.py") == 1
+
+
 # --- enumerate(): a repo dir that git can't read is recorded as missing, not raised ---
 
 

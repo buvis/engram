@@ -26,7 +26,9 @@ def enumerate(repos_csv: Path = GITA_REPOS_CSV) -> Iterator[CorpusFile]:
             corpora.missing_dirs.append(f"code:{name}")
             continue
 
-        for rel_path in result.stdout.splitlines():
+        # A repo with unmerged index entries lists the path once per stage;
+        # duplicates would collide on the chunks unique key.
+        for rel_path in dict.fromkeys(result.stdout.splitlines()):
             file_path = Path(repo_path) / rel_path
             if file_path.is_file():
                 yield CorpusFile("code", name, file_path)
