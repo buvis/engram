@@ -6,7 +6,8 @@ Updated: 2026-11-01, after PRD 00002 finalization and completion review.
 
 - Standalone uv-managed Python CLI, not a Claude plugin.
 - Local llama-server embedding endpoints; engram owns its embedding config.
-- Queries require explicit repo or portfolio scope.
+- Queries require explicit repo or portfolio scope. Query `-k`/`--k` and index
+  `--rebuild` are supported interfaces (user decision, 2026-11-01).
 - Model/dimension mismatches fail loud. Production remains pinned to
   `ggml-org/bge-m3-Q8_0-GGUF:Q8_0`; never repin or rebuild without explicit request.
 - Equal harness scores keep the current pin. The harness pins only on a passing gate.
@@ -48,17 +49,32 @@ The requested PRD 00001 follow-ups are triaged in
 `reviews/2026-11-01-follow-ups.md`. Older findings from other PRDs remain separate.
 Autopilot runtime state remains local and ignored; retain its unresolved ledger.
 
+Next session: fix transcript error-text extraction, preserve old rows on source
+processing failures, and isolate scoped indexing from an absent unrelated cellar.
+Also include file paths in code embeddings, regenerate existing code vectors,
+and recheck retrieval quality. Preserve the production bge-m3 pin; a whole-index
+rebuild remains unauthorized. The user approved this scope on 2026-11-01.
+Keep performance and structural cleanup separate. See the follow-up note for
+acceptance details.
+
 ## Project Health
 
 Local `master`; no remote or CI. Run `.venv/bin/python -m pytest -q`.
-Two pre-existing formatter-only stashes remain untouched. No extra worktree or
-executed plan belongs to this session.
+The installed implementation matches the checkout after the approved warrant
+installation. The suite passed 453 tests on 2026-11-01 during stash inspection.
+Both stashes were inspected: formatting/import cleanup only, no unfinished logic.
+Both were dropped with user authorization after a verified recovery bundle was saved.
+Exact hashes and the archive path are in the follow-up note.
+No extra worktree or executed plan belongs to this session.
 
 The completion review's context-pack command could not resolve engram in the
 installed registry. This is already recorded in the PRD 00004 review; no registry
 configuration was changed here.
 
+The requested redacted index audit found fixtures/examples and prose among the
+checked credential patterns, with no plausible live credential identified.
+See the follow-up note for scope, evidence, and the unchanged `0644` file mode.
+
 ## User Decisions Still Open
 
-- Keep or drop the extra query `-k`/`--k` and index `--rebuild` flags.
 - Resolve the unrelated merge conflict in `buvis/home`.

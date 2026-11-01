@@ -60,6 +60,10 @@ engram pack --diff HEAD~5..HEAD         # reviewer context pack for a diff
 `query` requires `--scope`. Unscoped retrieval is a correctness bug, not a
 convenience gap, so it is a usage error.
 
+`query -k N` (also `--k N`) sets the positive result limit; the default is 5.
+`index --rebuild` rebuilds the portfolio index and cannot be combined with
+`--scope` or `--corpus`. Both flags are supported interfaces.
+
 Output is one tab-separated line per hit:
 
 ```

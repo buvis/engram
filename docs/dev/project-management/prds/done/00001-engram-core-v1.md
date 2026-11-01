@@ -120,6 +120,9 @@ Corpora v1 minus transcripts, chunked and stored incrementally.
   rows) - fail loud. Installed with `uv tool install .` so a bare `engram` sits on
   PATH; later PRDs' consumers (catchup, purge-devlocal, reviewer wiring) invoke it
   bare from other repos, never via `uv run`.
+  User-approved interface additions (2026-11-01): query `-k`/`--k` accepts a
+  positive result limit (default 5); index `--rebuild` performs a full portfolio
+  rebuild and is mutually exclusive with `--scope` and `--corpus`.
 
 ### Capability: Eval Gate
 
