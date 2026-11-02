@@ -99,7 +99,7 @@
   expected_path: "/Users/bob/git/src/github.com/doogat/ddb/docs/dev/project-management/prds/hold/00179-sql-identifier-escaping-materializer-v1.md"
   corpus: prd
 - query: "show live progress and a quiet flag for parallel backup runs"
-  expected_path: "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/prds/wip/00112-backup-live-progress-and-quiet-v1.md"
+  expected_path: "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/prds/done/00112-backup-live-progress-and-quiet-v1.md"
   corpus: prd
 - query: "pin freestanding uv tools to the global python minor so sysup upgrades stay resolvable"
   expected_path: "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/prds/done/00105-sysup-uv-tool-python-pin-v1.md"

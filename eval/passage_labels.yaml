@@ -1,0 +1,12 @@
+# Labels authored from source before candidate scoring, 2026-11-01.
+# Query indices refer to the frozen 55-entry eval/goldset.yaml.
+# Exact chunk starts avoid accepting unrelated chunks in the correct file.
+# These eight cases cover code and decisions, not transcript passage accuracy.
+35: [112, 113]   # NotificationDispatcher and its channel registry
+36: [51]         # acquire: blocking lock with deadline
+37: [9]          # parse_frontmatter
+38: [83]         # evaluate_stay_in_touch
+39: [33, 195, 330, 340] # console class, print, and markdown rendering
+52: [16]         # intake/new -> intake/processed
+53: [152]        # manual source catchup replaces updater pipeline
+54: [16, 152, 293] # retirement gate and later explicit rulings

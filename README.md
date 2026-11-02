@@ -141,6 +141,10 @@ job.
 
 ## Development
 
+Local model comparisons, including challenger embeddings and rerankers, are
+documented in [eval/README.md](eval/README.md). These experiments use private
+snapshots and leave the production model and index unchanged.
+
 ```sh
 uv run pytest
 ```

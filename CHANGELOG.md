@@ -16,11 +16,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **eval**: compare local embedding and reranking models on private snapshots;
+  record ranking quality, latency, and runtime buffer allocations.
 - **cli**: `engram index --reembed-code` regenerates vectors of indexed code
   chunks in place (rows and hashes kept; resumable) without a full rebuild.
 
 ### Fixed
 
+- **eval**: update the backup-progress gold target after its PRD moved to done.
 - **transcripts**: error-bearing tool results (string or list-form content) now
   contribute their text to the chunk body instead of an empty body.
 - **indexer**: a source that fails to read, hash, or parse keeps its existing

@@ -1,0 +1,66 @@
+# All models run sequentially on a private port. Production config is never read or written.
+# Model input rules and sources: eval/README.md.
+
+[[models]]
+name = "bge-m3-q8"
+id = "ggml-org/bge-m3-Q8_0-GGUF:Q8_0"
+style = "raw"
+pooling = "cls"
+
+[[models]]
+name = "qwen3-06b-q8"
+id = "Qwen/Qwen3-Embedding-0.6B-GGUF:Q8_0"
+style = "qwen"
+pooling = "last"
+
+[[models]]
+name = "gemma2-q8"
+id = "ggml-org/embeddinggemma-2-GGUF:Q8_0"
+style = "gemma"
+pooling = "mean"
+
+[[models]]
+name = "jina-v5-small-q8"
+id = "jinaai/jina-embeddings-v5-text-small-retrieval-GGUF:Q8_0"
+style = "jina"
+pooling = "last"
+
+[[models]]
+name = "f2-v2-4b-q8"
+id = "mradermacher/F2LLM-v2-4B-GGUF:Q8_0"
+style = "f2"
+pooling = "last"
+
+[[models]]
+name = "qwen3-4b-q8"
+id = "Qwen/Qwen3-Embedding-4B-GGUF:Q8_0"
+style = "qwen"
+pooling = "last"
+
+[[models]]
+name = "f2-v2-8b-q8"
+id = "mradermacher/F2LLM-v2-8B-GGUF:Q8_0"
+style = "f2"
+pooling = "last"
+
+[[models]]
+name = "qwen3-8b-q8"
+id = "Qwen/Qwen3-Embedding-8B-GGUF:Q8_0"
+style = "qwen"
+pooling = "last"
+
+[[models]]
+name = "f2-v2-14b-q8"
+id = "mradermacher/F2LLM-v2-14B-GGUF:Q8_0"
+style = "f2"
+pooling = "last"
+
+[[rerankers]]
+name = "qwen3-reranker-4b-q8"
+id = "Voodisss/Qwen3-Reranker-4B-GGUF-llama_cpp:Q8_0"
+pooling = "rank"
+
+[[rerankers]]
+name = "qwen3-reranker-06b-q8"
+id = "Voodisss/Qwen3-Reranker-0.6B-GGUF-llama_cpp:Q8_0"
+pooling = "rank"
