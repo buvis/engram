@@ -172,3 +172,24 @@ Harness isolation: `eval/harness.py` now runs on a copy of the config under the
 work dir, so a gate pass cannot repoint production. The full cold harness run
 (~75 min) was not repeated; the production pin is unchanged. Gita registration
 remains deferred.
+
+## Post-fix index and harness run — 2026-11-02
+
+A normal `engram index --scope portfolio` (144 s, no failed sources) refreshed the
+moved gems 00112 PRD: production retrieval is 53/55 (prd 12/13; remaining misses:
+engram core PRD query, one code query).
+
+Cold harness run on the 55-entry set, isolated config, gate_passed True,
+rg baseline 0.509:
+
+```
+Qwen3-Embedding-0.6B  0.945  code 0.800 decision 1.0 discovery 1.0 memory 1.0 prd 0.923 transcripts 0.917
+nomic-embed-text-v1.5 0.927  code 0.800 decision 1.0 discovery 1.0 memory 1.0 prd 0.846 transcripts 0.917
+bge-m3 (production)   0.927  code 0.800 decision 1.0 discovery 1.0 memory 1.0 prd 0.846 transcripts 0.917
+winner                Qwen3-Embedding-0.6B
+```
+
+Qwen leads by one gold entry (prd 12/13 vs 11/13) on a 55-entry set: not a
+meaningful margin. The isolated copy was repointed to Qwen; the production
+`config.toml` is unchanged (bge-m3). Switching models needs a whole-index rebuild,
+which is not authorized; the user decides whether the one-entry lead is worth it.
