@@ -32,6 +32,16 @@ Qwen3-0.6B on some measures, and lists larger Qwen3 embedding and Qwen3 Reranker
 as still under test. Treat Qwen3 as one candidate in that comparison, not a foregone
 winner.
 
+## Probe update, 2026-11-02
+
+`reviews/2026-11-02-probe-fusion.md`: candidate recall is not the bottleneck (the
+expected file is in the dense top-20 for 100% of questions with BGE-M3 and Qwen3-8B),
+and much of the apparent embedding gap is a fusion tie-break defect, split out as
+intake 00009. The campaign's best pair is bge-m3 plus Qwen3 Reranker 0.6B (file MRR
+0.979, passage MRR 0.917, 0.70 s), so this item should lead with the reranker and
+treat an embedding switch as unproven. Re-measure the reranker's gain on top of the
+fixed fusion before sizing it.
+
 ## Questions the discovery must answer
 
 1. Does Qwen3 (which size) beat bge-m3 on a larger, held-out set, rather than the
