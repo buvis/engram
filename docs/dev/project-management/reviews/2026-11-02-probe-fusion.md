@@ -34,9 +34,16 @@ Development questions only; 8 passage labels; BM25 OR was tested only as an
 alternative lexical leg, not tuned. Gains need confirmation on held-out
 questions and transcript passage labels before any production change.
 
+## Follow-up
+
+The reranker-on-fixed-fusion probe is recorded in
+[2026-11-03-probe-rerank-fixed.md](2026-11-03-probe-rerank-fixed.md). For BGE-M3,
+the 0.6B reranker retains 25–32% of its original file-MRR gain after OR fusion
+and most of its passage-MRR gain. This still uses 55 development questions and
+eight passage labels (five code, three decision, none for transcripts).
+
 ## Probes still open
 
 - Held-out questions; transcript passage labels; cross-corpus queries.
-- Reranker over the fixed fusion (does the 0.6B reranker still add as much?).
 - Warm persistent reranker server latency and down-server fallback.
 - Qwen3-0.6B on the full snapshot.

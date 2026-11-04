@@ -1,0 +1,2017 @@
+{
+  "snapshot": "fc9bf2e6e0038153",
+  "models": {
+    "bge-m3-q8": {
+      "variants": {
+        "dense_only_40": {
+          "all": {
+            "file_hit5": 0.9818181818181818,
+            "file_rr": 0.898974358974359,
+            "passage_hit5": 0.625,
+            "passage_rr": 0.5764921353156647
+          },
+          "code": {
+            "file_hit5": 0.8,
+            "file_rr": 0.532051282051282,
+            "passage_hit5": 0.6,
+            "passage_rr": 0.493815987933635
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0.6666666666666666,
+            "passage_rr": 0.7142857142857143
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9423076923076923
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.7944444444444444
+          }
+        },
+        "rrf_prod_order_20_20": {
+          "all": {
+            "file_hit5": 0.9636363636363636,
+            "file_rr": 0.7938228438228438,
+            "passage_hit5": 0.625,
+            "passage_rr": 0.5764921353156647
+          },
+          "code": {
+            "file_hit5": 0.8,
+            "file_rr": 0.532051282051282,
+            "passage_hit5": 0.6,
+            "passage_rr": 0.493815987933635
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0.6666666666666666,
+            "passage_rr": 0.7142857142857143
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.925
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.4166666666666667
+          }
+        },
+        "bm25_only_40": {
+          "all": {
+            "file_hit5": 0.10909090909090909,
+            "file_rr": 0.1,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "code": {
+            "file_hit5": 0,
+            "file_rr": 0.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "decision": {
+            "file_hit5": 0,
+            "file_rr": 0.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "discovery": {
+            "file_hit5": 0.5,
+            "file_rr": 0.5
+          },
+          "memory": {
+            "file_hit5": 0.05,
+            "file_rr": 0.05
+          },
+          "prd": {
+            "file_hit5": 0.3076923076923077,
+            "file_rr": 0.2692307692307692
+          },
+          "transcripts": {
+            "file_hit5": 0,
+            "file_rr": 0.0
+          }
+        },
+        "rrf_prod_20_20": {
+          "all": {
+            "file_hit5": 0.9636363636363636,
+            "file_rr": 0.8771561771561771,
+            "passage_hit5": 0.625,
+            "passage_rr": 0.5764921353156647
+          },
+          "code": {
+            "file_hit5": 0.8,
+            "file_rr": 0.532051282051282,
+            "passage_hit5": 0.6,
+            "passage_rr": 0.493815987933635
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0.6666666666666666,
+            "passage_rr": 0.7142857142857143
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.95
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.7569444444444444
+          }
+        },
+        "rrf_40_40": {
+          "all": {
+            "file_hit5": 0.9636363636363636,
+            "file_rr": 0.865034965034965,
+            "passage_hit5": 0.625,
+            "passage_rr": 0.5764921353156647
+          },
+          "code": {
+            "file_hit5": 0.8,
+            "file_rr": 0.532051282051282,
+            "passage_hit5": 0.6,
+            "passage_rr": 0.493815987933635
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0.6666666666666666,
+            "passage_rr": 0.7142857142857143
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.9166666666666666
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.7569444444444444
+          }
+        },
+        "rrf_100_100": {
+          "all": {
+            "file_hit5": 0.9636363636363636,
+            "file_rr": 0.865034965034965,
+            "passage_hit5": 0.625,
+            "passage_rr": 0.5764921353156647
+          },
+          "code": {
+            "file_hit5": 0.8,
+            "file_rr": 0.532051282051282,
+            "passage_hit5": 0.6,
+            "passage_rr": 0.493815987933635
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0.6666666666666666,
+            "passage_rr": 0.7142857142857143
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.9166666666666666
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.7569444444444444
+          }
+        },
+        "rrf_20_20_dense2x": {
+          "all": {
+            "file_hit5": 0.9818181818181818,
+            "file_rr": 0.8853379953379953,
+            "passage_hit5": 0.625,
+            "passage_rr": 0.5764921353156647
+          },
+          "code": {
+            "file_hit5": 0.8,
+            "file_rr": 0.532051282051282,
+            "passage_hit5": 0.6,
+            "passage_rr": 0.493815987933635
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0.6666666666666666,
+            "passage_rr": 0.7142857142857143
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.95
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.7944444444444444
+          }
+        },
+        "rrf_100_100_dense2x": {
+          "all": {
+            "file_hit5": 0.9818181818181818,
+            "file_rr": 0.8732167832167832,
+            "passage_hit5": 0.625,
+            "passage_rr": 0.5764921353156647
+          },
+          "code": {
+            "file_hit5": 0.8,
+            "file_rr": 0.532051282051282,
+            "passage_hit5": 0.6,
+            "passage_rr": 0.493815987933635
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0.6666666666666666,
+            "passage_rr": 0.7142857142857143
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.9166666666666666
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.7944444444444444
+          }
+        },
+        "rrf_100_100_dense4x": {
+          "all": {
+            "file_hit5": 0.9818181818181818,
+            "file_rr": 0.8853379953379953,
+            "passage_hit5": 0.625,
+            "passage_rr": 0.5764921353156647
+          },
+          "code": {
+            "file_hit5": 0.8,
+            "file_rr": 0.532051282051282,
+            "passage_hit5": 0.6,
+            "passage_rr": 0.493815987933635
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0.6666666666666666,
+            "passage_rr": 0.7142857142857143
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.95
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.7944444444444444
+          }
+        },
+        "bm25_or_only_40": {
+          "all": {
+            "file_hit5": 0.9090909090909091,
+            "file_rr": 0.8641608391608392,
+            "passage_hit5": 0.625,
+            "passage_rr": 0.5465472027972028
+          },
+          "code": {
+            "file_hit5": 0.4,
+            "file_rr": 0.4641025641025641,
+            "passage_hit5": 0.4,
+            "passage_rr": 0.4244755244755245
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.75
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.9125
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9487179487179487
+          },
+          "transcripts": {
+            "file_hit5": 0.8333333333333334,
+            "file_rr": 0.8020833333333334
+          }
+        },
+        "rrf_bm25or_20_20": {
+          "all": {
+            "file_hit5": 0.9818181818181818,
+            "file_rr": 0.9181818181818182,
+            "passage_hit5": 0.75,
+            "passage_rr": 0.583786231884058
+          },
+          "code": {
+            "file_hit5": 0.8,
+            "file_rr": 0.5666666666666667,
+            "passage_hit5": 0.6,
+            "passage_rr": 0.48405797101449277
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.75
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.975
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9487179487179487
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.9027777777777778
+          }
+        },
+        "rrf_bm25or_20_20_dense2x": {
+          "all": {
+            "file_hit5": 0.9818181818181818,
+            "file_rr": 0.9303030303030303,
+            "passage_hit5": 0.75,
+            "passage_rr": 0.5886029411764706
+          },
+          "code": {
+            "file_hit5": 0.8,
+            "file_rr": 0.5666666666666667,
+            "passage_hit5": 0.6,
+            "passage_rr": 0.49176470588235294
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.75
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.9027777777777778
+          }
+        }
+      },
+      "recall": {
+        "dense_20": 1.0,
+        "dense_40": 1.0,
+        "dense_100": 1.0,
+        "bm25_20": 0.10909090909090909,
+        "bm25_100": 0.10909090909090909,
+        "union_20_20": 1.0,
+        "union_100_100": 1.0
+      },
+      "recall_by_corpus": {
+        "code": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.0,
+          "bm25_100": 0.0,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "decision": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.0,
+          "bm25_100": 0.0,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "discovery": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.5,
+          "bm25_100": 0.5,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "memory": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.05,
+          "bm25_100": 0.05,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "prd": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.3076923076923077,
+          "bm25_100": 0.3076923076923077,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "transcripts": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.0,
+          "bm25_100": 0.0,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        }
+      },
+      "bm25_empty_queries": 34,
+      "queries": 55
+    },
+    "gemma2-q8": {
+      "variants": {
+        "dense_only_40": {
+          "all": {
+            "file_hit5": 0.9636363636363636,
+            "file_rr": 0.9008264462809917,
+            "passage_hit5": 1,
+            "passage_rr": 0.65
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.6333333333333333,
+            "passage_hit5": 1,
+            "passage_rr": 0.5733333333333334
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.7777777777777778
+          },
+          "discovery": {
+            "file_hit5": 0.5,
+            "file_rr": 0.5227272727272727
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.9666666666666667
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.875
+          }
+        },
+        "rrf_prod_order_20_20": {
+          "all": {
+            "file_hit5": 0.9636363636363636,
+            "file_rr": 0.7757575757575758,
+            "passage_hit5": 1,
+            "passage_rr": 0.65
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.6333333333333333,
+            "passage_hit5": 1,
+            "passage_rr": 0.5733333333333334
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.7777777777777778
+          },
+          "discovery": {
+            "file_hit5": 0.5,
+            "file_rr": 0.5
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.8833333333333333
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.4444444444444444
+          }
+        },
+        "bm25_only_40": {
+          "all": {
+            "file_hit5": 0.10909090909090909,
+            "file_rr": 0.1,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "code": {
+            "file_hit5": 0,
+            "file_rr": 0.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "decision": {
+            "file_hit5": 0,
+            "file_rr": 0.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "discovery": {
+            "file_hit5": 0.5,
+            "file_rr": 0.5
+          },
+          "memory": {
+            "file_hit5": 0.05,
+            "file_rr": 0.05
+          },
+          "prd": {
+            "file_hit5": 0.3076923076923077,
+            "file_rr": 0.2692307692307692
+          },
+          "transcripts": {
+            "file_hit5": 0,
+            "file_rr": 0.0
+          }
+        },
+        "rrf_prod_20_20": {
+          "all": {
+            "file_hit5": 0.9636363636363636,
+            "file_rr": 0.8666666666666667,
+            "passage_hit5": 1,
+            "passage_rr": 0.65
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.6333333333333333,
+            "passage_hit5": 1,
+            "passage_rr": 0.5733333333333334
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.7777777777777778
+          },
+          "discovery": {
+            "file_hit5": 0.5,
+            "file_rr": 0.5
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.9083333333333333
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.8194444444444444
+          }
+        },
+        "rrf_40_40": {
+          "all": {
+            "file_hit5": 0.9636363636363636,
+            "file_rr": 0.8674931129476584,
+            "passage_hit5": 1,
+            "passage_rr": 0.65
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.6333333333333333,
+            "passage_hit5": 1,
+            "passage_rr": 0.5733333333333334
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.7777777777777778
+          },
+          "discovery": {
+            "file_hit5": 0.5,
+            "file_rr": 0.5227272727272727
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.9083333333333333
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.8194444444444444
+          }
+        },
+        "rrf_100_100": {
+          "all": {
+            "file_hit5": 0.9636363636363636,
+            "file_rr": 0.8493112947658402,
+            "passage_hit5": 1,
+            "passage_rr": 0.65
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.6333333333333333,
+            "passage_hit5": 1,
+            "passage_rr": 0.5733333333333334
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.7777777777777778
+          },
+          "discovery": {
+            "file_hit5": 0.5,
+            "file_rr": 0.5227272727272727
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.8833333333333333
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.7777777777777778
+          }
+        },
+        "rrf_20_20_dense2x": {
+          "all": {
+            "file_hit5": 0.9636363636363636,
+            "file_rr": 0.8696969696969697,
+            "passage_hit5": 1,
+            "passage_rr": 0.65
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.6333333333333333,
+            "passage_hit5": 1,
+            "passage_rr": 0.5733333333333334
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.7777777777777778
+          },
+          "discovery": {
+            "file_hit5": 0.5,
+            "file_rr": 0.5
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.9083333333333333
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.8333333333333334
+          }
+        },
+        "rrf_100_100_dense2x": {
+          "all": {
+            "file_hit5": 0.9636363636363636,
+            "file_rr": 0.8523415977961433,
+            "passage_hit5": 1,
+            "passage_rr": 0.65
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.6333333333333333,
+            "passage_hit5": 1,
+            "passage_rr": 0.5733333333333334
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.7777777777777778
+          },
+          "discovery": {
+            "file_hit5": 0.5,
+            "file_rr": 0.5227272727272727
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.8833333333333333
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.7916666666666666
+          }
+        },
+        "rrf_100_100_dense4x": {
+          "all": {
+            "file_hit5": 0.9636363636363636,
+            "file_rr": 0.8705234159779615,
+            "passage_hit5": 1,
+            "passage_rr": 0.65
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.6333333333333333,
+            "passage_hit5": 1,
+            "passage_rr": 0.5733333333333334
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.7777777777777778
+          },
+          "discovery": {
+            "file_hit5": 0.5,
+            "file_rr": 0.5227272727272727
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.9083333333333333
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.8333333333333334
+          }
+        },
+        "bm25_or_only_40": {
+          "all": {
+            "file_hit5": 0.9090909090909091,
+            "file_rr": 0.8641608391608392,
+            "passage_hit5": 0.625,
+            "passage_rr": 0.5465472027972028
+          },
+          "code": {
+            "file_hit5": 0.4,
+            "file_rr": 0.4641025641025641,
+            "passage_hit5": 0.4,
+            "passage_rr": 0.4244755244755245
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.75
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.9125
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9487179487179487
+          },
+          "transcripts": {
+            "file_hit5": 0.8333333333333334,
+            "file_rr": 0.8020833333333334
+          }
+        },
+        "rrf_bm25or_20_20": {
+          "all": {
+            "file_hit5": 0.9636363636363636,
+            "file_rr": 0.8965367965367965,
+            "passage_hit5": 0.75,
+            "passage_rr": 0.5989583333333334
+          },
+          "code": {
+            "file_hit5": 0.8,
+            "file_rr": 0.5619047619047619,
+            "passage_hit5": 0.6,
+            "passage_rr": 0.5083333333333333
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.75
+          },
+          "discovery": {
+            "file_hit5": 0.5,
+            "file_rr": 0.5833333333333334
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.975
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9487179487179487
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.875
+          }
+        },
+        "rrf_bm25or_20_20_dense2x": {
+          "all": {
+            "file_hit5": 0.9454545454545454,
+            "file_rr": 0.8982683982683982,
+            "passage_hit5": 0.75,
+            "passage_rr": 0.621875
+          },
+          "code": {
+            "file_hit5": 0.8,
+            "file_rr": 0.5952380952380952,
+            "passage_hit5": 0.6,
+            "passage_rr": 0.545
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.75
+          },
+          "discovery": {
+            "file_hit5": 0.5,
+            "file_rr": 0.5238095238095238
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.975
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9487179487179487
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.878968253968254
+          }
+        }
+      },
+      "recall": {
+        "dense_20": 0.9636363636363636,
+        "dense_40": 0.9818181818181818,
+        "dense_100": 0.9818181818181818,
+        "bm25_20": 0.10909090909090909,
+        "bm25_100": 0.10909090909090909,
+        "union_20_20": 0.9636363636363636,
+        "union_100_100": 0.9818181818181818
+      },
+      "recall_by_corpus": {
+        "code": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.0,
+          "bm25_100": 0.0,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "decision": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.0,
+          "bm25_100": 0.0,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "discovery": {
+          "dense_20": 0.5,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.5,
+          "bm25_100": 0.5,
+          "union_20_20": 0.5,
+          "union_100_100": 1.0
+        },
+        "memory": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.05,
+          "bm25_100": 0.05,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "prd": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.3076923076923077,
+          "bm25_100": 0.3076923076923077,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "transcripts": {
+          "dense_20": 0.9166666666666666,
+          "dense_40": 0.9166666666666666,
+          "dense_100": 0.9166666666666666,
+          "bm25_20": 0.0,
+          "bm25_100": 0.0,
+          "union_20_20": 0.9166666666666666,
+          "union_100_100": 0.9166666666666666
+        }
+      },
+      "bm25_empty_queries": 34,
+      "queries": 55
+    },
+    "jina-v5-small-q8": {
+      "variants": {
+        "dense_only_40": {
+          "all": {
+            "file_hit5": 0.9818181818181818,
+            "file_rr": 0.936969696969697,
+            "passage_hit5": 0.875,
+            "passage_rr": 0.7387820512820513
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.9,
+            "passage_hit5": 0.8,
+            "passage_rr": 0.7153846153846154
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.7777777777777778
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.935
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9487179487179487
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.9166666666666666
+          }
+        },
+        "rrf_prod_order_20_20": {
+          "all": {
+            "file_hit5": 0.9818181818181818,
+            "file_rr": 0.8096969696969697,
+            "passage_hit5": 0.875,
+            "passage_rr": 0.7387820512820513
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.9,
+            "passage_hit5": 0.8,
+            "passage_rr": 0.7153846153846154
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.7777777777777778
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.86
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9487179487179487
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.4583333333333333
+          }
+        },
+        "bm25_only_40": {
+          "all": {
+            "file_hit5": 0.10909090909090909,
+            "file_rr": 0.1,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "code": {
+            "file_hit5": 0,
+            "file_rr": 0.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "decision": {
+            "file_hit5": 0,
+            "file_rr": 0.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "discovery": {
+            "file_hit5": 0.5,
+            "file_rr": 0.5
+          },
+          "memory": {
+            "file_hit5": 0.05,
+            "file_rr": 0.05
+          },
+          "prd": {
+            "file_hit5": 0.3076923076923077,
+            "file_rr": 0.2692307692307692
+          },
+          "transcripts": {
+            "file_hit5": 0,
+            "file_rr": 0.0
+          }
+        },
+        "rrf_prod_20_20": {
+          "all": {
+            "file_hit5": 0.9818181818181818,
+            "file_rr": 0.9278787878787879,
+            "passage_hit5": 0.875,
+            "passage_rr": 0.7387820512820513
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.9,
+            "passage_hit5": 0.8,
+            "passage_rr": 0.7153846153846154
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.7777777777777778
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.91
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9487179487179487
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.9166666666666666
+          }
+        },
+        "rrf_40_40": {
+          "all": {
+            "file_hit5": 0.9818181818181818,
+            "file_rr": 0.9278787878787879,
+            "passage_hit5": 0.875,
+            "passage_rr": 0.7387820512820513
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.9,
+            "passage_hit5": 0.8,
+            "passage_rr": 0.7153846153846154
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.7777777777777778
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.91
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9487179487179487
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.9166666666666666
+          }
+        },
+        "rrf_100_100": {
+          "all": {
+            "file_hit5": 0.9818181818181818,
+            "file_rr": 0.9157575757575758,
+            "passage_hit5": 0.875,
+            "passage_rr": 0.7387820512820513
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.9,
+            "passage_hit5": 0.8,
+            "passage_rr": 0.7153846153846154
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.7777777777777778
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.8766666666666667
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9487179487179487
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.9166666666666666
+          }
+        },
+        "rrf_20_20_dense2x": {
+          "all": {
+            "file_hit5": 0.9818181818181818,
+            "file_rr": 0.9278787878787879,
+            "passage_hit5": 0.875,
+            "passage_rr": 0.7387820512820513
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.9,
+            "passage_hit5": 0.8,
+            "passage_rr": 0.7153846153846154
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.7777777777777778
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.91
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9487179487179487
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.9166666666666666
+          }
+        },
+        "rrf_100_100_dense2x": {
+          "all": {
+            "file_hit5": 0.9818181818181818,
+            "file_rr": 0.9248484848484848,
+            "passage_hit5": 0.875,
+            "passage_rr": 0.7387820512820513
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.9,
+            "passage_hit5": 0.8,
+            "passage_rr": 0.7153846153846154
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.7777777777777778
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.9016666666666666
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9487179487179487
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.9166666666666666
+          }
+        },
+        "rrf_100_100_dense4x": {
+          "all": {
+            "file_hit5": 0.9818181818181818,
+            "file_rr": 0.9278787878787879,
+            "passage_hit5": 0.875,
+            "passage_rr": 0.7387820512820513
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.9,
+            "passage_hit5": 0.8,
+            "passage_rr": 0.7153846153846154
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.7777777777777778
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.91
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9487179487179487
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.9166666666666666
+          }
+        },
+        "bm25_or_only_40": {
+          "all": {
+            "file_hit5": 0.9090909090909091,
+            "file_rr": 0.8641608391608392,
+            "passage_hit5": 0.625,
+            "passage_rr": 0.5465472027972028
+          },
+          "code": {
+            "file_hit5": 0.4,
+            "file_rr": 0.4641025641025641,
+            "passage_hit5": 0.4,
+            "passage_rr": 0.4244755244755245
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.75
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.9125
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9487179487179487
+          },
+          "transcripts": {
+            "file_hit5": 0.8333333333333334,
+            "file_rr": 0.8020833333333334
+          }
+        },
+        "rrf_bm25or_20_20": {
+          "all": {
+            "file_hit5": 1,
+            "file_rr": 0.9257575757575758,
+            "passage_hit5": 0.875,
+            "passage_rr": 0.6328125
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.75,
+            "passage_hit5": 0.8,
+            "passage_rr": 0.5125
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.8333333333333334
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.9416666666666667
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.9027777777777778
+          }
+        },
+        "rrf_bm25or_20_20_dense2x": {
+          "all": {
+            "file_hit5": 0.9818181818181818,
+            "file_rr": 0.9387445887445888,
+            "passage_hit5": 0.875,
+            "passage_rr": 0.6339285714285714
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.85,
+            "passage_hit5": 0.8,
+            "passage_rr": 0.5142857142857142
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.8333333333333334
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.9416666666666667
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 0.9166666666666666,
+            "file_rr": 0.9206349206349206
+          }
+        }
+      },
+      "recall": {
+        "dense_20": 0.9818181818181818,
+        "dense_40": 0.9818181818181818,
+        "dense_100": 0.9818181818181818,
+        "bm25_20": 0.10909090909090909,
+        "bm25_100": 0.10909090909090909,
+        "union_20_20": 0.9818181818181818,
+        "union_100_100": 0.9818181818181818
+      },
+      "recall_by_corpus": {
+        "code": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.0,
+          "bm25_100": 0.0,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "decision": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.0,
+          "bm25_100": 0.0,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "discovery": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.5,
+          "bm25_100": 0.5,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "memory": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.05,
+          "bm25_100": 0.05,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "prd": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.3076923076923077,
+          "bm25_100": 0.3076923076923077,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "transcripts": {
+          "dense_20": 0.9166666666666666,
+          "dense_40": 0.9166666666666666,
+          "dense_100": 0.9166666666666666,
+          "bm25_20": 0.0,
+          "bm25_100": 0.0,
+          "union_20_20": 0.9166666666666666,
+          "union_100_100": 0.9166666666666666
+        }
+      },
+      "bm25_empty_queries": 34,
+      "queries": 55
+    },
+    "qwen3-8b-q8": {
+      "variants": {
+        "dense_only_40": {
+          "all": {
+            "file_hit5": 1,
+            "file_rr": 0.9333333333333333,
+            "passage_hit5": 1,
+            "passage_rr": 0.59375
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.7,
+            "passage_hit5": 1,
+            "passage_rr": 0.6
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.5833333333333334
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.975
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9487179487179487
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.9166666666666666
+          }
+        },
+        "rrf_prod_order_20_20": {
+          "all": {
+            "file_hit5": 1,
+            "file_rr": 0.7984848484848485,
+            "passage_hit5": 1,
+            "passage_rr": 0.59375
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.7,
+            "passage_hit5": 1,
+            "passage_rr": 0.6
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.5833333333333334
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.9
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9102564102564102
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.4652777777777778
+          }
+        },
+        "bm25_only_40": {
+          "all": {
+            "file_hit5": 0.10909090909090909,
+            "file_rr": 0.1,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "code": {
+            "file_hit5": 0,
+            "file_rr": 0.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "decision": {
+            "file_hit5": 0,
+            "file_rr": 0.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "discovery": {
+            "file_hit5": 0.5,
+            "file_rr": 0.5
+          },
+          "memory": {
+            "file_hit5": 0.05,
+            "file_rr": 0.05
+          },
+          "prd": {
+            "file_hit5": 0.3076923076923077,
+            "file_rr": 0.2692307692307692
+          },
+          "transcripts": {
+            "file_hit5": 0,
+            "file_rr": 0.0
+          }
+        },
+        "rrf_prod_20_20": {
+          "all": {
+            "file_hit5": 1,
+            "file_rr": 0.9090909090909091,
+            "passage_hit5": 1,
+            "passage_rr": 0.59375
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.7,
+            "passage_hit5": 1,
+            "passage_rr": 0.6
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.5833333333333334
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.95
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9102564102564102
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.8888888888888888
+          }
+        },
+        "rrf_40_40": {
+          "all": {
+            "file_hit5": 1,
+            "file_rr": 0.9,
+            "passage_hit5": 1,
+            "passage_rr": 0.59375
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.7,
+            "passage_hit5": 1,
+            "passage_rr": 0.6
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.5833333333333334
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.925
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9102564102564102
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.8888888888888888
+          }
+        },
+        "rrf_100_100": {
+          "all": {
+            "file_hit5": 1,
+            "file_rr": 0.896969696969697,
+            "passage_hit5": 1,
+            "passage_rr": 0.59375
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.7,
+            "passage_hit5": 1,
+            "passage_rr": 0.6
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.5833333333333334
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.9166666666666666
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9102564102564102
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.8888888888888888
+          }
+        },
+        "rrf_20_20_dense2x": {
+          "all": {
+            "file_hit5": 1,
+            "file_rr": 0.9151515151515152,
+            "passage_hit5": 1,
+            "passage_rr": 0.59375
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.7,
+            "passage_hit5": 1,
+            "passage_rr": 0.6
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.5833333333333334
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.95
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9102564102564102
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.9166666666666666
+          }
+        },
+        "rrf_100_100_dense2x": {
+          "all": {
+            "file_hit5": 1,
+            "file_rr": 0.906060606060606,
+            "passage_hit5": 1,
+            "passage_rr": 0.59375
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.7,
+            "passage_hit5": 1,
+            "passage_rr": 0.6
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.5833333333333334
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.925
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9102564102564102
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.9166666666666666
+          }
+        },
+        "rrf_100_100_dense4x": {
+          "all": {
+            "file_hit5": 1,
+            "file_rr": 0.9151515151515152,
+            "passage_hit5": 1,
+            "passage_rr": 0.59375
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.7,
+            "passage_hit5": 1,
+            "passage_rr": 0.6
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.5833333333333334
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.95
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9102564102564102
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.9166666666666666
+          }
+        },
+        "bm25_or_only_40": {
+          "all": {
+            "file_hit5": 0.9090909090909091,
+            "file_rr": 0.8641608391608392,
+            "passage_hit5": 0.625,
+            "passage_rr": 0.5465472027972028
+          },
+          "code": {
+            "file_hit5": 0.4,
+            "file_rr": 0.4641025641025641,
+            "passage_hit5": 0.4,
+            "passage_rr": 0.4244755244755245
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.75
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.9125
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9487179487179487
+          },
+          "transcripts": {
+            "file_hit5": 0.8333333333333334,
+            "file_rr": 0.8020833333333334
+          }
+        },
+        "rrf_bm25or_20_20": {
+          "all": {
+            "file_hit5": 1,
+            "file_rr": 0.9318181818181818,
+            "passage_hit5": 0.75,
+            "passage_rr": 0.6011904761904762
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.75,
+            "passage_hit5": 0.6,
+            "passage_rr": 0.5619047619047619
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.6666666666666666
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.975
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.875
+          }
+        },
+        "rrf_bm25or_20_20_dense2x": {
+          "all": {
+            "file_hit5": 1,
+            "file_rr": 0.9318181818181818,
+            "passage_hit5": 0.875,
+            "passage_rr": 0.5845238095238096
+          },
+          "code": {
+            "file_hit5": 1,
+            "file_rr": 0.75,
+            "passage_hit5": 0.8,
+            "passage_rr": 0.5685714285714286
+          },
+          "decision": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.6111111111111112
+          },
+          "discovery": {
+            "file_hit5": 1,
+            "file_rr": 1.0
+          },
+          "memory": {
+            "file_hit5": 1,
+            "file_rr": 0.975
+          },
+          "prd": {
+            "file_hit5": 1,
+            "file_rr": 0.9615384615384616
+          },
+          "transcripts": {
+            "file_hit5": 1,
+            "file_rr": 0.875
+          }
+        }
+      },
+      "recall": {
+        "dense_20": 1.0,
+        "dense_40": 1.0,
+        "dense_100": 1.0,
+        "bm25_20": 0.10909090909090909,
+        "bm25_100": 0.10909090909090909,
+        "union_20_20": 1.0,
+        "union_100_100": 1.0
+      },
+      "recall_by_corpus": {
+        "code": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.0,
+          "bm25_100": 0.0,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "decision": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.0,
+          "bm25_100": 0.0,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "discovery": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.5,
+          "bm25_100": 0.5,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "memory": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.05,
+          "bm25_100": 0.05,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "prd": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.3076923076923077,
+          "bm25_100": 0.3076923076923077,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        },
+        "transcripts": {
+          "dense_20": 1.0,
+          "dense_40": 1.0,
+          "dense_100": 1.0,
+          "bm25_20": 0.0,
+          "bm25_100": 0.0,
+          "union_20_20": 1.0,
+          "union_100_100": 1.0
+        }
+      },
+      "bm25_empty_queries": 34,
+      "queries": 55
+    }
+  }
+}

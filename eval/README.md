@@ -145,3 +145,31 @@ resumes completed byte ranges, and checks the complete published SHA-256 before
 making a file available to the runner. This avoids the excessive retries seen
 with the default download transport on this machine. Servers prefer these
 verified files; existing small-model downloads can still use llama.cpp's cache.
+
+## Reranker on fixed fusion
+
+```sh
+PYTHONPATH=src:. .venv/bin/python -m eval.probe_rerank_fixed \
+  --rerankers qwen3-reranker-06b-q8 qwen3-reranker-4b-q8
+```
+
+This probe opens the full campaign's `fc9bf2e6e0038153` indexes read-only. It
+compares production ordering, dense-first RRF, and OR-lexical dense-first RRF
+with dense weights 1 and 2 (20 candidates per leg, at most 40 fused chunks).
+It re-embeds queries, then unloads both embedding models before reranking.
+Each reranker must reproduce the saved campaign baseline, overall and per
+corpus, before the alternative fusions run. Inputs use heading, full path,
+and body within the same 8,000-character budget.
+
+`probe-rerank-fixed.json` contains overall/per-corpus metrics and per-query
+retrieval, reranking, and combined latency, excluding startup. Raw rankings
+stay in a separate private cache recorded in that JSON; server logs use temporary
+directories. No campaign logs, production configuration, or indexes are written.
+The default runs only the 0.6B reranker. A rerun starts a fresh private cache;
+there is no resume or score reuse. Do not run concurrently on port 18181.
+
+All 55 questions are development data. Passage results have only eight labels:
+five code, three decision, and none for transcripts. Unlabelled corpora omit
+passage scores. Timing is an alternating-model benchmark, not production serving
+or fallback validation. The OR timing conservatively includes the AND lookup
+performed during candidate collection; fusion and serialization are excluded.

@@ -16,6 +16,30 @@ bge-m3 index, found by probing the full-snapshot indexes:
 
 No embedding change, rebuild, or new server is involved.
 
+## Reranker interaction, 2026-11-03
+
+[Fixed-fusion probe](../../../reviews/2026-11-03-probe-rerank-fixed.md): the
+0.6B reranker preserves a smaller file-ranking benefit after the fix. For BGE,
+production fusion 0.794→0.979 becomes OR/1x 0.918→0.977 or OR/2x 0.930→0.977.
+Only 25–32% of the old file-MRR uplift remains, supporting this as an independent
+inexpensive improvement. Dense-first ordering alone leaves reranked scores
+unchanged; changing the lexical leg changes the candidate set.
+
+Fusion does not replace passage reranking: BGE OR/2x passage MRR is 0.589 and
+hit5 is 6/8, rising to 0.906 and 8/8 with the 0.6B reranker. OR also expands
+candidate lists (mean 20.36→31.96), almost doubling reranking median time.
+Both OR weights give the same reranked metrics, so do not select a weight from
+reranked scores. Qwen3-8B reaches the same reranked scores as BGE after OR.
+The optional 4B trial confirms no benefit from the larger reranker: OR gives
+0.976 file MRR and 0.833 passage MRR, versus 0.977/0.906 with 0.6B, at roughly
+five times the combined median latency.
+
+The baselines reproduce the campaign. Evidence remains 55 development queries
+and eight passage labels: five code, three decision, none for transcripts.
+Keep held-out confirmation and exact-identifier regressions in this item's
+acceptance criteria; the probe neither edits production retrieval code nor opens
+the production index.
+
 ## Questions for discovery
 
 1. Confirm on held-out questions (the 55 are development data) and add transcript

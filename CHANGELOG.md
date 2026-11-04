@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **eval**: probe reranking after fusion tie-break and lexical-OR fixes on
+  read-only campaign indexes, with baseline validation and per-query latency.
 - **eval**: compare local embedding and reranking models on private snapshots;
   record ranking quality, latency, and runtime buffer allocations.
 - **cli**: `engram index --reembed-code` regenerates vectors of indexed code
