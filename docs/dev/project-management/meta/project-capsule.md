@@ -1,6 +1,6 @@
 # Project Capsule: engram
 
-Updated: 2026-11-05, after the fixed-fusion reranker probe and handoff verification.
+Updated: 2026-11-05, after the separate file-held-out probe.
 
 ## Key Invariants
 
@@ -57,8 +57,11 @@ production-database timestamp observation. Intakes 00008 and 00009 contain the
 updated reranker and fusion evidence. No production retrieval change or model
 switch was made by these probes.
 
-Continue with held-out questions and transcript passage labels in a separate
-probe. Persistent reranker latency/fallback and Qwen3-0.6B embeddings on the full
+The separate file-held-out probe is recorded in
+`reviews/2026-11-05-probe-heldout.md`: ten agent-authored questions, ten passage
+labels including two transcripts. OR alone does not reproduce the earlier MRR
+gain; OR plus reranking reaches 10/10 files and 7/10 passages. Independent human
+questions and broader transcript labels remain necessary. Persistent reranker latency/fallback and Qwen3-0.6B embeddings on the full
 snapshot remain later probes. Preserve the production pin, config, index, and
 retrieval code; production changes and rebuilds require the user's authorization.
 
@@ -69,10 +72,12 @@ Local `master`; no remote or CI. Run the main and eval suites separately:
 `PYTHONPATH=src:. .venv/bin/python -m pytest -q eval`.
 The installed implementation matches the checkout after the approved warrant
 installation of the production fixes; later evaluation tools remain in the repo.
-Verification on 2026-11-05: main suite 467 passed, 1 failed; eval suite 27 passed.
+Verification on 2026-11-05: main suite 467 passed, 1 failed; eval suite 30 passed.
 `test_real_goldset_loads_clean_and_covers_transcripts_and_code` fails because a
 live transcript target is missing:
 `/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-agent-skills/5a656567-eccb-474e-833a-8ca6a7601e5a.jsonl`.
+Cellar commit `ba64775dd` deleted this transcript on November 3; no relocation
+was found. The new probe uses frozen sources, without replacing historical labels.
 Resolve source availability before a new live-source evaluation; preserve the
 historical development labels and frozen campaign results when investigating.
 Both stashes were inspected: formatting/import cleanup only, no unfinished logic.

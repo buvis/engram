@@ -1,0 +1,1832 @@
+{
+  "snapshot": "fc9bf2e6e0038153",
+  "snapshot_sha256": "fc9bf2e6e003815396c8a1daa9780a87453c23fae69b34c2c5b738324b6c2057",
+  "labels_sha256": "26868c109ad1b42ed68b18109f6115cf72c634a5ff094428d5049a088dbbaa8b",
+  "source_sha256": "a1bda8f6adc13212d7fd6d37455753373042e0c787d8f3d671faaac50721a59a",
+  "author": "Codex agent",
+  "independent_human_questions": 0,
+  "note": "10 agent-authored questions; 10 exact passage labels; two each code, memory, prd, discovery, transcripts. No decision targets outside development files. Corpus-scoped; no cross-corpus claim.",
+  "baseline_validation": {
+    "campaign_result": "bge-m3-q8-47901f6fab45/result.json",
+    "campaign_sha256": "ef162cf48be2f95e1b000b555c9423f5b1c4a3b4023c45483e0846b96cbc73b4",
+    "campaign_summary": {
+      "all": {
+        "file_hit5": 0.9636363636363636,
+        "file_rr": 0.7938228438228438,
+        "passage_hit5": 0.625,
+        "passage_rr": 0.5764921353156647
+      },
+      "code": {
+        "file_hit5": 0.8,
+        "file_rr": 0.532051282051282,
+        "passage_hit5": 0.6,
+        "passage_rr": 0.493815987933635
+      },
+      "decision": {
+        "file_hit5": 1,
+        "file_rr": 1.0,
+        "passage_hit5": 0.6666666666666666,
+        "passage_rr": 0.7142857142857143
+      },
+      "discovery": {
+        "file_hit5": 1,
+        "file_rr": 1.0
+      },
+      "memory": {
+        "file_hit5": 1,
+        "file_rr": 0.925
+      },
+      "prd": {
+        "file_hit5": 1,
+        "file_rr": 0.9615384615384616
+      },
+      "transcripts": {
+        "file_hit5": 0.9166666666666666,
+        "file_rr": 0.4166666666666667
+      }
+    },
+    "matching_candidate_orders": 55,
+    "matching_candidate_sets": 55,
+    "embedding_baseline_passed": true
+  },
+  "fusion": {
+    "rrf_prod_order_20_20": {
+      "summary": {
+        "all": {
+          "file_hit5": 0.8,
+          "file_rr": 0.8111111111111111,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5142857142857142
+        },
+        "code": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "discovery": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "memory": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 1,
+          "passage_rr": 1.0
+        },
+        "prd": {
+          "file_hit5": 0.5,
+          "file_rr": 0.5,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "transcripts": {
+          "file_hit5": 0.5,
+          "file_rr": 0.5555555555555556,
+          "passage_hit5": 0,
+          "passage_rr": 0.07142857142857142
+        }
+      },
+      "counts": {
+        "all": {
+          "queries": 10,
+          "passage_labels": 10
+        },
+        "code": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "discovery": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "memory": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "prd": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "transcripts": {
+          "queries": 2,
+          "passage_labels": 2
+        }
+      },
+      "latency_seconds": {
+        "retrieval_seconds": {
+          "median": 0.027113082993309945,
+          "p95": 0.06722416693810374
+        },
+        "rerank_seconds": {
+          "median": 0.0,
+          "p95": 0.0
+        },
+        "seconds": {
+          "median": 0.027113082993309945,
+          "p95": 0.06722416693810374
+        }
+      },
+      "results": [
+        {
+          "query_id": 0,
+          "corpus": "code",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.06722416693810374,
+          "rerank_seconds": 0.0,
+          "seconds": 0.06722416693810374
+        },
+        {
+          "query_id": 1,
+          "corpus": "code",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.07072295900434256,
+          "rerank_seconds": 0.0,
+          "seconds": 0.07072295900434256
+        },
+        {
+          "query_id": 2,
+          "corpus": "memory",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.015687209088355303,
+          "rerank_seconds": 0.0,
+          "seconds": 0.015687209088355303
+        },
+        {
+          "query_id": 3,
+          "corpus": "memory",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.015254083089530468,
+          "rerank_seconds": 0.0,
+          "seconds": 0.015254083089530468
+        },
+        {
+          "query_id": 4,
+          "corpus": "prd",
+          "metrics": {
+            "file_hit5": 0,
+            "file_rr": 0.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.0262842079391703,
+          "rerank_seconds": 0.0,
+          "seconds": 0.0262842079391703
+        },
+        {
+          "query_id": 5,
+          "corpus": "prd",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.02794195804744959,
+          "rerank_seconds": 0.0,
+          "seconds": 0.02794195804744959
+        },
+        {
+          "query_id": 6,
+          "corpus": "discovery",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.015768166980706155,
+          "rerank_seconds": 0.0,
+          "seconds": 0.015768166980706155
+        },
+        {
+          "query_id": 7,
+          "corpus": "discovery",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.017386749968864024,
+          "rerank_seconds": 0.0,
+          "seconds": 0.017386749968864024
+        },
+        {
+          "query_id": 8,
+          "corpus": "transcripts",
+          "metrics": {
+            "file_hit5": 0,
+            "file_rr": 0.1111111111111111,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 21,
+          "retrieval_seconds": 0.03866104199551046,
+          "rerank_seconds": 0.0,
+          "seconds": 0.03866104199551046
+        },
+        {
+          "query_id": 9,
+          "corpus": "transcripts",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.14285714285714285
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.03234404209069908,
+          "rerank_seconds": 0.0,
+          "seconds": 0.03234404209069908
+        }
+      ]
+    },
+    "rrf_prod_20_20": {
+      "summary": {
+        "all": {
+          "file_hit5": 0.8,
+          "file_rr": 0.8111111111111111,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5142857142857142
+        },
+        "code": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "discovery": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "memory": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 1,
+          "passage_rr": 1.0
+        },
+        "prd": {
+          "file_hit5": 0.5,
+          "file_rr": 0.5,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "transcripts": {
+          "file_hit5": 0.5,
+          "file_rr": 0.5555555555555556,
+          "passage_hit5": 0,
+          "passage_rr": 0.07142857142857142
+        }
+      },
+      "counts": {
+        "all": {
+          "queries": 10,
+          "passage_labels": 10
+        },
+        "code": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "discovery": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "memory": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "prd": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "transcripts": {
+          "queries": 2,
+          "passage_labels": 2
+        }
+      },
+      "latency_seconds": {
+        "retrieval_seconds": {
+          "median": 0.027113082993309945,
+          "p95": 0.06722416693810374
+        },
+        "rerank_seconds": {
+          "median": 0.0,
+          "p95": 0.0
+        },
+        "seconds": {
+          "median": 0.027113082993309945,
+          "p95": 0.06722416693810374
+        }
+      },
+      "results": [
+        {
+          "query_id": 0,
+          "corpus": "code",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.06722416693810374,
+          "rerank_seconds": 0.0,
+          "seconds": 0.06722416693810374
+        },
+        {
+          "query_id": 1,
+          "corpus": "code",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.07072295900434256,
+          "rerank_seconds": 0.0,
+          "seconds": 0.07072295900434256
+        },
+        {
+          "query_id": 2,
+          "corpus": "memory",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.015687209088355303,
+          "rerank_seconds": 0.0,
+          "seconds": 0.015687209088355303
+        },
+        {
+          "query_id": 3,
+          "corpus": "memory",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.015254083089530468,
+          "rerank_seconds": 0.0,
+          "seconds": 0.015254083089530468
+        },
+        {
+          "query_id": 4,
+          "corpus": "prd",
+          "metrics": {
+            "file_hit5": 0,
+            "file_rr": 0.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.0262842079391703,
+          "rerank_seconds": 0.0,
+          "seconds": 0.0262842079391703
+        },
+        {
+          "query_id": 5,
+          "corpus": "prd",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.02794195804744959,
+          "rerank_seconds": 0.0,
+          "seconds": 0.02794195804744959
+        },
+        {
+          "query_id": 6,
+          "corpus": "discovery",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.015768166980706155,
+          "rerank_seconds": 0.0,
+          "seconds": 0.015768166980706155
+        },
+        {
+          "query_id": 7,
+          "corpus": "discovery",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.017386749968864024,
+          "rerank_seconds": 0.0,
+          "seconds": 0.017386749968864024
+        },
+        {
+          "query_id": 8,
+          "corpus": "transcripts",
+          "metrics": {
+            "file_hit5": 0,
+            "file_rr": 0.1111111111111111,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 21,
+          "retrieval_seconds": 0.03866104199551046,
+          "rerank_seconds": 0.0,
+          "seconds": 0.03866104199551046
+        },
+        {
+          "query_id": 9,
+          "corpus": "transcripts",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.14285714285714285
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.03234404209069908,
+          "rerank_seconds": 0.0,
+          "seconds": 0.03234404209069908
+        }
+      ]
+    },
+    "rrf_bm25or_20_20": {
+      "summary": {
+        "all": {
+          "file_hit5": 0.9,
+          "file_rr": 0.7642857142857142,
+          "passage_hit5": 0.6,
+          "passage_rr": 0.5342857142857143
+        },
+        "code": {
+          "file_hit5": 1,
+          "file_rr": 0.75,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "discovery": {
+          "file_hit5": 1,
+          "file_rr": 0.75,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "memory": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 1,
+          "passage_rr": 1.0
+        },
+        "prd": {
+          "file_hit5": 0.5,
+          "file_rr": 0.5714285714285714,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5714285714285714
+        },
+        "transcripts": {
+          "file_hit5": 1,
+          "file_rr": 0.75,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.1
+        }
+      },
+      "counts": {
+        "all": {
+          "queries": 10,
+          "passage_labels": 10
+        },
+        "code": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "discovery": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "memory": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "prd": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "transcripts": {
+          "queries": 2,
+          "passage_labels": 2
+        }
+      },
+      "latency_seconds": {
+        "retrieval_seconds": {
+          "median": 0.05095504148630425,
+          "p95": 0.11410187592264265
+        },
+        "rerank_seconds": {
+          "median": 0.0,
+          "p95": 0.0
+        },
+        "seconds": {
+          "median": 0.05095504148630425,
+          "p95": 0.11410187592264265
+        }
+      },
+      "results": [
+        {
+          "query_id": 0,
+          "corpus": "code",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 36,
+          "retrieval_seconds": 0.1227797499159351,
+          "rerank_seconds": 0.0,
+          "seconds": 0.1227797499159351
+        },
+        {
+          "query_id": 1,
+          "corpus": "code",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 0.5,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 39,
+          "retrieval_seconds": 0.11410187592264265,
+          "rerank_seconds": 0.0,
+          "seconds": 0.11410187592264265
+        },
+        {
+          "query_id": 2,
+          "corpus": "memory",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 30,
+          "retrieval_seconds": 0.033413459081202745,
+          "rerank_seconds": 0.0,
+          "seconds": 0.033413459081202745
+        },
+        {
+          "query_id": 3,
+          "corpus": "memory",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 28,
+          "retrieval_seconds": 0.034795665997080505,
+          "rerank_seconds": 0.0,
+          "seconds": 0.034795665997080505
+        },
+        {
+          "query_id": 4,
+          "corpus": "prd",
+          "metrics": {
+            "file_hit5": 0,
+            "file_rr": 0.14285714285714285,
+            "passage_hit5": 0,
+            "passage_rr": 0.14285714285714285
+          },
+          "candidate_count": 38,
+          "retrieval_seconds": 0.04642824991606176,
+          "rerank_seconds": 0.0,
+          "seconds": 0.04642824991606176
+        },
+        {
+          "query_id": 5,
+          "corpus": "prd",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 33,
+          "retrieval_seconds": 0.05548183305654675,
+          "rerank_seconds": 0.0,
+          "seconds": 0.05548183305654675
+        },
+        {
+          "query_id": 6,
+          "corpus": "discovery",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 0.5,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 31,
+          "retrieval_seconds": 0.04030549991875887,
+          "rerank_seconds": 0.0,
+          "seconds": 0.04030549991875887
+        },
+        {
+          "query_id": 7,
+          "corpus": "discovery",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 34,
+          "retrieval_seconds": 0.027970583993010223,
+          "rerank_seconds": 0.0,
+          "seconds": 0.027970583993010223
+        },
+        {
+          "query_id": 8,
+          "corpus": "transcripts",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 0.5,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 35,
+          "retrieval_seconds": 0.07813962502405047,
+          "rerank_seconds": 0.0,
+          "seconds": 0.07813962502405047
+        },
+        {
+          "query_id": 9,
+          "corpus": "transcripts",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.2
+          },
+          "candidate_count": 31,
+          "retrieval_seconds": 0.06576275010593235,
+          "rerank_seconds": 0.0,
+          "seconds": 0.06576275010593235
+        }
+      ]
+    },
+    "rrf_bm25or_20_20_dense2x": {
+      "summary": {
+        "all": {
+          "file_hit5": 0.9,
+          "file_rr": 0.8043478260869565,
+          "passage_hit5": 0.6,
+          "passage_rr": 0.5243478260869565
+        },
+        "code": {
+          "file_hit5": 1,
+          "file_rr": 0.75,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "discovery": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "memory": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 1,
+          "passage_rr": 1.0
+        },
+        "prd": {
+          "file_hit5": 0.5,
+          "file_rr": 0.5217391304347826,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5217391304347826
+        },
+        "transcripts": {
+          "file_hit5": 1,
+          "file_rr": 0.75,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.1
+        }
+      },
+      "counts": {
+        "all": {
+          "queries": 10,
+          "passage_labels": 10
+        },
+        "code": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "discovery": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "memory": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "prd": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "transcripts": {
+          "queries": 2,
+          "passage_labels": 2
+        }
+      },
+      "latency_seconds": {
+        "retrieval_seconds": {
+          "median": 0.05095504148630425,
+          "p95": 0.11410187592264265
+        },
+        "rerank_seconds": {
+          "median": 0.0,
+          "p95": 0.0
+        },
+        "seconds": {
+          "median": 0.05095504148630425,
+          "p95": 0.11410187592264265
+        }
+      },
+      "results": [
+        {
+          "query_id": 0,
+          "corpus": "code",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 36,
+          "retrieval_seconds": 0.1227797499159351,
+          "rerank_seconds": 0.0,
+          "seconds": 0.1227797499159351
+        },
+        {
+          "query_id": 1,
+          "corpus": "code",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 0.5,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 39,
+          "retrieval_seconds": 0.11410187592264265,
+          "rerank_seconds": 0.0,
+          "seconds": 0.11410187592264265
+        },
+        {
+          "query_id": 2,
+          "corpus": "memory",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 30,
+          "retrieval_seconds": 0.033413459081202745,
+          "rerank_seconds": 0.0,
+          "seconds": 0.033413459081202745
+        },
+        {
+          "query_id": 3,
+          "corpus": "memory",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 28,
+          "retrieval_seconds": 0.034795665997080505,
+          "rerank_seconds": 0.0,
+          "seconds": 0.034795665997080505
+        },
+        {
+          "query_id": 4,
+          "corpus": "prd",
+          "metrics": {
+            "file_hit5": 0,
+            "file_rr": 0.043478260869565216,
+            "passage_hit5": 0,
+            "passage_rr": 0.043478260869565216
+          },
+          "candidate_count": 38,
+          "retrieval_seconds": 0.04642824991606176,
+          "rerank_seconds": 0.0,
+          "seconds": 0.04642824991606176
+        },
+        {
+          "query_id": 5,
+          "corpus": "prd",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 33,
+          "retrieval_seconds": 0.05548183305654675,
+          "rerank_seconds": 0.0,
+          "seconds": 0.05548183305654675
+        },
+        {
+          "query_id": 6,
+          "corpus": "discovery",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 31,
+          "retrieval_seconds": 0.04030549991875887,
+          "rerank_seconds": 0.0,
+          "seconds": 0.04030549991875887
+        },
+        {
+          "query_id": 7,
+          "corpus": "discovery",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 34,
+          "retrieval_seconds": 0.027970583993010223,
+          "rerank_seconds": 0.0,
+          "seconds": 0.027970583993010223
+        },
+        {
+          "query_id": 8,
+          "corpus": "transcripts",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 0.5,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 35,
+          "retrieval_seconds": 0.07813962502405047,
+          "rerank_seconds": 0.0,
+          "seconds": 0.07813962502405047
+        },
+        {
+          "query_id": 9,
+          "corpus": "transcripts",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 0.2
+          },
+          "candidate_count": 31,
+          "retrieval_seconds": 0.06576275010593235,
+          "rerank_seconds": 0.0,
+          "seconds": 0.06576275010593235
+        }
+      ]
+    }
+  },
+  "reranked": {
+    "rrf_prod_order_20_20": {
+      "summary": {
+        "all": {
+          "file_hit5": 0.9,
+          "file_rr": 0.77,
+          "passage_hit5": 0.6,
+          "passage_rr": 0.55
+        },
+        "code": {
+          "file_hit5": 1,
+          "file_rr": 0.6,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "discovery": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "memory": {
+          "file_hit5": 1,
+          "file_rr": 0.75,
+          "passage_hit5": 1,
+          "passage_rr": 0.75
+        },
+        "prd": {
+          "file_hit5": 0.5,
+          "file_rr": 0.5,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "transcripts": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        }
+      },
+      "counts": {
+        "all": {
+          "queries": 10,
+          "passage_labels": 10
+        },
+        "code": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "discovery": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "memory": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "prd": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "transcripts": {
+          "queries": 2,
+          "passage_labels": 2
+        }
+      },
+      "latency_seconds": {
+        "retrieval_seconds": {
+          "median": 0.027113082993309945,
+          "p95": 0.06722416693810374
+        },
+        "rerank_seconds": {
+          "median": 0.5510912710451521,
+          "p95": 0.961701791966334
+        },
+        "seconds": {
+          "median": 0.59533341700444,
+          "p95": 1.0003628339618444
+        }
+      },
+      "results": [
+        {
+          "query_id": 0,
+          "corpus": "code",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.06722416693810374,
+          "rerank_seconds": 0.6053899170365185,
+          "seconds": 0.6726140839746222
+        },
+        {
+          "query_id": 1,
+          "corpus": "code",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 0.2,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.07072295900434256,
+          "rerank_seconds": 0.3522899580420926,
+          "seconds": 0.4230129170464352
+        },
+        {
+          "query_id": 2,
+          "corpus": "memory",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.015687209088355303,
+          "rerank_seconds": 0.7404782089870423,
+          "seconds": 0.7561654180753976
+        },
+        {
+          "query_id": 3,
+          "corpus": "memory",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 0.5,
+            "passage_hit5": 1,
+            "passage_rr": 0.5
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.015254083089530468,
+          "rerank_seconds": 1.1744521249784157,
+          "seconds": 1.1897062080679461
+        },
+        {
+          "query_id": 4,
+          "corpus": "prd",
+          "metrics": {
+            "file_hit5": 0,
+            "file_rr": 0.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.0262842079391703,
+          "rerank_seconds": 0.40146800002548844,
+          "seconds": 0.42775220796465874
+        },
+        {
+          "query_id": 5,
+          "corpus": "prd",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.02794195804744959,
+          "rerank_seconds": 0.40077454096172005,
+          "seconds": 0.42871649900916964
+        },
+        {
+          "query_id": 6,
+          "corpus": "discovery",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.015768166980706155,
+          "rerank_seconds": 0.8192430830094963,
+          "seconds": 0.8350112499902025
+        },
+        {
+          "query_id": 7,
+          "corpus": "discovery",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.017386749968864024,
+          "rerank_seconds": 0.49679262505378574,
+          "seconds": 0.5141793750226498
+        },
+        {
+          "query_id": 8,
+          "corpus": "transcripts",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 21,
+          "retrieval_seconds": 0.03866104199551046,
+          "rerank_seconds": 0.961701791966334,
+          "seconds": 1.0003628339618444
+        },
+        {
+          "query_id": 9,
+          "corpus": "transcripts",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.03234404209069908,
+          "rerank_seconds": 0.4857087079435587,
+          "seconds": 0.5180527500342578
+        }
+      ]
+    },
+    "rrf_prod_20_20": {
+      "summary": {
+        "all": {
+          "file_hit5": 0.9,
+          "file_rr": 0.77,
+          "passage_hit5": 0.6,
+          "passage_rr": 0.55
+        },
+        "code": {
+          "file_hit5": 1,
+          "file_rr": 0.6,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "discovery": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "memory": {
+          "file_hit5": 1,
+          "file_rr": 0.75,
+          "passage_hit5": 1,
+          "passage_rr": 0.75
+        },
+        "prd": {
+          "file_hit5": 0.5,
+          "file_rr": 0.5,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "transcripts": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        }
+      },
+      "counts": {
+        "all": {
+          "queries": 10,
+          "passage_labels": 10
+        },
+        "code": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "discovery": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "memory": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "prd": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "transcripts": {
+          "queries": 2,
+          "passage_labels": 2
+        }
+      },
+      "latency_seconds": {
+        "retrieval_seconds": {
+          "median": 0.027113082993309945,
+          "p95": 0.06722416693810374
+        },
+        "rerank_seconds": {
+          "median": 0.5404473125236109,
+          "p95": 0.9887055410072207
+        },
+        "seconds": {
+          "median": 0.5902314170380123,
+          "p95": 1.0273665830027312
+        }
+      },
+      "results": [
+        {
+          "query_id": 0,
+          "corpus": "code",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.06722416693810374,
+          "rerank_seconds": 0.5817182500613853,
+          "seconds": 0.6489424169994891
+        },
+        {
+          "query_id": 1,
+          "corpus": "code",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 0.2,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.07072295900434256,
+          "rerank_seconds": 0.3541063331067562,
+          "seconds": 0.42482929211109877
+        },
+        {
+          "query_id": 2,
+          "corpus": "memory",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.015687209088355303,
+          "rerank_seconds": 0.7811066249851137,
+          "seconds": 0.796793834073469
+        },
+        {
+          "query_id": 3,
+          "corpus": "memory",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 0.5,
+            "passage_hit5": 1,
+            "passage_rr": 0.5
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.015254083089530468,
+          "rerank_seconds": 1.2195240419823676,
+          "seconds": 1.234778125071898
+        },
+        {
+          "query_id": 4,
+          "corpus": "prd",
+          "metrics": {
+            "file_hit5": 0,
+            "file_rr": 0.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.0262842079391703,
+          "rerank_seconds": 0.39010766707360744,
+          "seconds": 0.41639187501277775
+        },
+        {
+          "query_id": 5,
+          "corpus": "prd",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.02794195804744959,
+          "rerank_seconds": 0.39921412500552833,
+          "seconds": 0.4271560830529779
+        },
+        {
+          "query_id": 6,
+          "corpus": "discovery",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.015768166980706155,
+          "rerank_seconds": 0.8216244590003043,
+          "seconds": 0.8373926259810105
+        },
+        {
+          "query_id": 7,
+          "corpus": "discovery",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.017386749968864024,
+          "rerank_seconds": 0.4949910419527441,
+          "seconds": 0.5123777919216082
+        },
+        {
+          "query_id": 8,
+          "corpus": "transcripts",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 21,
+          "retrieval_seconds": 0.03866104199551046,
+          "rerank_seconds": 0.9887055410072207,
+          "seconds": 1.0273665830027312
+        },
+        {
+          "query_id": 9,
+          "corpus": "transcripts",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 20,
+          "retrieval_seconds": 0.03234404209069908,
+          "rerank_seconds": 0.49917637498583645,
+          "seconds": 0.5315204170765355
+        }
+      ]
+    },
+    "rrf_bm25or_20_20": {
+      "summary": {
+        "all": {
+          "file_hit5": 1,
+          "file_rr": 0.87,
+          "passage_hit5": 0.7,
+          "passage_rr": 0.65
+        },
+        "code": {
+          "file_hit5": 1,
+          "file_rr": 0.6,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "discovery": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "memory": {
+          "file_hit5": 1,
+          "file_rr": 0.75,
+          "passage_hit5": 1,
+          "passage_rr": 0.75
+        },
+        "prd": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 1,
+          "passage_rr": 1.0
+        },
+        "transcripts": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        }
+      },
+      "counts": {
+        "all": {
+          "queries": 10,
+          "passage_labels": 10
+        },
+        "code": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "discovery": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "memory": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "prd": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "transcripts": {
+          "queries": 2,
+          "passage_labels": 2
+        }
+      },
+      "latency_seconds": {
+        "retrieval_seconds": {
+          "median": 0.05095504148630425,
+          "p95": 0.11410187592264265
+        },
+        "rerank_seconds": {
+          "median": 1.0617957709473558,
+          "p95": 1.8068120420211926
+        },
+        "seconds": {
+          "median": 1.1371709379018284,
+          "p95": 1.8416077080182731
+        }
+      },
+      "results": [
+        {
+          "query_id": 0,
+          "corpus": "code",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 36,
+          "retrieval_seconds": 0.1227797499159351,
+          "rerank_seconds": 1.019627249916084,
+          "seconds": 1.1424069998320192
+        },
+        {
+          "query_id": 1,
+          "corpus": "code",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 0.2,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 39,
+          "retrieval_seconds": 0.11410187592264265,
+          "rerank_seconds": 0.9365426249569282,
+          "seconds": 1.0506445008795708
+        },
+        {
+          "query_id": 2,
+          "corpus": "memory",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 30,
+          "retrieval_seconds": 0.033413459081202745,
+          "rerank_seconds": 1.4251040830276906,
+          "seconds": 1.4585175421088934
+        },
+        {
+          "query_id": 3,
+          "corpus": "memory",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 0.5,
+            "passage_hit5": 1,
+            "passage_rr": 0.5
+          },
+          "candidate_count": 28,
+          "retrieval_seconds": 0.034795665997080505,
+          "rerank_seconds": 1.8068120420211926,
+          "seconds": 1.8416077080182731
+        },
+        {
+          "query_id": 4,
+          "corpus": "prd",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 38,
+          "retrieval_seconds": 0.04642824991606176,
+          "rerank_seconds": 0.7145088750403374,
+          "seconds": 0.7609371249563992
+        },
+        {
+          "query_id": 5,
+          "corpus": "prd",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 33,
+          "retrieval_seconds": 0.05548183305654675,
+          "rerank_seconds": 0.7349949580384418,
+          "seconds": 0.7904767910949886
+        },
+        {
+          "query_id": 6,
+          "corpus": "discovery",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 31,
+          "retrieval_seconds": 0.04030549991875887,
+          "rerank_seconds": 1.5680929999798536,
+          "seconds": 1.6083984998986125
+        },
+        {
+          "query_id": 7,
+          "corpus": "discovery",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 34,
+          "retrieval_seconds": 0.027970583993010223,
+          "rerank_seconds": 1.1039642919786274,
+          "seconds": 1.1319348759716377
+        },
+        {
+          "query_id": 8,
+          "corpus": "transcripts",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 35,
+          "retrieval_seconds": 0.07813962502405047,
+          "rerank_seconds": 2.0830544169293717,
+          "seconds": 2.161194041953422
+        },
+        {
+          "query_id": 9,
+          "corpus": "transcripts",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 31,
+          "retrieval_seconds": 0.06576275010593235,
+          "rerank_seconds": 1.0178068339591846,
+          "seconds": 1.083569584065117
+        }
+      ]
+    },
+    "rrf_bm25or_20_20_dense2x": {
+      "summary": {
+        "all": {
+          "file_hit5": 1,
+          "file_rr": 0.87,
+          "passage_hit5": 0.7,
+          "passage_rr": 0.65
+        },
+        "code": {
+          "file_hit5": 1,
+          "file_rr": 0.6,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "discovery": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        },
+        "memory": {
+          "file_hit5": 1,
+          "file_rr": 0.75,
+          "passage_hit5": 1,
+          "passage_rr": 0.75
+        },
+        "prd": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 1,
+          "passage_rr": 1.0
+        },
+        "transcripts": {
+          "file_hit5": 1,
+          "file_rr": 1.0,
+          "passage_hit5": 0.5,
+          "passage_rr": 0.5
+        }
+      },
+      "counts": {
+        "all": {
+          "queries": 10,
+          "passage_labels": 10
+        },
+        "code": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "discovery": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "memory": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "prd": {
+          "queries": 2,
+          "passage_labels": 2
+        },
+        "transcripts": {
+          "queries": 2,
+          "passage_labels": 2
+        }
+      },
+      "latency_seconds": {
+        "retrieval_seconds": {
+          "median": 0.05095504148630425,
+          "p95": 0.11410187592264265
+        },
+        "rerank_seconds": {
+          "median": 1.1014540835167281,
+          "p95": 1.9575446670642123
+        },
+        "seconds": {
+          "median": 1.1768292504712008,
+          "p95": 1.9978501669829711
+        }
+      },
+      "results": [
+        {
+          "query_id": 0,
+          "corpus": "code",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 36,
+          "retrieval_seconds": 0.1227797499159351,
+          "rerank_seconds": 1.1005220420192927,
+          "seconds": 1.2233017919352278
+        },
+        {
+          "query_id": 1,
+          "corpus": "code",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 0.2,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 39,
+          "retrieval_seconds": 0.11410187592264265,
+          "rerank_seconds": 0.9911332909250632,
+          "seconds": 1.1052351668477058
+        },
+        {
+          "query_id": 2,
+          "corpus": "memory",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 30,
+          "retrieval_seconds": 0.033413459081202745,
+          "rerank_seconds": 1.5134446249576285,
+          "seconds": 1.5468580840388313
+        },
+        {
+          "query_id": 3,
+          "corpus": "memory",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 0.5,
+            "passage_hit5": 1,
+            "passage_rr": 0.5
+          },
+          "candidate_count": 28,
+          "retrieval_seconds": 0.034795665997080505,
+          "rerank_seconds": 1.869315457995981,
+          "seconds": 1.9041111239930615
+        },
+        {
+          "query_id": 4,
+          "corpus": "prd",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 38,
+          "retrieval_seconds": 0.04642824991606176,
+          "rerank_seconds": 0.756737915915437,
+          "seconds": 0.8031661658314988
+        },
+        {
+          "query_id": 5,
+          "corpus": "prd",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 33,
+          "retrieval_seconds": 0.05548183305654675,
+          "rerank_seconds": 0.7585600418969989,
+          "seconds": 0.8140418749535456
+        },
+        {
+          "query_id": 6,
+          "corpus": "discovery",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 31,
+          "retrieval_seconds": 0.04030549991875887,
+          "rerank_seconds": 1.9575446670642123,
+          "seconds": 1.9978501669829711
+        },
+        {
+          "query_id": 7,
+          "corpus": "discovery",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 34,
+          "retrieval_seconds": 0.027970583993010223,
+          "rerank_seconds": 1.1023861250141636,
+          "seconds": 1.1303567090071738
+        },
+        {
+          "query_id": 8,
+          "corpus": "transcripts",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 0,
+            "passage_rr": 0.0
+          },
+          "candidate_count": 35,
+          "retrieval_seconds": 0.07813962502405047,
+          "rerank_seconds": 2.0204676249995828,
+          "seconds": 2.0986072500236332
+        },
+        {
+          "query_id": 9,
+          "corpus": "transcripts",
+          "metrics": {
+            "file_hit5": 1,
+            "file_rr": 1.0,
+            "passage_hit5": 1,
+            "passage_rr": 1.0
+          },
+          "candidate_count": 31,
+          "retrieval_seconds": 0.06576275010593235,
+          "rerank_seconds": 0.983827417017892,
+          "seconds": 1.0495901671238244
+        }
+      ]
+    }
+  }
+}

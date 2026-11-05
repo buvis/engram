@@ -52,3 +52,16 @@ the production index.
 ## Out of scope
 
 Embedding model change and reranking (intake 00008).
+
+## File-held-out probe, 2026-11-05
+
+[Probe](../../../reviews/2026-11-05-probe-heldout.md): ten agent-authored
+questions on files outside the development targets, with ten exact passage
+labels (two each code, memory, PRD, discovery, transcripts; no decision labels).
+Zero independent human questions. OR/2x improves file hit5 8→9/10 but file MRR
+falls .811→.804; dense-first alone changes no scores. OR plus 0.6B reranking
+reaches file hit5 10/10, passage hit5 7/10, MRR .870/.650 at 1.18 s median.
+Transcript passage hit5 remains 1/2. This small source-authored sample does not
+confirm the prior fusion MRR uplift or authorize adoption. Expand independent
+questions and passage labels before deciding. Historical labels remain unchanged;
+the missing live transcript was deleted by cellar sync, not silently replaced.

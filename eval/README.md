@@ -173,3 +173,15 @@ five code, three decision, and none for transcripts. Unlabelled corpora omit
 passage scores. Timing is an alternating-model benchmark, not production serving
 or fallback validation. The OR timing conservatively includes the AND lookup
 performed during candidate collection; fusion and serialization are excluded.
+
+## Separate file-held-out probe
+
+`probe_heldout.py` freezes ten agent-authored questions and exact passage labels
+from non-development target files in the existing full snapshot before inference.
+Private source material stays in the cache. Run `freeze --labels PATH` once, then
+`run --labels PATH`, using `PYTHONPATH=src:. .venv/bin/python -m eval.probe_heldout`.
+The freeze refuses overwrite. Results are in `probe-heldout.json`; method,
+limitations, drift investigation and conclusions are in the
+[held-out report](../docs/dev/project-management/reviews/2026-11-05-probe-heldout.md).
+This is file-held-out source-authored data, not independently sourced human data.
+Historical development labels and prior results remain unchanged.
