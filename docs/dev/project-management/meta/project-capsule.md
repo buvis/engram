@@ -1,6 +1,6 @@
 # Project Capsule: engram
 
-Updated: 2026-11-01, after PRD 00002 finalization and completion review.
+Updated: 2026-11-05, after the fixed-fusion reranker probe and handoff verification.
 
 ## Key Invariants
 
@@ -49,19 +49,32 @@ The requested PRD 00001 follow-ups are triaged in
 `reviews/2026-11-01-follow-ups.md`. Older findings from other PRDs remain separate.
 Autopilot runtime state remains local and ignored; retain its unresolved ledger.
 
-Next session: fix transcript error-text extraction, preserve old rows on source
-processing failures, and isolate scoped indexing from an absent unrelated cellar.
-Also include file paths in code embeddings, regenerate existing code vectors,
-and recheck retrieval quality. Preserve the production bge-m3 pin; a whole-index
-rebuild remains unauthorized. The user approved this scope on 2026-11-01.
-Keep performance and structural cleanup separate. See the follow-up note for
-acceptance details.
+The follow-up fixes and code re-embedding migration shipped in `f8c2434` and
+`ecbbe72`; do not repeat that work. The local model campaign is committed in
+`f25ac54`. The fusion and fixed-fusion reranker probes are committed in `9ee1f73`.
+Read `reviews/2026-11-03-probe-rerank-fixed.md` for results, limitations, and the
+production-database timestamp observation. Intakes 00008 and 00009 contain the
+updated reranker and fusion evidence. No production retrieval change or model
+switch was made by these probes.
+
+Continue with held-out questions and transcript passage labels in a separate
+probe. Persistent reranker latency/fallback and Qwen3-0.6B embeddings on the full
+snapshot remain later probes. Preserve the production pin, config, index, and
+retrieval code; production changes and rebuilds require the user's authorization.
 
 ## Project Health
 
-Local `master`; no remote or CI. Run `.venv/bin/python -m pytest -q`.
+Local `master`; no remote or CI. Run the main and eval suites separately:
+`.venv/bin/python -m pytest -q --ignore=eval` and
+`PYTHONPATH=src:. .venv/bin/python -m pytest -q eval`.
 The installed implementation matches the checkout after the approved warrant
-installation. The suite passed 453 tests on 2026-11-01 during stash inspection.
+installation of the production fixes; later evaluation tools remain in the repo.
+Verification on 2026-11-05: main suite 467 passed, 1 failed; eval suite 27 passed.
+`test_real_goldset_loads_clean_and_covers_transcripts_and_code` fails because a
+live transcript target is missing:
+`/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-agent-skills/5a656567-eccb-474e-833a-8ca6a7601e5a.jsonl`.
+Resolve source availability before a new live-source evaluation; preserve the
+historical development labels and frozen campaign results when investigating.
 Both stashes were inspected: formatting/import cleanup only, no unfinished logic.
 Both were dropped with user authorization after a verified recovery bundle was saved.
 Exact hashes and the archive path are in the follow-up note.
