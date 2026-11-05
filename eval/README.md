@@ -185,3 +185,11 @@ limitations, drift investigation and conclusions are in the
 [held-out report](../docs/dev/project-management/reviews/2026-11-05-probe-heldout.md).
 This is file-held-out source-authored data, not independently sourced human data.
 Historical development labels and prior results remain unchanged.
+
+## Independent human questions
+
+The next set is collecting; no independent questions have been scored. Copy
+`independent_questions.template.yaml` into private cache storage. Follow the
+[independent evaluation protocol](../docs/dev/project-management/reviews/2026-11-05-independent-evaluation-protocol.md)
+for annotation, scope, freezing, baseline gates and comparisons.
+`probe_heldout.py` generates agent-authored questions; it cannot run this new set.

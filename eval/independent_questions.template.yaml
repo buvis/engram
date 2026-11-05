@@ -1,0 +1,16 @@
+# Copy into private cache storage. Preserve original wording before answer search.
+# Keep private questions out of this tracked template.
+schema_version: 1
+status: collecting
+questions: []
+# Entry fields:
+# id: human-001
+# query: <original wording>
+# origin: user_submission
+# collected_at: <ISO timestamp with timezone>
+# original_reference: <message pointer, when available>
+# requested_scope: <repository or portfolio>
+# answer_sought_before_collection: false
+# annotation_status: pending
+# expected_targets: []
+# Target fields: corpus, path, acceptable_starts, evidence_sha256, rationale.
