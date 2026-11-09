@@ -51,7 +51,7 @@
    Results: 63 focused tests, 519 main tests, and 47 evaluation tests passed; all eight passage-label queries validated.
    Production state, historical snapshots, labels, and scores remain unchanged. Continue with Session 3.
 
-7. **Session 3: restore portfolio index health. (IN PROGRESS — awaiting warrant, 2026-11-10)**
+7. **Session 3: restore portfolio index health. (COMPLETE — 2026-11-10)**
    Investigate the unavailable registered `herdr-plugins` directory before indexing.
    Determine whether the repository moved, retired, or became temporarily unavailable.
    Preserve indexed evidence until its intended disposition is established.
@@ -62,11 +62,14 @@
    Run `engram status --scope portfolio`.
    Investigate remaining degradation without suppressing legitimate failures.
    Compare against the observed 7,072 dead rows and stale memory, transcript, and code sources.
-   Retirement confirmed; complete Git archive verified at `4362ef4`. Fresh status: 7,142 dead rows.
+   Retirement confirmed; complete Git archive verified at `4362ef4`; stale registration removed through warrant.
    Index and registry backed up under `~/.local/share/engram/backups/session3-20261110/`; integrity passed.
-   Tests: 85 focused, 519 main, 47 evaluation passed. No live refresh yet.
-   Installation warrant `ad9e2dd9b263e61c1fccf3ff35f3c082` was refused: mise-managed uv is outside trusted executable roots.
-   Await direct host installation with saved constraints and registry warrant `d4c165e06b6611f16d5182d147ec42ec`.
+   Host installation completed after warrant refused mise-managed uv; all 15 installed modules match tested source.
+   Both incremental passes succeeded; dead rows fell from 7,142 to zero. Memory attribution migrated and isolation verified.
+   Final status exits 1 for one code file edited after refresh; one transcript is in flight. No failures were suppressed.
+   All findings/vectors, production model/configuration, historical snapshots, and rollback backups are preserved.
+   Results: 85 installed-runtime focused, 519 main, 47 evaluation tests passed; all 55 gold labels validate.
+   Continue with Session 4.
 
 8. **Session 4: repair review-pack correctness.**
    Triage PRD 00003/00004 review findings against current source.
@@ -118,7 +121,7 @@
 13. Archive or remove this executed plan only after all sessions finish and durable outcomes are recorded.
 
 14. Resolve these remaining questions in their assigned sessions.
-    Determine the intended disposition of `herdr-plugins` during Session 3.
+    Resolved in Session 3: `herdr-plugins` was retired; its archive is verified and stale registration removed.
     Determine the shared-memory file contract during Session 6.
     Obtain genuine independent retrieval questions during Session 7.
     Ask only one indispensable question at a time.

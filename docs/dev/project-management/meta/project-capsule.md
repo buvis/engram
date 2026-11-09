@@ -1,6 +1,6 @@
 # Project Capsule: engram
 
-Updated: 2026-11-10, after Session 2 evaluation-source retention.
+Updated: 2026-11-10, after Session 3 portfolio index maintenance.
 
 ## Key Invariants
 
@@ -212,42 +212,69 @@ preserve/back up the live index, install the tested fixes through the establishe
 process, and refresh incrementally. Session 1's live memory migration remains
 assigned there. Sessions 3–8 remain pending; stop after this completed session.
 
-## Session 3 checkpoint: awaiting warrant (2026-11-10)
+## Session 3 complete: portfolio index maintenance (2026-11-10)
 
-`herdr-plugins` was deliberately retired, not moved. Its retained session
-`cd12c6d6-df15-4cf5-b982-b4b6029877cc` records deletion on November 9;
-`~/.claude/docs/dev/project-management/discovery/00185-pluck-reference/README.md`
-confirms the replacement references. The complete archive at
+This section supersedes earlier installation and portfolio-health observations.
+`herdr-plugins` was deliberately retired on November 9, not moved. Its retained
+session `cd12c6d6-df15-4cf5-b982-b4b6029877cc` and the Pluck reference README
+confirm retirement. The complete archive at
 `~/.local/share/archive/herdr-plugins.bundle` verifies at `4362ef4`.
-Only its stale gita registration remains unavailable. Removing that row retains
-its three memory files as `_unmapped` for portfolio recall.
+Warrant `d4c165e06b6611f16d5182d147ec42ec` removed only its stale gita row;
+byte comparison confirmed all other registry rows were preserved. Every remaining
+registered directory exists. Its three retained memory files remain searchable
+in portfolio scope as `_unmapped`; its 410 obsolete repository rows were pruned.
 
-Fresh status exits 1: **7,142 dead rows** (6,663 transcripts, 168 PRD,
-7 discovery, 304 code); stale files: **11 memory, 6 transcripts, 98 code**.
-No portfolio refresh has run. The production index, configuration, and historical
-snapshots remain unchanged. Only the pinned BGE-M3 endpoint was started (8083).
-No unrelated server was stopped; no model change or full rebuild occurred.
+Pre-maintenance SQLite backup:
+`~/.local/share/engram/backups/session3-20261110/engram.db`, 1,554,391,040 bytes,
+SHA-256 `fc45ad9183cc4c8dea6efce8591dbce4748d2a59fae791783d15f7c80ddbf124`.
+Integrity passed; all 177,482 original chunks/vectors were preserved. Before
+refresh, every database byte after the SQLite header matched the backup.
+The same private directory retains registry/config backups, constraints,
+installation receipt, protected-file fingerprints, and maintenance logs.
+Existing rollback backups remain untouched.
 
-Verified SQLite backup: `~/.local/share/engram/backups/session3-20261110/engram.db`,
-1,554,391,040 bytes; SHA-256
-`fc45ad9183cc4c8dea6efce8591dbce4748d2a59fae791783d15f7c80ddbf124`.
-Integrity passes; all 177,482 chunks/vectors, including 410 retired-repository
-rows, are preserved. The same directory retains registry/config backups,
-protected-file fingerprints, source hashes, installation receipt, and constraints.
-Existing rollback backups and unrelated working-tree capsule edits are retained.
+Installation warrant `ad9e2dd9b263e61c1fccf3ff35f3c082` was refused because
+mise-managed uv is outside trusted executable roots. The user completed the
+exact installation in a host terminal; no wrapper or warrant policy change was
+used. All **15 installed modules** match the tested checkout. Managed Python
+3.14 and all four dependency versions remain as constrained by `uv.lock`.
 
-Verification: **85 focused, 519 main, and 47 evaluation tests passed**;
-`git diff --check` passed. Installed `corpora.py`, `indexer.py`, and `harness.py`
-still differ from tested source. Installation request
-`ad9e2dd9b263e61c1fccf3ff35f3c082` was refused: the resolved mise-managed
-uv executable is outside warrant's trusted executable roots. Installation needs
-a direct host-terminal handoff; do not retry through a shell wrapper or change
-warrant policy. Use the backed-up `constraints.txt`, existing managed Python
-3.14, and this checkout with `uv tool install --reinstall`.
-Seatbelt denied the registry write; removal request
-`d4c165e06b6611f16d5182d147ec42ec` also awaits approval. Neither was bypassed.
-Next: finish **Session 3**, verify the host installation, registry receipt, and
-installed modules, refresh
-incrementally, inspect portfolio status, and verify memory attribution/findings
-and protected artifacts. Do not start Session 4. No session scratch or worktree
-was created; the multi-session plan remains active. No fresh PRD execution occurred.
+`engram index --scope portfolio` succeeded in **163.94 seconds**: 12,281 new
+chunk IDs and 9,198 pruned old IDs. Fresh pre-maintenance status had **7,142 dead
+rows**, versus November 9's 7,072, and stale files: 11 memory, 6 transcripts,
+98 code. After refresh, **dead rows are zero** and no required source is missing.
+An **8.89-second** catch-up pass reconciled changes made by other active sessions;
+both index runs exited 0 with no failed-source or failed-code-enumeration reports.
+Final counts: memory 355, transcripts 34,306, findings 57,535, PRD 15,653,
+discovery 770, code 71,925, decision 29 (**180,573 total**).
+
+Final CLI status deliberately remains **exit 1**: one stale code file,
+`claude-agoge/skills/run-agoge/scripts/target_snapshot.py`, was edited at
+00:33:31 CET, after the catch-up pass finished around 00:33:09. One transcript
+was in flight; no transcript, memory, PRD, discovery, or decision was stale.
+No failure was suppressed or configuration relaxed. The 2,449 unsupported-code
+files, 6,897 excluded files, and absent optional document corpora remain reported.
+Concurrent edits require a later ordinary incremental refresh; this session does
+not freeze other sessions or claim a permanently clean portfolio.
+
+All **295 memory files** are represented (294 chunked, one empty): 159 map to
+21 repositories; 136 have no registered project mapping. BM25, vector, and hybrid
+recall passed repository-isolation checks across all 21 mapped scopes. All
+**57,535 findings and their vectors** are unchanged. SQLite and FTS external-
+content integrity passed; vector coverage and attribution were checked. Model,
+dimension, and cache metadata are unchanged. All 15 protected artifacts retain
+their hashes and mtimes, including configuration, the retirement archive, three
+historical snapshots, two campaign pointers, and evaluation labels/results.
+
+Verification: **85 focused tests passed against the installed Python 3.14 runtime;
+519 main tests and 47 evaluation tests passed**. All 55 labels and 53 private
+sources validate; `git diff --check` passed. Doubt review covered seven doubts:
+one fixed by the catch-up pass, five verified, and one retained limitation for
+continued concurrent edits. The second pass confirmed that limitation rather
+than starting an unbounded refresh loop. No production source change, model
+switch, complete rebuild, unrelated server shutdown, or fresh PRD execution
+occurred. Only the pinned BGE-M3 endpoint on 8083 was started.
+
+Next: **Session 4, repair review-pack correctness**. Stop after Session 3.
+The active multi-session plan remains; no session scratch files or worktrees
+were created. Unrelated working-tree capsule edits remain outside this commit.
