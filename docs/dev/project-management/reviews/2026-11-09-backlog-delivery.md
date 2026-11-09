@@ -109,9 +109,10 @@ inputs and the anonymous-percentage prediction).
 
 ## Use and remaining work
 
-Use `uv run engram` from this checkout for the updated CLI. The separately
-installed global executable is a copied uv tool installation and was not changed.
-PRDs 00006 and 00007 are done; 00005 is on hold solely for the numeric target.
+At initial delivery, `uv run engram` exposed the updated CLI while the separately
+installed global executable remained unchanged. PRDs 00006 and 00007 were done;
+00005 was on hold solely for the numeric target. Both remaining items are now
+resolved by the approved closeout and installation below.
 No new worktrees or executed plan files were created. The database backup is
 intentionally retained for rollback.
 
@@ -141,8 +142,14 @@ Validation: **532 tests passed**; all 55 gold-set paths exist; `git diff --check
 passed. A wheel was built successfully. No production code changes were needed
 for this closeout.
 
-Global installation is prepared through warrant, using the existing managed
-Python and dependencies constrained to `uv.lock`. The install uses the durable
-repository path, preserving the local-source upgrade workflow. Packaging scratch
-under `docs/dev/tmp/closeout-install/` remains live until installation finishes.
-The global CLI smoke test is pending installation approval.
+Global installation completed through warrant request
+`7d8e1970eee3d0124ba277a8f1f032ae` with exit 0, using the existing managed Python
+and dependencies constrained to `uv.lock`. The receipt retains the durable
+repository path and stores dependency constraints inline; it does not depend
+on the packaging scratch files.
+
+Installed-CLI smoke tests passed: exact `stop_served` lookup, source-order file
+outline, status help describing the revised exit contract, and four records
+from the real audit fixture with rationale preserved. SHA256 comparisons confirm
+all six changed installed modules exactly match the tested repository source.
+The global `engram` command is ready to use. Installation scratch was removed.
