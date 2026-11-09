@@ -1,6 +1,6 @@
 # Project Capsule: engram
 
-Updated: 2026-11-10, after Session 3 portfolio index maintenance.
+Updated: 2026-11-10, after Session 4 review-pack repairs.
 
 ## Key Invariants
 
@@ -278,3 +278,92 @@ occurred. Only the pinned BGE-M3 endpoint on 8083 was started.
 Next: **Session 4, repair review-pack correctness**. Stop after Session 3.
 The active multi-session plan remains; no session scratch files or worktrees
 were created. Unrelated working-tree capsule edits remain outside this commit.
+
+## Session 4 complete: review-pack correctness (2026-11-10)
+
+This section supersedes earlier review-pack observations. Current source reproduced
+all four named defects before repair: a 204-token hard cap emitted 437 estimated
+tokens from framing/omission notices alone; `HEAD~1..` read the staged function
+instead of committed HEAD; 25 local code candidates crowded foreign evidence out
+of retrieval; unreadable, blank-title, and titleless PRDs queried filenames or an
+empty string. Two-dot and three-dot open-ended ranges now read HEAD. Explicit
+three-dot heads also map the correct symbols and embedding text.
+
+Reuse exclusion is applied in both BM25 and sqlite-vec searches before their
+20-candidate limits and the fused top five. Other queries retain their existing
+scope/ranking behavior. Memory retrieval requires a readable, nonblank first H1;
+available PRD prose still renders without a title. Real-store coverage verifies
+memory bodies reach Task prose with its two-hit limit. Long omission notices
+collapse to a counted disclosure before trimming content. The pack keeps all
+four headings and symbol-omission counts; an impossible programmatic cap fails
+without overwriting an existing pack. Normal budgets retain unreadable paths.
+
+Adjacent repairs: reject absolute/traversing paths and symlinks escaping the
+repository; read/map the diff before reindexing; reject empty or sentinel-only
+non-diffs; refuse pack publication when reindexing reports failed sources or the
+current repository's unavailable code corpus. CLI filesystem, configuration,
+registry, embedding-server/preflight, and model-identity failures now exit 1 with
+diagnostics. Existing model-mismatch guidance remains. The freshness disclosure
+now says only the current repository was refreshed, removing the obsolete claim
+that PRD 00002 is pending. Binary/mode-only diff sections remain supported.
+
+PRD 00003/00004 triage against current source and retained reviews:
+
+- Closed or superseded: failed code enumeration already preserves indexed rows
+  (`indexer.py` and its two repository-enumeration regressions); findings parsing
+  already catches only expected read/YAML errors and has real review fixtures;
+  the missing memory-body regression is now covered. Prior installation,
+  registration, corpus population, and git-ferry release blockers remain resolved
+  by the completed delivery and Sessions 1–3, not reopened here.
+- Unsupported as stated: SQLite does not fail instantly merely because no explicit
+  timeout is supplied. A disposable current store reports `busy_timeout=5000`.
+  PRD/export-signature, findings origin-label, and full-pack doubt-lens disputes
+  retain their recorded design adjudications; they are not newly proven defects.
+- Confirmed separate findings/harvest debt: collection-valued blank reviewers
+  still pass validation; registry resolution retains raw path equality and catches
+  only `FileNotFoundError`; the `claude-home` resolver fallback remains shared with
+  indexing. Rebuild's first error boundary still lacks cleanup, and concurrent
+  harvest/rebuild replacement is not coordinated. Findings fields/granularity and
+  retrieval-quality evidence need their own work, not a pack repair or rebuild.
+- Separate pack debt: Git C-quoted paths, canonical self-match exclusion, direct
+  `build()`'s cwd-relative default output, slug collisions/generated diff retention,
+  prose origins/multiline pointer formatting, dead argument threading, and
+  size/style findings remain. Section-cap/spec inconsistencies and the largest-
+  section trimming policy remain documented. Long symbol queries can weaken AND
+  lexical retrieval; changing fusion stays evidence-gated in Sessions 7–8.
+- External review/purge dispatch, sentinel consumers, prompt substitutions, and
+  cross-project lifecycle tests remain with their owning skills/plugins. Their
+  historical paths were not treated as current proof or edited. The local pack
+  now rejects the non-diff sentinel; no claim is made about the external producer.
+
+The November 9 catchup harvest mismatch remains **14 supported files succeeded,
+13 ordinary reports lacked required frontmatter**. A fresh read-only parse census
+of all 27 current review/audit files reproduces **14 supported / 13 missing
+frontmatter**. No live harvest or embedding ran; repairing the producer's broad
+glob remains separate. Parser rejection is legitimate and was not suppressed.
+
+Verification: **130 focused, 547 main, and 47 evaluation tests passed**. The main
+suite ran with `--ignore=eval`; evaluation ran separately with `PYTHONPATH=src:.`.
+Twenty-eight new cases cover the repairs and adjacent boundaries. Fail-first
+checks reproduced the defects; Git fixtures deliberately differ between HEAD,
+the index, and the worktree. Black passed on changed code, isort on the new test
+module, Ruff correctness rules (`E4,E7,E9,F`), and `git diff --check` passed.
+Unrelated pre-existing Black differences in the two old pack test modules remain.
+
+Two-pass doubt review: **10 doubts, 4 fixed, 4 verified, 2 known**. Fixes compacted
+notices before discarding evidence, covered registry/model-identity error paths,
+removed unnecessary conditional keyword dictionaries, and removed duplicate
+titleless-test coverage. Verified both retrieval limits, Git source selection and
+containment, real memory-body inclusion, and additive/default query behavior.
+Known limits are the separate triaged debt above and deployment: the global CLI
+remains the verified Session 3 installation; this session's source repairs are
+not yet installed. No fresh PRD execution or completion-review gate was entered.
+
+The production model/configuration/index, historical evaluation artifacts, and
+rollback backups were not changed. No model servers were started/stopped, no
+complete index rebuild ran, and the frozen repository was not accessed. No session
+scratch files or worktrees remain. Unrelated capsule edits are preserved unstaged.
+The multi-session plan is retained and Session 4 is marked complete.
+
+Next: **Session 5, review dependencies and establish portable CI**, preserving
+private-source acceptance checks. Stop after this completed Session 4.

@@ -28,6 +28,8 @@ def changed_symbols(
 ) -> list[Symbol]:
     lines = diff_path.read_text(errors="replace").splitlines()
     sections = _split_sections(lines)
+    if not sections:
+        raise ValueError(f"no git diff sections in {diff_path}")
 
     seen: set[tuple[str, str, int, int]] = set()
     file_symbol_seen: set[str] = set()
@@ -97,7 +99,12 @@ def _section_file_identity(
     else:
         rel_path = plus_line[4:]
         rel_path = rel_path.removeprefix("b/")
-    abs_path = str(repo_root / rel_path)
+    path = repo_root / rel_path
+    if Path(rel_path).is_absolute() or not path.resolve().is_relative_to(
+        repo_root.resolve()
+    ):
+        raise ValueError(f"diff path outside repository: {rel_path}")
+    abs_path = str(path)
     name = Path(rel_path).name
     return abs_path, name, rel_path, is_deletion
 

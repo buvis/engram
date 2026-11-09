@@ -9,6 +9,7 @@ from pathlib import Path
 
 from engram import corpora, symbols, transcripts
 from engram.client import (
+    EmbeddingModelIdentityError,
     EmbeddingPreflightError,
     EmbeddingServerError,
     EngramConfig,
@@ -372,13 +373,14 @@ def _resolve_pack_diff(
         return diff_path, cycle_slug, None
 
     range_str = args.diff
-    if ".." not in range_str:
+    range_match = re.fullmatch(r"(.*?)\.{2,3}(.*)", range_str)
+    if range_match is None:
         print(
             f"--diff must be in <base>..<head> form, got {range_str!r}",
             file=sys.stderr,
         )
         return None
-    _, head = range_str.split("..", 1)
+    _, head = range_match.groups()
     if range_str.startswith("-") or head.startswith("-"):
         bad = range_str if range_str.startswith("-") else head
         print(
@@ -387,7 +389,7 @@ def _resolve_pack_diff(
         )
         return None
     id_ = re.sub(r"[^A-Za-z0-9_-]", "-", range_str)
-    source_ref = head
+    source_ref = head or "HEAD"
     result = subprocess.run(
         ["git", "-C", str(repo_root), "diff", range_str, "--"],
         capture_output=True,
@@ -440,23 +442,19 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     if args.cycle is None and args.diff is None:
         parser.error("exactly one of --cycle or --diff is required")
 
-    repo = _resolve_pack_repo()
-    if repo is None:
-        return 1
-    repo_name, repo_root = repo
-
-    out_dir = repo_root / "docs" / "dev" / "tmp"
-
-    diff_resolved = _resolve_pack_diff(args, repo_root, out_dir)
-    if diff_resolved is None:
-        return 1
-    diff_path, id_, source_ref = diff_resolved
-
-    prd_path, capsule_path = _resolve_pack_prd_and_capsule(args, repo_root)
-
-    config = load_config()
-    store = open_store()
     try:
+        repo = _resolve_pack_repo()
+        if repo is None:
+            return 1
+        repo_name, repo_root = repo
+        out_dir = repo_root / "docs" / "dev" / "tmp"
+        diff_resolved = _resolve_pack_diff(args, repo_root, out_dir)
+        if diff_resolved is None:
+            return 1
+        diff_path, id_, source_ref = diff_resolved
+        prd_path, capsule_path = _resolve_pack_prd_and_capsule(args, repo_root)
+        config = load_config()
+        store = open_store()
         report = build(
             store,
             config,
@@ -474,6 +472,16 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
             f"{e}; run `engram index --rebuild` to rebuild the store",
             file=sys.stderr,
         )
+        return 1
+
+    except (
+        OSError,
+        ValueError,
+        EmbeddingServerError,
+        EmbeddingPreflightError,
+        EmbeddingModelIdentityError,
+    ) as e:
+        print(f"engram pack failed: {e}", file=sys.stderr)
         return 1
 
     print(report.path)

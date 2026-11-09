@@ -27,6 +27,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **pack**: enforce the hard cap even with long omission notices, retrieve reuse
+  candidates outside the current repository before ranking limits, and skip
+  memory queries when a PRD has no readable, nonblank title.
+- **pack/cli**: read HEAD for open-ended diff ranges and handle three-dot ranges;
+  reject escaping paths and non-diff input before indexing, and report index,
+  configuration, filesystem, and embedding failures without publishing success.
 - **eval**: retain exact gold-source evidence privately, recover deleted transcripts from pinned Git history, and reject source or label drift without changing historical scores.
 - **corpora**: restore repository-scoped memory recall for dotted project paths; keep ambiguous and unknown project directories unmapped.
 - **indexer**: skip code enumeration when indexing only another corpus, including memory attribution migrations.

@@ -517,7 +517,7 @@ def test_rendered_pack_carries_freshness_line_section_headings_and_origin_labels
     content = report.path.read_text()
 
     assert (
-        "Portfolio freshness: NOT refreshed this cycle (PRD 00002 pending)" in content
+        "Portfolio freshness: NOT refreshed this cycle (current repo only)" in content
     )
 
     for label in (

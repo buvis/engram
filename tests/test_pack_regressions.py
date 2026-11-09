@@ -513,7 +513,7 @@ def test_memory_query_text_is_the_prds_first_top_level_heading(tmp_path, monkeyp
     assert args[2] == "Engram Review Packs: Diff-Selective Reviewer Context"
 
 
-def test_memory_query_text_falls_back_to_the_prd_filename_stem_when_no_heading_exists(
+def test_memory_query_is_skipped_when_no_heading_exists(
     tmp_path,
     monkeypatch,
 ):
@@ -532,9 +532,7 @@ def test_memory_query_text_falls_back_to_the_prd_filename_stem_when_no_heading_e
 
     _task_prose_entries(store, config, "cyc1", prd_path, None, 200)
 
-    assert len(query_calls) == 1
-    args, _kwargs = query_calls[0]
-    assert args[2] == "00004-engram-review-packs-v1"
+    assert query_calls == []
 
 
 def test_memory_query_is_skipped_entirely_when_no_prd_path_is_resolved(

@@ -15,7 +15,7 @@ from engram.store import Scope
 MAX_SYMBOLS_PER_PACK = 40
 RETRIEVAL_K = 5
 
-_FRESHNESS_LINE = "Portfolio freshness: NOT refreshed this cycle (PRD 00002 pending)"
+_FRESHNESS_LINE = "Portfolio freshness: NOT refreshed this cycle (current repo only)"
 _SECTION_ORDER = ["Similar code", "Reuse precedent", "Findings precedent", "Task prose"]
 
 
@@ -131,11 +131,11 @@ def _append_prose_entry(entries: list[str], text: str, cap_chars: int) -> None:
         entries.append(text[:remaining_chars])
 
 
-def _prd_query_text(prd_text: str | None, prd_path: Path) -> str:
+def _prd_query_text(prd_text: str | None) -> str | None:
     for line in (prd_text or "").splitlines():
         if line.startswith("# "):
-            return line[2:].strip()
-    return prd_path.stem
+            return line[2:].strip() or None
+    return None
 
 
 def _add_capsule_entry(
@@ -184,18 +184,20 @@ def _task_prose_entries(
     if prd_path is not None:
         prd_text = _read_prd_text(prd_path, unreadable_paths)
 
-        memory_hits = query(
-            store,
-            config,
-            _prd_query_text(prd_text, prd_path),
-            Scope("portfolio", None),
-            corpus="memory",
-            k=RETRIEVAL_K,
-            include_body=True,
-        )
-        for hit in memory_hits[:2]:
-            if hit.body:
-                _append_prose_entry(entries, hit.body, leading_cap_chars)
+        title = _prd_query_text(prd_text)
+        if title:
+            memory_hits = query(
+                store,
+                config,
+                title,
+                Scope("portfolio", None),
+                corpus="memory",
+                k=RETRIEVAL_K,
+                include_body=True,
+            )
+            for hit in memory_hits[:2]:
+                if hit.body:
+                    _append_prose_entry(entries, hit.body, leading_cap_chars)
 
         if prd_text is not None:
             _append_prose_entry(entries, prd_text, total_cap_chars)
@@ -219,6 +221,7 @@ def _render_full(
     sections: dict,
     symbols_omitted: int,
     unreadable_paths: list[Path],
+    compact_notices: bool = False,
 ) -> str:
     lines = [_FRESHNESS_LINE, ""]
     if symbols_omitted > 0:
@@ -227,9 +230,16 @@ def _render_full(
             f"(beyond the {MAX_SYMBOLS_PER_PACK}-symbol cap).",
         )
         lines.append("")
-    for path in unreadable_paths:
-        lines.append(f"{path} could not be read; omitted from Task prose.")
+    if compact_notices and unreadable_paths:
+        lines.append(
+            f"{len(unreadable_paths)} source(s) could not be read; "
+            "omitted from Task prose (paths omitted to fit pack budget)."
+        )
         lines.append("")
+    else:
+        for path in unreadable_paths:
+            lines.append(f"{path} could not be read; omitted from Task prose.")
+            lines.append("")
     for label in _SECTION_ORDER:
         items, render_fn = sections[label]
         lines.append(f"## {label}")
@@ -263,9 +273,15 @@ def _reindex_and_resolve_symbols(
     diff_path: Path,
     source_ref: str | None,
 ) -> tuple[IndexReport, set[tuple[str, int, int]], list[Symbol], int]:
-    index_report = index(store, config, Scope("repo", repo))
-
     all_symbols = changed_symbols(diff_path, repo_root, source_ref)
+    index_report = index(store, config, Scope("repo", repo))
+    failures = list(index_report.failed_sources)
+    if f"code:{repo}" in index_report.corpora_missing:
+        failures.append(f"code:{repo}")
+    if failures:
+        raise ValueError(
+            f"pack reindex failed (existing rows kept): {', '.join(failures)}"
+        )
     changed_spans = {(s.path, s.line_start, s.line_end) for s in all_symbols}
 
     query_symbols = all_symbols[:MAX_SYMBOLS_PER_PACK]
@@ -281,7 +297,10 @@ def _query_hits_for_symbol(
     text: str,
     vector,
 ) -> tuple[list[Pointer], list[Pointer], list[Pointer]]:
-    def hits_for(scope: Scope, corpus: str) -> list[Pointer]:
+
+    def hits_for(
+        scope: Scope, corpus: str, exclude_repo: str | None = None
+    ) -> list[Pointer]:
         return query(
             store,
             config,
@@ -291,13 +310,14 @@ def _query_hits_for_symbol(
             k=RETRIEVAL_K,
             vector=vector,
             include_body=True,
+            exclude_repo=exclude_repo,
         )
 
     repo_scope = Scope("repo", repo)
     portfolio_scope = Scope("portfolio", None)
 
     similar = hits_for(repo_scope, "code")
-    reuse = hits_for(portfolio_scope, "code")
+    reuse = hits_for(portfolio_scope, "code", exclude_repo=repo)
     findings = hits_for(repo_scope, FINDINGS_CORPUS) + hits_for(
         portfolio_scope,
         FINDINGS_CORPUS,
@@ -332,8 +352,6 @@ def _retrieve_pack_hits(
         similar_hits.extend(similar)
         reuse_hits.extend(reuse)
         findings_hits.extend(findings)
-
-    reuse_hits = [hit for hit in reuse_hits if hit.repo != repo]
 
     return similar_hits, reuse_hits, findings_hits
 
@@ -417,15 +435,25 @@ def _finalize_pack(
     index_report: IndexReport,
 ) -> PackReport:
     rendered_text = _render_full(sections, symbols_omitted, unreadable_paths)
+    compact_notices = (
+        bool(unreadable_paths)
+        and _estimate_tokens(rendered_text) > budget.hard_cap_tokens
+    )
+    if compact_notices:
+        rendered_text = _render_full(
+            sections, symbols_omitted, unreadable_paths, compact_notices=True
+        )
     while _estimate_tokens(rendered_text) > budget.hard_cap_tokens:
         label = _largest_section(sections)
         if label is None:
-            break
+            raise ValueError("pack hard cap is too small for required framing")
         items, _ = sections[label]
         items.pop()
         if label not in trimmed_sections:
             trimmed_sections.append(label)
-        rendered_text = _render_full(sections, symbols_omitted, unreadable_paths)
+        rendered_text = _render_full(
+            sections, symbols_omitted, unreadable_paths, compact_notices
+        )
 
     final_sections = []
     for label in _SECTION_ORDER:

@@ -165,12 +165,16 @@ class Store:
         scope: Scope,
         corpus: str | None,
         alias: str,
+        exclude_repo: str | None = None,
     ) -> tuple[str, list]:
         conditions = []
         params: list = []
         if scope.kind == "repo":
             conditions.append(f"{alias}.repo = ?")
             params.append(scope.repo)
+        if exclude_repo is not None:
+            conditions.append(f"{alias}.repo != ?")
+            params.append(exclude_repo)
         if corpus is not None:
             conditions.append(f"{alias}.corpus = ?")
             params.append(corpus)
@@ -451,8 +455,10 @@ class Store:
         scope: Scope,
         corpus: str | None,
         k: int,
+        *,
+        exclude_repo: str | None = None,
     ) -> list[SearchHit]:
-        where, params = self._scope_conditions(scope, corpus, "c")
+        where, params = self._scope_conditions(scope, corpus, "c", exclude_repo)
         sql = (
             "SELECT c.id, bm25(chunks_fts) AS score, c.corpus, c.repo, c.doc_type, "
             "c.path, c.heading, c.body, c.line_start, c.line_end, c.content_hash, "
@@ -474,12 +480,14 @@ class Store:
         scope: Scope,
         corpus: str | None,
         k: int,
+        *,
+        exclude_repo: str | None = None,
     ) -> list[SearchHit]:
         self._validate_vector(vector)
         if not self._chunks_vec_exists():
             return []
 
-        where, params = self._scope_conditions(scope, corpus, "cv")
+        where, params = self._scope_conditions(scope, corpus, "cv", exclude_repo)
         sql = (
             "SELECT c.id, cv.distance, c.corpus, c.repo, c.doc_type, c.path, "
             "c.heading, c.body, c.line_start, c.line_end, c.content_hash, "

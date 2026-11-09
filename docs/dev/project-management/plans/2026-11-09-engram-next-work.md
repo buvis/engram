@@ -71,7 +71,7 @@
    Results: 85 installed-runtime focused, 519 main, 47 evaluation tests passed; all 55 gold labels validate.
    Continue with Session 4.
 
-8. **Session 4: repair review-pack correctness.**
+8. **Session 4: repair review-pack correctness. (COMPLETE — 2026-11-10)**
    Triage PRD 00003/00004 review findings against current source.
    Reproduce hard-cap overflow from omission notices after all section content is removed.
    Reproduce incorrect source selection for `--diff base..`.
@@ -81,6 +81,13 @@
    Check adjacent diff validation and failure reporting within the same scope.
    Record unsupported or separate findings without expanding into general refactoring.
    Record the catchup harvest mismatch: fourteen supported files succeeded; thirteen ordinary reports lacked required frontmatter.
+   Reproduced and fixed all four named defects; reuse exclusion now precedes both retrieval candidate limits.
+   Added three-dot range handling, diff path containment, early invalid/missing-diff rejection, and explicit pack failure reporting.
+   Current read-only parse census confirms fourteen supported files and thirteen missing-frontmatter reports.
+   Recorded remaining PRD 00003/00004 findings and two-pass doubt review in the capsule.
+   Results: 130 focused, 547 main, and 47 evaluation tests passed; Ruff correctness and diff checks passed.
+   Production runtime, model/configuration, index, historical snapshots, backups, and unrelated capsule edits remain unchanged.
+   Continue with Session 5; stop after this session.
 
 9. **Session 5: review dependencies and establish CI.**
    Review `https://github.com/buvis/engram/pull/2` against current dependency requirements.
