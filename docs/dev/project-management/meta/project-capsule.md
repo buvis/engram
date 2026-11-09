@@ -96,3 +96,52 @@ See the follow-up note for scope, evidence, and the unchanged `0644` file mode.
 ## User Decisions Still Open
 
 - Resolve the unrelated merge conflict in `buvis/home`.
+
+## Session 1 complete: memory attribution (2026-11-09)
+
+This session supersedes earlier memory-attribution observations for the checkout.
+The live baseline was reproduced: all 295 enumerated files and all 330 indexed
+memory chunks (270 files) were `_unmapped`. Claude encodes dots, underscores,
+spaces, and other non-ASCII-alphanumeric characters as hyphens; enumeration now
+matches complete registry paths using that encoding. Collisions remain unmapped
+regardless of row order, including different names for the same path. Duplicate
+identical registrations are harmless. Unknown paths and subdirectories are not
+assigned by prefix or basename. Current enumeration maps 162 files to **22**
+registered repositories; 133 files have no exact registry match.
+
+Migration was verified on a disposable SQLite backup of the existing production
+index, using the pinned BGE-M3 server on port 8083. A memory-only portfolio pass
+scanned 295 files, added 234 chunks, pruned 209, and reported no failed/skipped
+sources. The resulting 355 memory chunks cover 294 files, plus one empty source.
+All 177,152 unrelated chunks and vectors, 16,664 unrelated empty-source records,
+and all model/cache metadata had identical before/after fingerprints. BM25,
+vector, and hybrid recall remained isolated in all 22 mapped repository scopes.
+The repeat pass added/pruned zero chunks. SQLite and FTS integrity checks passed.
+
+The production database and configuration remain unchanged. No full rebuild,
+model switch, historical snapshot edit, or server shutdown occurred. The temporary
+database was removed; existing rollback backups were preserved. The installed
+CLI is still the previously verified version: **Session 3 must install this fix
+before refreshing the live index**. Its planned portfolio refresh will migrate
+memory attribution; alternatively, the documented memory-only portfolio command
+migrates just memory. A repo-only pass cannot prune legacy `_unmapped` rows.
+
+Verification: **69 focused tests passed; 517 main tests passed, one failed;
+30 evaluation tests passed**. The sole main-suite failure remains the missing
+gems gold-source transcript
+`cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/c0e70656-a139-4b1b-8407-f8989807631e.jsonl`,
+reserved for Session 2. Sixteen new
+regressions cover path encoding, ambiguous/unknown mappings, scoped recall,
+migration of chunks and empty sources, isolation, and idempotence. Fail-first
+testing reproduced the defects. Diff review checked collision handling, migration
+scope, and the change that skips unrelated code enumeration on memory-only runs.
+Black, Ruff correctness rules (`E4,E7,E9,F`), and `git diff --check` passed.
+The broad global Ruff profile retains style debt; its isolated checks also report
+the same two pre-existing indexer findings as HEAD (`PLR0402`, `BLE001`).
+
+Next: **Session 2, stabilize evaluation sources**. Preserve Cellar's unrelated
+working-tree deletion and recover private evidence without changing gold labels.
+Sessions 2–8 remain pending in `plans/2026-11-09-engram-next-work.md`. This was a
+bounded repair session, not new PRD execution; PRDs 00001–00007 and the previous
+global installation remain complete.
+No session worktree or scratch file remains.

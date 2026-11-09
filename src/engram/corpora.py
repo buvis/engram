@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import re
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
@@ -91,8 +92,16 @@ def enumerate_corpora(
     missing_dirs.clear()
 
     rows = read_repos_csv(repos_csv)
-    slug_to_name: dict[str, str] = {
-        repo_path.replace("/", "-"): name for repo_path, name in rows
+    # Claude replaces every non-ASCII-alphanumeric character, including dots
+    # and underscores. This encoding is lossy: never choose between collisions.
+    slug_to_rows: dict[str, set[tuple[str, str]]] = {}
+    for repo_path, name in rows:
+        slug = re.sub(r"[^a-zA-Z0-9]", "-", repo_path)
+        slug_to_rows.setdefault(slug, set()).add((repo_path, name))
+    slug_to_name = {
+        slug: next(iter(matches))[1]
+        for slug, matches in slug_to_rows.items()
+        if len(matches) == 1
     }
 
     # Memory corpus (once, not per repo)

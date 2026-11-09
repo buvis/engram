@@ -27,6 +27,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **corpora**: restore repository-scoped memory recall for dotted project paths; keep ambiguous and unknown project directories unmapped.
+- **indexer**: skip code enumeration when indexing only another corpus, including memory attribution migrations.
 - **eval**: replace a transcript gold-set anchor removed by cellar sync with a
   source-verified OVCAQ/Herdr incident selected before scoring. Historical scores
   are specific to the previous set.

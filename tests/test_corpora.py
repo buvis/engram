@@ -1,6 +1,8 @@
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from engram import corpora
 from engram.corpora import enumerate_corpora, hash_source
 
@@ -57,9 +59,94 @@ def test_enumerate_corpora_yields_prd_decision_and_discovery_files_for_repo(tmp_
 # --- memory corpus: repo resolution via slug ---
 
 
+@pytest.mark.parametrize(
+    ("repo_path", "slug"),
+    [
+        (
+            "/Users/bob/git/src/github.com/buvis/engram",
+            "-Users-bob-git-src-github-com-buvis-engram",
+        ),
+        ("/work/team.v1/widget.v2", "-work-team-v1-widget-v2"),
+        ("/work/my_team/my project", "-work-my-team-my-project"),
+        ("/Users/bob/.claude", "-Users-bob--claude"),
+    ],
+)
+def test_memory_matches_claude_project_encoding(
+    tmp_path: Path, repo_path: str, slug: str
+) -> None:
+    projects_dir = tmp_path / "projects"
+    memory_file = projects_dir / slug / "memory" / "notes.md"
+    memory_file.parent.mkdir(parents=True)
+    memory_file.write_text("memory content")
+    repos_csv = tmp_path / "repos.csv"
+    _write_repos_csv(repos_csv, [(repo_path, "widget")])
+
+    memories = [
+        cf for cf in enumerate_corpora(repos_csv, projects_dir) if cf.corpus == "memory"
+    ]
+
+    assert memories == [corpora.CorpusFile("memory", "widget", memory_file)]
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        [("/work/a-b", "first"), ("/work/a/b", "second")],
+        [("/work/a/b", "second"), ("/work/a-b", "first")],
+        [("/work/a.b", "first"), ("/work/a-b", "second")],
+        [("/work/a-b", "first"), ("/work/a-b", "alias")],
+        [("/work/a-b", "same"), ("/work/a/b", "same")],
+    ],
+)
+def test_ambiguous_project_encoding_stays_unmapped(
+    tmp_path: Path, rows: list[tuple[str, str]]
+) -> None:
+    projects_dir = tmp_path / "projects"
+    memory_file = projects_dir / "-work-a-b" / "memory" / "notes.md"
+    memory_file.parent.mkdir(parents=True)
+    memory_file.write_text("ambiguous memory")
+    repos_csv = tmp_path / "repos.csv"
+    _write_repos_csv(repos_csv, rows)
+
+    memories = list(enumerate_corpora(repos_csv, projects_dir))
+
+    assert memories == [corpora.CorpusFile("memory", "_unmapped", memory_file)]
+
+
+def test_duplicate_registry_row_is_not_ambiguous(tmp_path: Path) -> None:
+    projects_dir = tmp_path / "projects"
+    memory_file = projects_dir / "-work-widget" / "memory" / "notes.md"
+    memory_file.parent.mkdir(parents=True)
+    memory_file.write_text("memory content")
+    repos_csv = tmp_path / "repos.csv"
+    _write_repos_csv(repos_csv, [("/work/widget", "widget")] * 2)
+
+    assert list(enumerate_corpora(repos_csv, projects_dir)) == [
+        corpora.CorpusFile("memory", "widget", memory_file)
+    ]
+
+
+@pytest.mark.parametrize(
+    "slug", ["-work-widget-other", "-work-widget-subdir", "-other-widget"]
+)
+def test_memory_mapping_requires_an_exact_registered_path(
+    tmp_path: Path, slug: str
+) -> None:
+    projects_dir = tmp_path / "projects"
+    memory_file = projects_dir / slug / "memory" / "notes.md"
+    memory_file.parent.mkdir(parents=True)
+    memory_file.write_text("unknown memory")
+    repos_csv = tmp_path / "repos.csv"
+    _write_repos_csv(repos_csv, [("/work/widget", "widget")])
+
+    assert list(enumerate_corpora(repos_csv, projects_dir)) == [
+        corpora.CorpusFile("memory", "_unmapped", memory_file)
+    ]
+
+
 def test_memory_dir_matching_repos_csv_slug_resolves_to_repo_name(tmp_path):
-    repo_root = tmp_path / "repos" / "gadget"
-    slug = str(repo_root).replace("/", "-")
+    repo_root = Path("/repos/gadget")
+    slug = "-repos-gadget"
 
     projects_dir = tmp_path / "projects"
     memory_dir = projects_dir / slug / "memory"
@@ -82,8 +169,8 @@ def test_memory_dir_matching_repos_csv_slug_resolves_to_repo_name(tmp_path):
 def test_memory_corpus_paths_are_symlink_resolved_when_projects_dir_is_a_symlink(
     tmp_path,
 ):
-    repo_root = tmp_path / "repos" / "gadget"
-    slug = str(repo_root).replace("/", "-")
+    repo_root = Path("/repos/gadget")
+    slug = "-repos-gadget"
 
     real_projects_dir = tmp_path / "real_projects"
     memory_dir = real_projects_dir / slug / "memory"

@@ -77,6 +77,13 @@ Output is one tab-separated line per hit:
 Indexing keys on content hash, so re-indexing unchanged content embeds nothing.
 A full portfolio pass over unchanged content takes about 20 seconds.
 
+Memory attribution matches Claude's project directory encoding against complete
+registered repository paths. Unknown directories and ambiguous encodings stay
+`_unmapped` and are available only through portfolio queries. After upgrading
+from the old path mapping, run `engram index --scope portfolio --corpus memory`
+to replace old attribution across the memory corpus. This incremental pass keeps
+other corpora intact; a repository-only pass cannot prune old `_unmapped` rows.
+
 `lookup` reads code definitions directly from SQLite without loading embedding
 configuration or starting a server. Output is `path:start-end<TAB>heading`;
 no matches prints an error and exits 1. Relative file paths resolve from the

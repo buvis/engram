@@ -31,7 +31,8 @@ def index(
     # Cellar is only required when the requested scope can include transcripts.
     if _needs_transcripts(scope, corpus):
         files += list(transcripts.enumerate())
-    files += list(symbols.enumerate(exclude_globs=config.exclude_globs))
+    if corpus in (None, "code"):
+        files += list(symbols.enumerate(exclude_globs=config.exclude_globs))
     if scope.kind == "repo":
         files = [f for f in files if f.repo == scope.repo]
     if corpus is not None:
