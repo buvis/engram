@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **symbols**: update tree-sitter-language-pack to 1.25.0. More JavaScript,
+  TypeScript, and TSX functions get real names; Swift structs, C constants,
+  macros, and types become symbols. Grammars download once per version.
 - **indexer**: remove the unused `IndexReport.chunks_updated` field; changed
   chunks continue to count as added and pruned.
 - **corpora/cli**: index tracked PRDs, decisions, discovery notes, and capsules
@@ -27,6 +30,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **symbols/diffmap**: name constant, macro, and type symbols with plain kind
+  words (`Constant LIMIT`) instead of raw JSON (`{"Other":"Constant"} LIMIT`).
 - **pack**: enforce the hard cap even with long omission notices, retrieve reuse
   candidates outside the current repository before ranking limits, and skip
   memory queries when a PRD has no readable, nonblank title.

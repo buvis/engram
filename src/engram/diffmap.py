@@ -9,6 +9,8 @@ from pathlib import Path
 
 from tree_sitter_language_pack import ProcessConfig, detect_language_from_path, process
 
+from engram.symbols import kind_name
+
 _HUNK_HEADER_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
 
 
@@ -172,7 +174,7 @@ def _add_hunk_symbols(
                     Symbol(
                         path=abs_path,
                         name=item.name,
-                        kind=str(item.kind).lower(),
+                        kind=kind_name(item.kind).lower(),
                         line_start=item.span.start_line + 1,
                         line_end=item.span.end_line + 1,
                     ),

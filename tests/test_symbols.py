@@ -173,6 +173,17 @@ def test_empty_or_whitespace_only_source_yields_no_chunks_and_is_not_skipped(
     assert str(path) not in symbols.skipped_files
 
 
+def test_other_kind_symbols_use_their_plain_kind_name(tmp_path):
+    # tree-sitter-language-pack >= 1.20 renders Other kinds as JSON
+    # ('{"Other":"Constant"}'); headings and doc types must stay plain words.
+    path = tmp_path / "config.h"
+    path.write_text("#define LIMIT 10\n")
+
+    chunks = symbols.chunk(path, "widget", "h1")
+
+    assert [(c.doc_type, c.heading) for c in chunks] == [("constant", "Constant LIMIT")]
+
+
 # --- count_skipped(): cheap re-scan counts only tracked files with no grammar ---
 
 

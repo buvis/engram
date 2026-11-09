@@ -228,6 +228,26 @@ def test_multiple_changed_lines_in_same_function_dedup_to_one_symbol(tmp_path):
     ]
 
 
+def test_other_kind_symbol_uses_its_plain_kind_name(tmp_path):
+    (tmp_path / "config.h").write_text("#define LIMIT 10\n")
+    diff_path = _write_diff(
+        tmp_path,
+        [
+            "diff --git a/config.h b/config.h",
+            "index 1111111..2222222 100644",
+            "--- a/config.h",
+            "+++ b/config.h",
+            "@@ -1 +1 @@",
+            "-#define LIMIT 5",
+            "+#define LIMIT 10",
+        ],
+    )
+
+    result = changed_symbols(diff_path, tmp_path)
+
+    assert [(s.name, s.kind) for s in result] == [("LIMIT", "constant")]
+
+
 # --- changed_symbols(): Symbol.path is absolute and matches what symbols.chunk() stores ---
 
 

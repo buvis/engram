@@ -7,7 +7,12 @@ from collections.abc import Iterator
 from fnmatch import fnmatchcase
 from pathlib import Path
 
-from tree_sitter_language_pack import ProcessConfig, detect_language_from_path, process
+from tree_sitter_language_pack import (
+    ProcessConfig,
+    StructureKind,
+    detect_language_from_path,
+    process,
+)
 
 from engram import corpora
 from engram.client import load_corpus_settings
@@ -30,6 +35,11 @@ def is_excluded(path: Path, exclude_globs: tuple[str, ...] = ()) -> bool:
     except OSError:
         # Let the indexer report the failed read and retain the old rows.
         return False
+
+
+def kind_name(kind: StructureKind) -> str:
+    """Plain kind word; Other kinds carry it as payload, not in str()."""
+    return kind.other or str(kind)
 
 
 def enumerate(
@@ -87,7 +97,7 @@ def chunk(path: Path, repo: str, content_hash: str) -> list[Chunk]:
     def _walk(items, named_ancestor: bool = False) -> None:
         nonlocal chunk_ordinal
         for item in items:
-            kind = str(item.kind)
+            kind = kind_name(item.kind)
             if item.name is None and named_ancestor:
                 _walk(item.children, named_ancestor=True)
                 continue
