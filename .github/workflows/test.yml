@@ -1,0 +1,44 @@
+name: Test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  portable:
+    # Portable regression tests only. Tests marked `private` need the
+    # maintainer's retained evidence (eval/sources.json bodies under
+    # ~/.local/share/engram/eval/sources) and run locally, never here.
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.14"]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+
+      - name: Install ripgrep
+        run: sudo apt-get update && sudo apt-get install -y ripgrep
+
+      - name: Install dependencies
+        run: uv sync --locked --python ${{ matrix.python-version }}
+
+      - name: Main suite
+        run: uv run --no-sync python -m pytest -q --ignore=eval -m "not private"
+
+      - name: Evaluation suite
+        env:
+          PYTHONPATH: src:.
+        run: uv run --no-sync python -m pytest -q eval -m "not private"

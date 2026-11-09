@@ -184,8 +184,13 @@ documented in [eval/README.md](eval/README.md). These experiments use private
 snapshots and leave the production model and index unchanged.
 
 ```sh
-uv run pytest
+uv run python -m pytest -q --ignore=eval
+PYTHONPATH=src:. uv run python -m pytest -q eval
 ```
+
+Tests marked `private` check the maintainer's retained evaluation evidence and
+fail without it. CI runs only the portable tests, with `-m "not private"`, so a
+green CI run says nothing about that private evidence.
 
 Working documents, PRDs, and reviews live under tracked
 `docs/dev/project-management/`; disposable packs live under globally ignored

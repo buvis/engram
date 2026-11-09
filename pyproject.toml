@@ -18,6 +18,12 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/engram"]
 
+[tool.pytest.ini_options]
+addopts = "--strict-markers"
+markers = [
+    "private: needs the maintainer's private retained evidence; CI deselects it with -m 'not private'",
+]
+
 [dependency-groups]
 dev = [
     "pytest>=8",

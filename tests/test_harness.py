@@ -299,6 +299,7 @@ def test_load_goldset_accepts_transcripts_and_code_corpora(tmp_path):
 # --- the shipped gold set itself loads clean and covers the heavy corpora ---
 
 
+@pytest.mark.private
 def test_real_goldset_loads_clean_and_covers_transcripts_and_code() -> None:
     # This is private-source acceptance, not a portable fixture test. Validate
     # exact retained evidence and unchanged labels, independent of Cellar churn.

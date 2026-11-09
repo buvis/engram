@@ -42,7 +42,7 @@ The original live harness still requires live targets and must fail while the
 gems transcript is absent. Retained-source acceptance does not certify live
 portfolio coverage. The main suite's `test_real_goldset_loads_clean_and_covers_transcripts_and_code`
 is explicitly private-source acceptance and requires this archive; it is not a
-portable CI fixture.
+portable CI fixture. It carries the `private` marker, which CI deselects.
 
 ## Running comparisons
 

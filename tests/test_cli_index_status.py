@@ -18,6 +18,9 @@ def _stub_symbols_count_skipped(monkeypatch):
         lambda *a, **k: 0,
         raising=False,
     )
+    # Status consults the Cellar transcript producer; never read the
+    # developer's real Cellar checkout. Cellar-failure tests override this.
+    monkeypatch.setattr(transcripts, "enumerate", lambda *a, **k: iter([]))
 
 
 class _FakeStoreForStatus:
