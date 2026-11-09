@@ -211,3 +211,38 @@ Next: **Session 3, restore portfolio index health**. Investigate `herdr-plugins`
 preserve/back up the live index, install the tested fixes through the established
 process, and refresh incrementally. Session 1's live memory migration remains
 assigned there. Sessions 3–8 remain pending; stop after this completed session.
+
+## Session 3 checkpoint: awaiting warrant (2026-11-10)
+
+`herdr-plugins` was deliberately retired, not moved. Its retained session
+`cd12c6d6-df15-4cf5-b982-b4b6029877cc` records deletion on November 9;
+`~/.claude/docs/dev/project-management/discovery/00185-pluck-reference/README.md`
+confirms the replacement references. The complete archive at
+`~/.local/share/archive/herdr-plugins.bundle` verifies at `4362ef4`.
+Only its stale gita registration remains unavailable. Removing that row retains
+its three memory files as `_unmapped` for portfolio recall.
+
+Fresh status exits 1: **7,142 dead rows** (6,663 transcripts, 168 PRD,
+7 discovery, 304 code); stale files: **11 memory, 6 transcripts, 98 code**.
+No portfolio refresh has run. The production index, configuration, and historical
+snapshots remain unchanged. Only the pinned BGE-M3 endpoint was started (8083).
+No unrelated server was stopped; no model change or full rebuild occurred.
+
+Verified SQLite backup: `~/.local/share/engram/backups/session3-20261110/engram.db`,
+1,554,391,040 bytes; SHA-256
+`fc45ad9183cc4c8dea6efce8591dbce4748d2a59fae791783d15f7c80ddbf124`.
+Integrity passes; all 177,482 chunks/vectors, including 410 retired-repository
+rows, are preserved. The same directory retains registry/config backups,
+protected-file fingerprints, source hashes, installation receipt, and constraints.
+Existing rollback backups and unrelated working-tree capsule edits are retained.
+
+Verification: **85 focused, 519 main, and 47 evaluation tests passed**;
+`git diff --check` passed. Installed `corpora.py`, `indexer.py`, and `harness.py`
+still differ from tested source. Installation request
+`ad9e2dd9b263e61c1fccf3ff35f3c082` awaits host warrant approval.
+Seatbelt denied the registry write; removal request
+`d4c165e06b6611f16d5182d147ec42ec` also awaits approval. Neither was bypassed.
+Next: finish **Session 3**, verify both receipts and installed modules, refresh
+incrementally, inspect portfolio status, and verify memory attribution/findings
+and protected artifacts. Do not start Session 4. No session scratch or worktree
+was created; the multi-session plan remains active. No fresh PRD execution occurred.

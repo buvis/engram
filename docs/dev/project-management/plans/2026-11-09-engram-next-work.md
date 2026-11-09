@@ -51,7 +51,7 @@
    Results: 63 focused tests, 519 main tests, and 47 evaluation tests passed; all eight passage-label queries validated.
    Production state, historical snapshots, labels, and scores remain unchanged. Continue with Session 3.
 
-7. **Session 3: restore portfolio index health.**
+7. **Session 3: restore portfolio index health. (IN PROGRESS — awaiting warrant, 2026-11-10)**
    Investigate the unavailable registered `herdr-plugins` directory before indexing.
    Determine whether the repository moved, retired, or became temporarily unavailable.
    Preserve indexed evidence until its intended disposition is established.
@@ -62,6 +62,10 @@
    Run `engram status --scope portfolio`.
    Investigate remaining degradation without suppressing legitimate failures.
    Compare against the observed 7,072 dead rows and stale memory, transcript, and code sources.
+   Retirement confirmed; complete Git archive verified at `4362ef4`. Fresh status: 7,142 dead rows.
+   Index and registry backed up under `~/.local/share/engram/backups/session3-20261110/`; integrity passed.
+   Tests: 85 focused, 519 main, 47 evaluation passed. No live refresh yet.
+   Await installation warrant `ad9e2dd9b263e61c1fccf3ff35f3c082` and registry warrant `d4c165e06b6611f16d5182d147ec42ec`.
 
 8. **Session 4: repair review-pack correctness.**
    Triage PRD 00003/00004 review findings against current source.
