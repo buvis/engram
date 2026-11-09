@@ -177,11 +177,11 @@ exclusion list.
 
 **Tasks**:
 
-- [ ] Add optional `[code] exclude_globs` to config load, defaulting when absent
+- [x] Add optional `[code] exclude_globs` to config load, defaulting when absent
       and failing loud on a non-list or non-string entry (no deps) - Acceptance:
       a test asserts the default, and asserts a `[code] exclude_globs = "x"`
       config raises at load with the key named in the message.
-- [ ] Add `lookup_by_name` and `lookup_by_path` to `store`, with an expression
+- [x] Add `lookup_by_name` and `lookup_by_path` to `store`, with an expression
       index on the parsed name (no deps) - Acceptance: tests over a fixture store
       assert exact match, prefix fallback, scope filtering, `corpus='code'`
       restriction, and source-order output for a file.
@@ -195,11 +195,11 @@ chunks.
 
 **Tasks**:
 
-- [ ] Implement `is_excluded` and wire it into `symbols.enumerate`, counting
+- [x] Implement `is_excluded` and wire it into `symbols.enumerate`, counting
       exclusions (depends on: Phase 0) - Acceptance: a fixture tree asserts
       `node_modules/x.js`, `a.min.js`, and a 2000-char-line file are excluded
       while ordinary source is not; `count_excluded()` reports the number.
-- [ ] Drop anonymous symbols with a named ancestor; label top-level anonymous
+- [x] Drop anonymous symbols with a named ancestor; label top-level anonymous
       ones (depends on: Phase 0) - Acceptance: a fixture JS file with a named
       function containing two arrow callbacks yields one chunk; a module-level
       anonymous function yields a chunk headed `{Kind} (anonymous)`.
@@ -213,12 +213,12 @@ is untouched.
 
 **Tasks**:
 
-- [ ] Add the `lookup` verb to `cli` with `--name` xor `--file`, required
+- [x] Add the `lookup` verb to `cli` with `--name` xor `--file`, required
       `--scope` for `--name`, and exit 1 when nothing matches (depends on:
       Phase 1) - Acceptance: a test asserts both modes' output shape, that
       passing both flags exits 2, that a missing scope exits 1, and that no
       embedding client is constructed on either path.
-- [ ] Report the excluded-file count in `engram status`, beside the existing
+- [x] Report the excluded-file count in `engram status`, beside the existing
       grammarless skipped count (depends on: Phase 1) - Acceptance: `status`
       output contains the excluded count for the code corpus.
 - [ ] Re-index the code corpus so excluded files are pruned and anonymous chunks
@@ -273,3 +273,25 @@ prints its definition with no llama-server running.
   callback inside a named parent stops being its own chunk. Mitigation: the
   parent chunk's body still contains that text verbatim, so it remains
   retrievable through the parent, at a coarser pointer.
+
+## Delivery notes — 2026-11-09
+
+Implementation complete; held for the unmet corpus-composition acceptance target.
+The direct implementation is authorized by the user in place of Autopilot.
+
+Live `index --scope portfolio --corpus code` completed with exit 0. Baseline:
+67,518 code chunks, 18,886 anonymous headings, 734 chunks from the two named
+minified bundles. Result: 71,527 chunks, zero legacy `None` headings, 17,776
+retained anonymous headings (24.85%), zero named minified-bundle chunks. Newly
+indexed registered repositories explain the increase in total chunks. Exact
+`stop_served` lookup succeeds with embedding configuration access blocked.
+
+The under-5% prediction is not achieved by the specified retention rules. Many
+test callbacks and exported arrows have no named ancestor in the parser's
+structure and must remain retrievable. Deleting them to meet the percentage
+would violate this PRD. Resolving the remaining criterion requires revising the
+corpus target or explicitly extending symbol naming/filtering scope. The final
+index task remains unchecked because its numeric acceptance is unmet.
+
+See [delivery review](../../reviews/2026-11-09-backlog-delivery.md) for tests,
+review findings, and the recoverable live-database backup.

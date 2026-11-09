@@ -21,6 +21,35 @@ BULLET_RE = re.compile(
 )
 BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 HEADING_RE = re.compile(r"^#+\s+(.*)$")
+AUDIT_SECTION_RE = re.compile(r"^### \[(autonomous|deferred|doubt)\](?:\s+.*)?$")
+
+
+def _detect_genre(text: str) -> str:
+    lines = text.splitlines()
+    if lines and lines[0] == "---":
+        return "review"
+    if any(
+        line.startswith("# Decision Audit Log:") or AUDIT_SECTION_RE.match(line)
+        for line in lines
+    ):
+        return "audit"
+    return "unrecognised"
+
+
+def _parse_audit_log(lines: list[str]) -> list[Record]:
+    starts = [i for i, line in enumerate(lines) if AUDIT_SECTION_RE.match(line)]
+    if not starts:
+        raise ValueError("audit log contains no decision blocks")
+    records = []
+    if starts[0]:
+        records.append(
+            Record("Audit header", "\n".join(lines[: starts[0]]), 1, starts[0], True)
+        )
+    for start, end in zip(starts, [*starts[1:], len(lines)]):
+        records.append(
+            Record(lines[start][4:], "\n".join(lines[start:end]), start + 1, end, True)
+        )
+    return records
 
 
 @dataclass(frozen=True)
@@ -117,6 +146,8 @@ def _parse_unstructured(
 def parse(path: Path) -> list[Record]:
     try:
         lines = path.read_text().splitlines()
+        if _detect_genre("\n".join(lines)) == "audit":
+            return _parse_audit_log(lines)
         if not lines or lines[0] != "---":
             raise ValueError("missing frontmatter")
 
@@ -143,7 +174,12 @@ def parse(path: Path) -> list[Record]:
             line_number = frontmatter_end + index + 2
             if line.startswith("|") and line.endswith("|"):
                 issue_column = _parse_table_row(
-                    records, body_lines, index, line, line_number, issue_column,
+                    records,
+                    body_lines,
+                    index,
+                    line,
+                    line_number,
+                    issue_column,
                 )
                 index += 1
                 continue
@@ -151,11 +187,18 @@ def parse(path: Path) -> list[Record]:
             bullet_match = BULLET_RE.match(line)
             if bullet_match:
                 index = _parse_bullet(
-                    records, body_lines, index, bullet_match, frontmatter_end,
+                    records,
+                    body_lines,
+                    index,
+                    bullet_match,
+                    frontmatter_end,
                 )
                 continue
             current_heading = _parse_unstructured(
-                records, line, line_number, current_heading,
+                records,
+                line,
+                line_number,
+                current_heading,
             )
             index += 1
 

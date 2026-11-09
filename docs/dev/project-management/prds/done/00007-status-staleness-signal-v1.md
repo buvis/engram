@@ -151,7 +151,7 @@ CHANGELOG.md        # EDIT: Fixed entry
 
 **Tasks**:
 
-- [ ] TDD in-flight classification in `store.status` (no deps) - Acceptance: a transcript
+- [x] TDD in-flight classification in `store.status` (no deps) - Acceptance: a transcript
       touched inside the window classifies in-flight; one outside it classifies degraded;
       non-transcript corpora are never classified in-flight regardless of mtime; the
       window is configurable and has a documented default.
@@ -164,10 +164,10 @@ CHANGELOG.md        # EDIT: Fixed entry
 
 **Tasks**:
 
-- [ ] TDD `_run_status` exit rule (depends on: Phase 0) - Acceptance: in-flight-only
+- [x] TDD `_run_status` exit rule (depends on: Phase 0) - Acceptance: in-flight-only
       exits 0; any dead row exits 1; any degraded-stale file exits 1; a missing corpus
       source still exits 1 with its own message.
-- [ ] Update the status line format and `--help` (depends on: previous) - Acceptance:
+- [x] Update the status line format and `--help` (depends on: previous) - Acceptance:
       transcripts line shows `stale=` and `in-flight=` separately; `--help` states the
       exit contract.
 
@@ -178,7 +178,7 @@ open and a fresh index.
 
 **Tasks**:
 
-- [ ] CHANGELOG `### Fixed` entry prefixed `**cli**:` (depends on: Phase 1) - Acceptance:
+- [x] CHANGELOG `### Fixed` entry prefixed `**cli**:` (depends on: Phase 1) - Acceptance:
       entry explains that an always-red stamp was training readers to ignore it.
 
 **Exit Criteria**: Entry present.
@@ -208,3 +208,22 @@ open and a fresh index.
 - **`in-flight` may be the wrong word** if a transcript is written by a session on another
   machine syncing into cellar. Mitigation: it is still churn rather than degradation, so
   the classification holds even if the name is imprecise.
+
+## Delivery notes — 2026-11-09
+
+Implemented and verified directly, as authorized by the user. Configuration is
+`[transcripts] in_flight_seconds`, a positive integer defaulting to 600. The
+existing optional-directory contract remains: absent, never-indexed optional
+PRD/decision/discovery directories are informational. Missing required sources
+and vanished indexed files still fail status.
+
+Ten consecutive CLI checks on a fresh fixture index with a transcript being
+appended to all return zero and expose `in-flight=1`. Tests cover custom windows,
+old and future timestamps, dead rows, unavailable code sources, and unchanged
+non-transcript semantics. Full suite: 531 passed; the only failure is an existing
+gold-set reference to a missing external transcript.
+
+The live portfolio is not otherwise fresh (5,748 dead transcript rows and 140
+dead PRD rows were measured), so its nonzero exit remains correct. This task
+does not prune unrelated historical corpora to manufacture a green status.
+See [delivery review](../../reviews/2026-11-09-backlog-delivery.md).

@@ -16,6 +16,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **cli**: `lookup --name NAME --scope repo|portfolio [--repo NAME]` and
+  `lookup --file PATH` return code definitions without an embedding server.
 - **eval**: probe reranking after fusion tie-break and lexical-OR fixes on
   read-only campaign indexes, with baseline validation and per-query latency.
 - **eval**: compare local embedding and reranking models on private snapshots;
@@ -25,6 +27,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **findings**: harvest decision audit logs as header and per-decision records,
+  preserving previously lost design choices and rationale.
+- **cli**: report recent transcript churn as `in-flight` with a configurable
+  ten-minute window, so an always-red status no longer trains readers to ignore
+  degradation. Dead rows and genuinely stale sources still fail status.
+- **symbols**: exclude vendor/minified/generated files, drop redundant anonymous
+  callbacks, and migrate legacy anonymous chunks on the next code index.
 - **eval**: update the backup-progress gold target after its PRD moved to done.
 - **transcripts**: error-bearing tool results (string or list-form content) now
   contribute their text to the chunk body instead of an empty body.

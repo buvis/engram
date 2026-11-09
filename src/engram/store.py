@@ -2,13 +2,14 @@
 
 import hashlib
 import sqlite3
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
 import sqlite_vec
 
-from engram.client import Vector
+from engram.client import Vector, load_corpus_settings
 
 DEFAULT_DB_PATH = Path.home() / ".local" / "share" / "engram" / "engram.db"
 
@@ -30,7 +31,9 @@ class Chunk:
     def text_for_embedding(self) -> str:
         if self.corpus == "code":
             # Path first so it survives the embed-input truncation cap.
-            return f"{self.heading}\n{_repo_relative(self.repo, self.path)}\n{self.body}"
+            return (
+                f"{self.heading}\n{_repo_relative(self.repo, self.path)}\n{self.body}"
+            )
         return f"{self.heading}\n{self.body}" if self.heading else self.body
 
 
@@ -70,6 +73,7 @@ class CorpusStatus:
     row_count: int
     stale_files: list[str]
     dead_rows: int
+    in_flight_files: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
@@ -94,6 +98,10 @@ def open_store(db_path: Path = DEFAULT_DB_PATH) -> "Store":
         "heading TEXT, body TEXT, line_start INT, line_end INT, content_hash TEXT, "
         "chunk_ordinal INT, "
         "UNIQUE(repo, path, content_hash, chunk_ordinal))",
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS code_symbol_name ON chunks "
+        "(substr(heading, instr(heading, ' ') + 1)) WHERE corpus = 'code'"
     )
     conn.execute(
         "CREATE VIRTUAL TABLE IF NOT EXISTS chunks_fts USING fts5("
@@ -486,7 +494,51 @@ class Store:
         ).fetchall()
         return [self._row_to_hit(row) for row in rows]
 
-    def status(self, scope: Scope) -> StatusReport:
+    def legacy_code_sources(self, scope: Scope) -> set[str]:
+        where, params = self._scope_conditions(scope, "code", "chunks")
+        return {
+            row[0]
+            for row in self.conn.execute(
+                f"SELECT DISTINCT path FROM chunks WHERE {where} "
+                "AND substr(heading, instr(heading, ' ') + 1) = 'None'",
+                params,
+            )
+        }
+
+    def lookup_by_name(
+        self, name: str, scope: Scope, prefix: bool = False
+    ) -> list[Chunk]:
+        where, params = self._scope_conditions(scope, "code", "chunks")
+        expression = "substr(heading, instr(heading, ' ') + 1)"
+        match = (
+            f"substr({expression}, 1, length(?)) = ?" if prefix else f"{expression} = ?"
+        )
+        values = [name, name] if prefix else [name]
+        rows = self.conn.execute(
+            "SELECT corpus, repo, doc_type, path, heading, body, line_start, "
+            f"line_end, content_hash, chunk_ordinal FROM chunks WHERE {where} AND {match} "
+            "ORDER BY path, chunk_ordinal",
+            [*params, *values],
+        ).fetchall()
+        if not rows and not prefix:
+            return self.lookup_by_name(name, scope, prefix=True)
+        return [Chunk(*row) for row in rows]
+
+    def lookup_by_path(self, path: str) -> list[Chunk]:
+        rows = self.conn.execute(
+            "SELECT corpus, repo, doc_type, path, heading, body, line_start, "
+            "line_end, content_hash, chunk_ordinal FROM chunks "
+            "WHERE corpus = 'code' AND path = ? ORDER BY chunk_ordinal",
+            (str(path),),
+        ).fetchall()
+        return [Chunk(*row) for row in rows]
+
+    def status(
+        self, scope: Scope, in_flight_seconds: int | None = None
+    ) -> StatusReport:
+        if in_flight_seconds is None:
+            _, in_flight_seconds = load_corpus_settings()
+        now = time.time()
         where, params = self._scope_conditions(scope, None, "chunks")
         corpora = [
             row[0]
@@ -499,27 +551,35 @@ class Store:
         per_corpus = {}
         for corpus in corpora:
             rows = self.conn.execute(
-                f"SELECT path, content_hash FROM chunks WHERE {where} AND corpus = ?",
+                f"SELECT path, content_hash, count(*) FROM chunks WHERE {where} AND corpus = ? "
+                "GROUP BY path, content_hash",
                 [*params, corpus],
             ).fetchall()
             stale: set[str] = set()
+            in_flight: set[str] = set()
             dead = 0
             if corpus != "findings":
-                for path, content_hash in rows:
+                for path, content_hash, row_count in rows:
                     file_path = Path(path)
-                    if not file_path.exists():
-                        dead += 1
+                    try:
+                        mtime = file_path.stat().st_mtime
+                        data = file_path.read_bytes()
+                    except FileNotFoundError:
+                        dead += row_count
                         continue
-                    data = file_path.read_bytes()
                     actual_hash = hashlib.sha1(
                         b"blob " + str(len(data)).encode() + b"\0" + data,
                     ).hexdigest()
                     if actual_hash != content_hash:
-                        stale.add(path)
+                        if corpus == "transcripts" and now - mtime <= in_flight_seconds:
+                            in_flight.add(path)
+                        else:
+                            stale.add(path)
             per_corpus[corpus] = CorpusStatus(
-                row_count=len(rows),
+                row_count=sum(row[2] for row in rows),
                 stale_files=sorted(stale),
                 dead_rows=dead,
+                in_flight_files=sorted(in_flight),
             )
 
         return StatusReport(per_corpus=per_corpus)

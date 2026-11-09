@@ -22,7 +22,7 @@ def test_transient_symbol_failure_is_retried_without_changing_file(
     monkeypatch.setattr("engram.indexer.enumerate_corpora", lambda: iter(()))
     monkeypatch.setattr("engram.indexer.transcripts.enumerate", lambda: iter(()))
     monkeypatch.setattr(
-        symbols, "enumerate", lambda: iter([CorpusFile("code", "repo", source)])
+        symbols, "enumerate", lambda **kwargs: iter([CorpusFile("code", "repo", source)])
     )
     monkeypatch.setattr(
         "engram.indexer.embed",
@@ -81,7 +81,7 @@ def test_failed_code_enumeration_preserves_empty_markers(tmp_path, monkeypatch) 
     monkeypatch.setattr(corpora, "missing_dirs", ["code:repo"])
     monkeypatch.setattr("engram.indexer.enumerate_corpora", lambda: iter(()))
     monkeypatch.setattr("engram.indexer.transcripts.enumerate", lambda: iter(()))
-    monkeypatch.setattr(symbols, "enumerate", lambda: iter(()))
+    monkeypatch.setattr(symbols, "enumerate", lambda **kwargs: iter(()))
     store = open_store(tmp_path / "index.db")
     try:
         store.mark_empty_source("code", "repo", "empty.bin", "h1")

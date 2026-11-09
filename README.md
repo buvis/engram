@@ -23,7 +23,7 @@ download the first time an embedding server starts.
 | `decision` | `docs/dev/project-management/meta/decisions.md` | heading |
 | `discovery` | `docs/dev/project-management/discovery/*.md` | heading |
 | `memory` | `~/.claude/projects/*/memory/*.md` | heading |
-| `findings` | review files ingested by `engram harvest` | record |
+| `findings` | reviews and decision audit logs ingested by `engram harvest` | record |
 | `transcripts` | session JSONL, one turn per chunk | JSONL line |
 | `code` | every git-tracked file, one chunk per function or class | line span |
 
@@ -52,6 +52,9 @@ engram index --scope repo --corpus prd  # index one corpus in the current repo
 engram index --rebuild                  # re-embed from scratch, atomic swap
 engram index --reembed-code             # refresh code vectors in place
 engram status --scope portfolio         # per-corpus counts, stale and dead rows
+engram lookup --name stop_served --scope portfolio  # exact name, then prefix
+engram lookup --name stop_served --scope portfolio --repo engram
+engram lookup --file src/engram/client.py # symbols in source order
 engram query --scope repo "retry a flaky embedding server"
 engram query --scope portfolio --corpus findings -k 10 "token budget overflow"
 engram harvest docs/dev/project-management/reviews/00003-audit.md
@@ -74,6 +77,28 @@ Output is one tab-separated line per hit:
 Indexing keys on content hash, so re-indexing unchanged content embeds nothing.
 A full portfolio pass over unchanged content takes about 20 seconds.
 
+`lookup` reads code definitions directly from SQLite without loading embedding
+configuration or starting a server. Output is `path:start-end<TAB>heading`;
+no matches prints an error and exits 1. Relative file paths resolve from the
+current registered Git worktree root.
+
+Code indexing excludes `node_modules`, `vendor`, `dist`, `build`, `.venv`, and
+`third_party` path segments, `*.min.*` filenames, and files with lines longer
+than 1000 characters. Extra globs match repository-relative or absolute paths.
+Anonymous symbols inside named ancestors remain in their parent's body;
+top-level anonymous symbols emitted by the parser get an explicit label.
+The next code index prunes exclusions and migrates old `None` headings once.
+`status` reports excluded files separately from files without a grammar.
+
+`status` exits 1 for degraded stale files, dead rows, or unavailable required
+sources. Recently modified stale transcripts are reported as `in-flight` and
+alone do not make it fail. Optional, never-indexed PRD/decision/discovery
+directories may be absent without degrading the index.
+
+`harvest` detects audit logs by their heading or decision-section shape, keeps
+the header and each decision block, and preserves rationale text. An audit
+without decision blocks fails; review parsing and per-file reporting are unchanged.
+
 ## Config
 
 `~/.local/share/engram/config.toml`, written with defaults on first run:
@@ -85,6 +110,12 @@ endpoint = "http://127.0.0.1:8081/v1"
 
 [pinned]
 id = ""
+
+[code]
+exclude_globs = [] # extra exclusions, for example "generated/*"
+
+[transcripts]
+in_flight_seconds = 600 # positive integer; default is ten minutes
 ```
 
 Endpoints must be loopback with an explicit port. Engram spawns and stops the

@@ -31,7 +31,7 @@ def index(
     # Cellar is only required when the requested scope can include transcripts.
     if _needs_transcripts(scope, corpus):
         files += list(transcripts.enumerate())
-    files += list(symbols.enumerate())
+    files += list(symbols.enumerate(exclude_globs=config.exclude_globs))
     if scope.kind == "repo":
         files = [f for f in files if f.repo == scope.repo]
     if corpus is not None:
@@ -46,6 +46,9 @@ def index(
     # 2. Diff, chunk, embed, and upsert per-file (commit as we go)
     known = store.known_sources(scope, corpus)
     known_empty = store.known_empty_sources_by_corpus(scope, corpus)
+    # Only legacy anonymous headings need re-chunking when the source hash is
+    # unchanged. Replace per source so interrupted migrations are safe to retry.
+    legacy_code = store.legacy_code_sources(scope) if corpus in (None, "code") else set()
     chunks_added = 0
 
     # Repos whose `code:` enumeration failed this run enumerated no files;
@@ -76,7 +79,8 @@ def index(
         key = (file.repo, str(file.path), h)
         empty_key = (file.corpus, *key)
 
-        if key in known:
+        migrate = file.corpus == "code" and str(file.path) in legacy_code
+        if key in known and not migrate:
             active_sources.add(key)
             continue
         if empty_key in known_empty:
@@ -91,14 +95,21 @@ def index(
             failed_sources.append(str(file.path))
             continue
         if not chunks:
+            if migrate:
+                store.replace_chunks_for_source("code", str(file.path), [])
             store.mark_empty_source(*empty_key)
             active_empty.add(empty_key)
             continue
 
         texts = [c.text_for_embedding for c in chunks]
         vectors = embed(texts, entry)
-        all_chunks = [ChunkWithVector(chunk=c, vector=v) for c, v in zip(chunks, vectors)]
-        store.upsert_chunks(all_chunks)
+        all_chunks = [
+            ChunkWithVector(chunk=c, vector=v) for c, v in zip(chunks, vectors)
+        ]
+        if migrate:
+            store.replace_chunks_for_source("code", str(file.path), all_chunks)
+        else:
+            store.upsert_chunks(all_chunks)
         active_sources.add(key)
         chunks_added += len(chunks)
 

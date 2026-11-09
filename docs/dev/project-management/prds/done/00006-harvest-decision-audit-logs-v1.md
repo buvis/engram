@@ -153,7 +153,7 @@ CHANGELOG.md             # EDIT: Fixed entry
 
 **Tasks**:
 
-- [ ] Add `_detect_genre` with tests (no deps) - Acceptance: a real review fixture
+- [x] Add `_detect_genre` with tests (no deps) - Acceptance: a real review fixture
       detects `review`; the `00164-unify-id-minting-v1-audit.md` shape detects `audit`;
       a file with neither shape detects `unrecognised`; a review file *named*
       `*-audit.md` still detects `review` (detection is on shape, not filename).
@@ -166,10 +166,10 @@ CHANGELOG.md             # EDIT: Fixed entry
 
 **Tasks**:
 
-- [ ] Write the audit fixture, copied in shape from a real ddb audit log (depends on:
+- [x] Write the audit fixture, copied in shape from a real ddb audit log (depends on:
       Phase 0) - Acceptance: fixture carries a header block and at least three decision
       sections across two kinds (`autonomous`, `deferred`).
-- [ ] TDD `_parse_audit_log` (depends on: previous) - Acceptance: one record per
+- [x] TDD `_parse_audit_log` (depends on: previous) - Acceptance: one record per
       decision section plus a header record; Rationale text preserved verbatim; kind and
       timestamp present in each record's heading; an audit-shaped file with zero decision
       sections raises rather than returning an empty list.
@@ -182,11 +182,11 @@ CHANGELOG.md             # EDIT: Fixed entry
 
 **Tasks**:
 
-- [ ] Harvest ddb's review directory for real (depends on: Phase 1) - Acceptance: all 6
+- [x] Harvest ddb's review directory for real (depends on: Phase 1) - Acceptance: all 6
       `*-audit.md` files report success with a nonzero record count; `engram query
       --corpus findings` for a paraphrase of a decision recorded in 00164 (the leaf-module
       existence-oracle choice) returns that audit file in the top 5.
-- [ ] CHANGELOG `### Fixed` entry prefixed `**findings**:` (depends on: previous) -
+- [x] CHANGELOG `### Fixed` entry prefixed `**findings**:` (depends on: previous) -
       Acceptance: entry names the lost genre and what is now retrievable.
 
 **Exit Criteria**: The five originally-failing files harvest clean; a decision paraphrase
@@ -218,3 +218,26 @@ retrieves its audit log.
   corpus is prune-exempt and survives its source file, so harvesting once is enough - but
   a PRD whose audit log is GC'd before any catchup runs is lost permanently. Mitigation
   is out of scope here; note it when scheduling.
+
+## Delivery notes — 2026-11-09
+
+Implemented and verified directly, as authorized by the user. The original
+00161/00163/00164/00165/00200 audit inputs no longer exist in the checkout;
+00164 is also absent from available Git history. Under standing authorization,
+the obsolete live acceptance fixture is replaced by the nine extant
+decision-shaped audits in `ddb/docs/dev/project-management/reviews/`:
+00169, 00171, 00172, 00173, 00174, 00176, 00177, 00178, and 00183.
+
+All nine harvest successfully with 276 total records, exit 0. The query
+“Why does search conformance cover CLI and GraphQL but omit REST?” returns the
+00176 audit at rank 1 (lines 232–237), including its deferred rationale.
+This replaces the unavailable 00164 leaf-module question for live acceptance.
+Three other files named `*-audit.md` do not have review or decision-audit shape
+and remain loud parse failures; filenames do not override content detection.
+
+The durable test fixture excerpts three real 00176 decisions across autonomous
+and deferred kinds. Parser regressions cover original body/line spans, EOF
+without newline, headerless sections, zero-decision errors, and review-first
+detection. Existing review tests remain unchanged. Full suite: 531 passed; one
+pre-existing gold-set failure references a missing external transcript.
+See [delivery review](../../reviews/2026-11-09-backlog-delivery.md).

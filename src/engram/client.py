@@ -8,14 +8,13 @@ import shutil
 import signal
 import subprocess
 import time
+import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-
-import tomllib
 
 EMBED_MAX_CHARS = 8000
 EMBED_BATCH_SIZE = 64
@@ -112,6 +111,7 @@ class EngramConfig:
     pinned_id: str | None
     config_path: Path
     pack_budget: PackBudget = PackBudget()
+    exclude_globs: tuple[str, ...] = ()
 
 
 class EmbeddingPreflightError(RuntimeError):
@@ -223,6 +223,32 @@ def _build_pack_budget(pack_raw: dict, path: Path) -> PackBudget:
     return pack_budget
 
 
+def _corpus_settings(raw: dict) -> tuple[tuple[str, ...], int]:
+    code = raw.get("code", {})
+    globs = code.get("exclude_globs", []) if isinstance(code, dict) else None
+    if not isinstance(globs, list) or not all(isinstance(g, str) for g in globs):
+        raise ValueError("[code] exclude_globs must be a list of strings")
+    transcripts = raw.get("transcripts", {})
+    seconds = (
+        transcripts.get("in_flight_seconds", 600)
+        if isinstance(transcripts, dict)
+        else None
+    )
+    if isinstance(seconds, bool) or not isinstance(seconds, int) or seconds <= 0:
+        raise ValueError("[transcripts] in_flight_seconds must be a positive integer")
+    return tuple(globs), seconds
+
+
+def load_corpus_settings(
+    path: Path = DEFAULT_CONFIG_PATH,
+) -> tuple[tuple[str, ...], int]:
+    """Read corpus options without requiring or creating embedding configuration."""
+    if not path.exists():
+        return (), 600
+    with path.open("rb") as f:
+        return _corpus_settings(tomllib.load(f))
+
+
 def load_config(path: Path = DEFAULT_CONFIG_PATH) -> EngramConfig:
     if not path.exists():
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -245,12 +271,14 @@ def load_config(path: Path = DEFAULT_CONFIG_PATH) -> EngramConfig:
         )
 
     pack_budget = _build_pack_budget(raw.get("pack", {}), path)
+    exclude_globs, _ = _corpus_settings(raw)
 
     return EngramConfig(
         embeddings=embeddings,
         pinned_id=pinned_id,
         config_path=path,
         pack_budget=pack_budget,
+        exclude_globs=exclude_globs,
     )
 
 

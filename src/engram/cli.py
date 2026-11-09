@@ -79,7 +79,20 @@ def _build_parser() -> argparse.ArgumentParser:
         help="regenerate vectors of indexed code chunks without a full rebuild",
     )
 
-    status_parser = subparsers.add_parser("status")
+    lookup_parser = subparsers.add_parser("lookup")
+    lookup_mode = lookup_parser.add_mutually_exclusive_group(required=True)
+    lookup_mode.add_argument("--name")
+    lookup_mode.add_argument("--file", type=Path)
+    lookup_parser.add_argument("--scope", choices=["repo", "portfolio"])
+    lookup_parser.add_argument("--repo")
+
+    status_parser = subparsers.add_parser(
+        "status",
+        description=(
+            "Exit 1 for degraded stale files, dead rows, or missing indexed sources; "
+            "recently modified transcripts are reported as in-flight and do not fail status."
+        ),
+    )
     status_parser.add_argument("--scope", choices=["repo", "portfolio"], default=None)
 
     harvest_parser = subparsers.add_parser("harvest")
@@ -92,6 +105,38 @@ def _build_parser() -> argparse.ArgumentParser:
     pack_parser.add_argument("--capsule", default=None)
 
     return parser
+
+
+def _run_lookup(args: argparse.Namespace) -> int:
+    if args.name is not None:
+        if not args.scope:
+            print("lookup --name requires --scope", file=sys.stderr)
+            return 1
+        scope = _resolve_scope(args.scope)
+        if scope is None:
+            print(_repo_scope_error_msg(), file=sys.stderr)
+            return 1
+        if args.repo:
+            if scope.kind == "repo" and args.repo != scope.repo:
+                print("--repo conflicts with the current repo scope", file=sys.stderr)
+                return 1
+            scope = Scope("repo", args.repo)
+        chunks = open_store().lookup_by_name(args.name, scope)
+    else:
+        if args.scope or args.repo:
+            print("lookup --file does not accept --scope or --repo", file=sys.stderr)
+            return 1
+        resolved = _resolve_pack_repo()
+        if resolved is None:
+            return 1
+        _, root = resolved
+        chunks = open_store().lookup_by_path(str((root / args.file).resolve()))
+    if not chunks:
+        print("no symbol matched", file=sys.stderr)
+        return 1
+    for chunk in chunks:
+        print(f"{chunk.path}:{chunk.line_start}-{chunk.line_end}\t{chunk.heading}")
+    return 0
 
 
 def _run_query(args: argparse.Namespace) -> int:
@@ -211,7 +256,10 @@ def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
         try:
             count = reembed_code(open_store(), load_config())
         except StoreModelMismatchError as e:
-            print(f"{e}; run `engram index --rebuild` to rebuild the store", file=sys.stderr)
+            print(
+                f"{e}; run `engram index --rebuild` to rebuild the store",
+                file=sys.stderr,
+            )
             return 1
         except (EmbeddingServerError, EmbeddingPreflightError) as e:
             print(str(e), file=sys.stderr)
@@ -253,8 +301,11 @@ def _run_status(args: argparse.Namespace) -> int:
     report = store.status(scope)
     exit_code = 0
     for corpus, cs in report.per_corpus.items():
+        in_flight = (
+            f"\tin-flight={len(cs.in_flight_files)}" if corpus == "transcripts" else ""
+        )
         print(
-            f"{corpus}\t{cs.row_count}\tstale={len(cs.stale_files)}\tdead={cs.dead_rows}",
+            f"{corpus}\t{cs.row_count}\tstale={len(cs.stale_files)}{in_flight}\tdead={cs.dead_rows}",
         )
         if cs.stale_files or cs.dead_rows > 0:
             exit_code = 1
@@ -272,8 +323,17 @@ def _run_status(args: argparse.Namespace) -> int:
     skipped = symbols.count_skipped()
     if skipped > 0:
         print(f"code\tskipped={skipped}")
+    excluded = symbols.count_excluded()
+    if excluded > 0:
+        print(f"code\texcluded={excluded}")
 
     _print_missing(corpora.missing_dirs, scope)
+    if any(
+        item.startswith("code:")
+        and (scope.kind == "portfolio" or item == f"code:{scope.repo}")
+        for item in corpora.missing_dirs
+    ):
+        exit_code = 1
 
     return exit_code
 
@@ -350,9 +410,7 @@ def _resolve_pack_prd_and_capsule(
     if args.prd is not None:
         prd_path = Path(args.prd)
     else:
-        wip_dir = (
-            repo_root / "docs" / "dev" / "project-management" / "prds" / "wip"
-        )
+        wip_dir = repo_root / "docs" / "dev" / "project-management" / "prds" / "wip"
         if wip_dir.is_dir():
             prd_files = list(wip_dir.glob("*.md"))
             if len(prd_files) == 1:
@@ -431,6 +489,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "query":
         return _run_query(args)
+    if args.command == "lookup":
+        return _run_lookup(args)
     if args.command == "index":
         return _run_index(args, parser)
     if args.command == "harvest":
