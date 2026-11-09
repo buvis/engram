@@ -36,7 +36,7 @@
    Verified memory-only migration on a disposable production-index copy; live installation and refresh remain assigned to Session 3.
    Results: 69 focused tests passed; 517 main tests passed with the known Session 2 failure; 30 evaluation tests passed.
 
-6. **Session 2: stabilize evaluation sources.**
+6. **Session 2: stabilize evaluation sources. (COMPLETE — 2026-11-10)**
    Reproduce `test_real_goldset_loads_clean_and_covers_transcripts_and_code`.
    Inspect the missing gems transcript `c0e70656-a139-4b1b-8407-f8989807631e.jsonl` in Cellar.
    Treat its working-tree deletion as unrelated user state.
@@ -45,6 +45,11 @@
    Keep private transcript bodies outside Git.
    Verify all 55 gold targets and both test suites.
    Record the baseline: 501 main tests passed, one failed; 30 evaluation tests passed.
+   Rechecked baseline: 517 main tests passed, one failed; 30 evaluation tests passed.
+   Cellar had committed the deletion in `eda46f05`; recovered exact bytes from `e2bc3d7b` without changing Cellar.
+   Retained all 55 labels' 53 sources privately with hashes, frozen identities, and available Git provenance.
+   Results: 63 focused tests, 519 main tests, and 47 evaluation tests passed; all eight passage-label queries validated.
+   Production state, historical snapshots, labels, and scores remain unchanged. Continue with Session 3.
 
 7. **Session 3: restore portfolio index health.**
    Investigate the unavailable registered `herdr-plugins` directory before indexing.

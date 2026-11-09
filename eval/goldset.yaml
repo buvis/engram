@@ -3,9 +3,10 @@
 # Each entry pairs a natural-language query with the single file that should
 # surface in engram's top-5 for it, plus the corpus that file belongs to.
 # All expected_path values are absolute and were verified to exist on disk at
-# authoring time; load_goldset() re-checks existence and rejects the whole set
-# if any path is missing, any corpus is unknown, or there are fewer than 30
-# entries.
+# authoring time. Live harness runs require these paths to exist. Snapshot
+# evaluation validates exact private copies against sources.json instead;
+# the original expected_path identities are never replaced by storage paths.
+# Both routes reject unknown corpora or fewer than 30 entries.
 #
 # Corpora present: memory, prd, decision, discovery, transcripts, code.
 # Decision entries added 2026-11-01 from the agent-plugins decision record,
@@ -161,7 +162,8 @@
 # 20261031 from human-driven sessions (first turn not a subagent prompt) BEFORE scoring;
 # rejection reasons were only "no distinct incident" or "not uniquely owned". Queries
 # paraphrase the incident and were not copied from session prose. Do not reword to
-# close a gap. If cellar prunes these too, rebuild the same way.
+# close a gap. Retain exact source bytes now; further pruning must not trigger
+# another relabel. Historical scores still belong to their original freezes.
 - query: "git rebase origin master failed because a leftover repo-local gpg program and signing key overrode the global ssh signing"
   expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/c0e70656-a139-4b1b-8407-f8989807631e.jsonl"
   corpus: transcripts

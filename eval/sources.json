@@ -1,0 +1,431 @@
+{
+  "goldset_sha256": "65570b7375136706d6fe46d241155bcca69343f377d8e2cf02dd5eb308cf584b",
+  "sources": {
+    "/Users/bob/.claude/projects/-Users-bob--claude/memory/feedback_buvis_never_commit_dash_a.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--claude/memory/feedback_buvis_never_commit_dash_a.md",
+      "git": {
+        "commit": "5648802bbbc43a8d1fd8b1cd9914024dff43846f",
+        "path": ".claude/projects/-Users-bob--claude/memory/feedback_buvis_never_commit_dash_a.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "d6a25f9bb02a78a1db46fa7e95b818a5b957cebc6a383fbd9bd5d634f627429c",
+      "size": 1183
+    },
+    "/Users/bob/.claude/projects/-Users-bob--claude/memory/feedback_no_copilot_for_claude_models.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--claude/memory/feedback_no_copilot_for_claude_models.md",
+      "git": {
+        "commit": "5648802bbbc43a8d1fd8b1cd9914024dff43846f",
+        "path": ".claude/projects/-Users-bob--claude/memory/feedback_no_copilot_for_claude_models.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "0c1073376551af67acc1cdd83bd08c67f9e43ba558e5e7d949112fce3918021f",
+      "size": 1811
+    },
+    "/Users/bob/.claude/projects/-Users-bob--claude/memory/feedback_subagents_vs_live_worktree.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--claude/memory/feedback_subagents_vs_live_worktree.md",
+      "git": {
+        "commit": "5648802bbbc43a8d1fd8b1cd9914024dff43846f",
+        "path": ".claude/projects/-Users-bob--claude/memory/feedback_subagents_vs_live_worktree.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "f07b74af45ab11fe9b6496490685c08cd2439eaa7e1af84ac6d4612f69ab500c",
+      "size": 1851
+    },
+    "/Users/bob/.claude/projects/-Users-bob--claude/memory/project_autopilot_cargo_oom_lockout.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--claude/memory/project_autopilot_cargo_oom_lockout.md",
+      "git": {
+        "commit": "5648802bbbc43a8d1fd8b1cd9914024dff43846f",
+        "path": ".claude/projects/-Users-bob--claude/memory/project_autopilot_cargo_oom_lockout.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "a236426fd475a40ef18a13fc203112885182dad04119e988159db9c8c7bb8486",
+      "size": 2221
+    },
+    "/Users/bob/.claude/projects/-Users-bob--claude/memory/project_autopilot_head_moves_midreview.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--claude/memory/project_autopilot_head_moves_midreview.md",
+      "git": {
+        "commit": "a8c3327ad51755fd36f70d8e80473fa127ce2a7b",
+        "path": ".claude/projects/-Users-bob--claude/memory/project_autopilot_head_moves_midreview.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "c99fdb2ad2e3a83ecdae6f90d0311a71c0d4f0719c2e7765c567985c984d6efd",
+      "size": 2422
+    },
+    "/Users/bob/.claude/projects/-Users-bob--claude/memory/project_qwen_local_stack.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--claude/memory/project_qwen_local_stack.md",
+      "git": {
+        "commit": "e9821ea86bd6fa52b7aeadcbcdebfea3fce356d7",
+        "path": ".claude/projects/-Users-bob--claude/memory/project_qwen_local_stack.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "df63aacb4af16302d9e63f903e641fa7470f66d1c3f6d223555428ca87a26ec7",
+      "size": 3277
+    },
+    "/Users/bob/.claude/projects/-Users-bob--claude/memory/project_warden_unattended_deadlock_fix.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--claude/memory/project_warden_unattended_deadlock_fix.md",
+      "git": {
+        "commit": "5648802bbbc43a8d1fd8b1cd9914024dff43846f",
+        "path": ".claude/projects/-Users-bob--claude/memory/project_warden_unattended_deadlock_fix.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "b2a4008ad6348fd565b393856d0aef931eddfd6804ad3adaf8d97a89e0fe8426",
+      "size": 1293
+    },
+    "/Users/bob/.claude/projects/-Users-bob--claude/memory/reference_grep_glob_missing.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--claude/memory/reference_grep_glob_missing.md",
+      "git": {
+        "commit": "5648802bbbc43a8d1fd8b1cd9914024dff43846f",
+        "path": ".claude/projects/-Users-bob--claude/memory/reference_grep_glob_missing.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "e98255af9478e115ae08164e348ba6c23951f667b6b2dbe753171ce5e0cdd862",
+      "size": 2264
+    },
+    "/Users/bob/.claude/projects/-Users-bob-bim/memory/cen-interpreter-not-compiler.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-bim/memory/cen-interpreter-not-compiler.md",
+      "git": {
+        "commit": "51364edcabb5a39fccb449199338595e416a9305",
+        "path": ".claude/projects/-Users-bob-bim/memory/cen-interpreter-not-compiler.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "3641068943d8a303d091e24440377bb06830e79a33c5252be392cb894a4a9d0f",
+      "size": 2397
+    },
+    "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-calcard-mcp/memory/caldav-save-recurrence-hijack.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-calcard-mcp/memory/caldav-save-recurrence-hijack.md",
+      "git": {
+        "commit": "78f9c02f840b99d5889d89f0427dbb2d3517e463",
+        "path": ".claude/projects/-Users-bob-git-src-github-com-buvis-calcard-mcp/memory/caldav-save-recurrence-hijack.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "f92ab1d9a6b66007bad3445e80cf39a03ac7452716b924d45de603f5c0524083",
+      "size": 1012
+    },
+    "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-claude-warden/memory/project_npm_v3_burned.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-claude-warden/memory/project_npm_v3_burned.md",
+      "git": {
+        "commit": "5648802bbbc43a8d1fd8b1cd9914024dff43846f",
+        "path": ".claude/projects/-Users-bob-git-src-github-com-buvis-claude-warden/memory/project_npm_v3_burned.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "87e0f2cc0e90364fb72d0065724b84a7b457c2ae2b279a3ed0d431d49d3745da",
+      "size": 620
+    },
+    "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-clusters/memory/project_dns_circular_dep.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-clusters/memory/project_dns_circular_dep.md",
+      "git": {
+        "commit": "e830f948293c64f0a7c53cca43f09f664ccb822b",
+        "path": ".claude/projects/-Users-bob-git-src-github-com-buvis-clusters/memory/project_dns_circular_dep.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "b1394e3f3d18843d5c10f1e4342cb86b23b9d9cfe0be7488ffc61e0299e11dfe",
+      "size": 5122
+    },
+    "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-container-images/memory/project_xterm_v6_addon_mismatch.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-container-images/memory/project_xterm_v6_addon_mismatch.md",
+      "git": {
+        "commit": "bbabb39f5b6bcb3dd4388168d014b2f16bfa2f29",
+        "path": ".claude/projects/-Users-bob-git-src-github-com-buvis-container-images/memory/project_xterm_v6_addon_mismatch.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "5a3c115402cdc1d81bd4d74fe070d41363e0de296834e33c5f510af5a674bc29",
+      "size": 1692
+    },
+    "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-engram/memory/embedding-serving-is-llama-server.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-engram/memory/embedding-serving-is-llama-server.md",
+      "git": {
+        "commit": "ff5a09b32d45f12e2de2d54ca88177071915c71f",
+        "path": ".claude/projects/-Users-bob-git-src-github-com-buvis-engram/memory/embedding-serving-is-llama-server.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "be52660ad19877ec3cdaa9d4d6576fa293de5684e0c9c556283ab96a3a2885da",
+      "size": 1333
+    },
+    "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-engram/memory/engram-is-cli-not-plugin.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-engram/memory/engram-is-cli-not-plugin.md",
+      "git": {
+        "commit": "2f4b9cddec30f22ad266c92be029d941c81f2e7f",
+        "path": ".claude/projects/-Users-bob-git-src-github-com-buvis-engram/memory/engram-is-cli-not-plugin.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "bbc1a0ea4300f67104e35906c520a05e702b76f9935a8d2ec24bf60f4ef537b6",
+      "size": 978
+    },
+    "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/memory/project_buvis-ls-files-trap.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/memory/project_buvis-ls-files-trap.md",
+      "git": {
+        "commit": "53d0479f683c79048fbcebe97a6e7fb1ec1e108f",
+        "path": ".claude/projects/-Users-bob-git-src-github-com-buvis-gems/memory/project_buvis-ls-files-trap.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "e36b0e1c88307598d2a0b5038e3d4c17a964c016bfb905c87bd4fea71c821ae6",
+      "size": 2402
+    },
+    "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-doogat-ddb/memory/project_data_loss_write_path.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-doogat-ddb/memory/project_data_loss_write_path.md",
+      "git": {
+        "commit": "f115e547f8139da1a5abc0551cd496ba74c5045a",
+        "path": ".claude/projects/-Users-bob-git-src-github-com-doogat-ddb/memory/project_data_loss_write_path.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "b36c74152b864f9f0b7a324a1c031a697bc9a5aa253338f5f7437823471ad90a",
+      "size": 5332
+    },
+    "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-doogat-ddb/memory/project_index_rebuild_concurrency_race.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-doogat-ddb/memory/project_index_rebuild_concurrency_race.md",
+      "git": {
+        "commit": "5b203ea7ca8b286fb8713379ad63fb66df3c93b4",
+        "path": ".claude/projects/-Users-bob-git-src-github-com-doogat-ddb/memory/project_index_rebuild_concurrency_race.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "61b4538db86aa6da0d6f9ce7408152d83037e0e4f6653f7184673e204323649c",
+      "size": 2372
+    },
+    "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-doogat-ddb/memory/project_two_error_mapping_paths.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-doogat-ddb/memory/project_two_error_mapping_paths.md",
+      "git": {
+        "commit": "e80cf3251cacf8d322daa5685b46b515ff755c0b",
+        "path": ".claude/projects/-Users-bob-git-src-github-com-doogat-ddb/memory/project_two_error_mapping_paths.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "be51546b41245dc397641f9c6de84366037f7f2884e78fc1fc8b647189b0804b",
+      "size": 2346
+    },
+    "/Users/bob/.claude/projects/-Users-bob-git-src-github-com-tbouska-playground/memory/reviewer-cli-degradation.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-tbouska-playground/memory/reviewer-cli-degradation.md",
+      "git": {
+        "commit": "b8caec14d1f1b1550934bf5e65374fb73d448d4e",
+        "path": ".claude/projects/-Users-bob-git-src-github-com-tbouska-playground/memory/reviewer-cli-degradation.md",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "2ef5f5ebff7ab68068893ac30ba3a378f0d35c86e296fe80905e0d778b62442c",
+      "size": 1960
+    },
+    "/Users/bob/git/src/github.com/buvis/agent-plugins/docs/dev/project-management/meta/decisions.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/agent-plugins/docs/dev/project-management/meta/decisions.md",
+      "sha256": "c3963e6c07f1188cf8a12ce788e4dcf7901ff34a1419d2da6060d7198d7d050d",
+      "size": 66501
+    },
+    "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--config-herdr/4f39ace6-586d-4eba-851c-f970991568fc.jsonl": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--config-herdr/4f39ace6-586d-4eba-851c-f970991568fc.jsonl",
+      "git": {
+        "commit": "0cf8a9349bd4b03a1903a72b13a4005ce29f3605",
+        "path": ".claude/projects/-Users-bob--config-herdr/4f39ace6-586d-4eba-851c-f970991568fc.jsonl",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "37e0758cd36bf7b71cad77c5c6cda41be290ecf24dc438230b68b95cde94a83b",
+      "size": 1047784
+    },
+    "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--local-bin/dc8d9076-817d-474f-a9fc-190a61b5cd6e.jsonl": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob--local-bin/dc8d9076-817d-474f-a9fc-190a61b5cd6e.jsonl",
+      "git": {
+        "commit": "0f06a95839c03a8c236f3133624a8e855896fb4c",
+        "path": ".claude/projects/-Users-bob--local-bin/dc8d9076-817d-474f-a9fc-190a61b5cd6e.jsonl",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "210ac81782e3a8b22e8e287e4a6fe93d8840bfb06cc810d81177b28a42b39708",
+      "size": 566856
+    },
+    "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-claude-autopilot/1991b0db-52d4-4aa8-9a1d-623bb916cbf1.jsonl": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-claude-autopilot/1991b0db-52d4-4aa8-9a1d-623bb916cbf1.jsonl",
+      "git": {
+        "commit": "0f06a95839c03a8c236f3133624a8e855896fb4c",
+        "path": ".claude/projects/-Users-bob-git-src-github-com-buvis-claude-autopilot/1991b0db-52d4-4aa8-9a1d-623bb916cbf1.jsonl",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "d81d139c857e7c2933c118cc88fde42ba1824b00ac161105e04f8f885e604e31",
+      "size": 699569
+    },
+    "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-container-images/1b9ca89d-5f2d-497f-b11b-4292f18b00e4.jsonl": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-container-images/1b9ca89d-5f2d-497f-b11b-4292f18b00e4.jsonl",
+      "git": {
+        "commit": "cc5e32147d8717e935ea42f8fd6344d1bd3935fc",
+        "path": ".claude/projects/-Users-bob-git-src-github-com-buvis-container-images/1b9ca89d-5f2d-497f-b11b-4292f18b00e4.jsonl",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "65ac1b2838ec722acd0fb8d515d56d719bbf1c868718b16a47d65e1e5d84d901",
+      "size": 172060
+    },
+    "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/3c8bd81c-1ed1-4e9c-913a-d904af2e19ec.jsonl": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/3c8bd81c-1ed1-4e9c-913a-d904af2e19ec.jsonl",
+      "git": {
+        "commit": "188cc18830a42afafd05f6ad6d538a5b7470257e",
+        "path": ".claude/projects/-Users-bob-git-src-github-com-buvis-gems/3c8bd81c-1ed1-4e9c-913a-d904af2e19ec.jsonl",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "9e7b2cd1bc6157f80458f7e59beb56096ac1d511752a5b9f12065a7a9dca8c72",
+      "size": 635110
+    },
+    "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/c0e70656-a139-4b1b-8407-f8989807631e.jsonl": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/c0e70656-a139-4b1b-8407-f8989807631e.jsonl",
+      "git": {
+        "commit": "e2bc3d7b30027e542dd894db0f774e315c6baf0c",
+        "path": ".claude/projects/-Users-bob-git-src-github-com-buvis-gems/c0e70656-a139-4b1b-8407-f8989807631e.jsonl",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "40071e87472d4d7d2e9f63ffb4fef9d0685b8e6ad6d93fb20748507f5f2f2c32",
+      "size": 558897
+    },
+    "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-ovcaq/5729c201-a2c0-438c-b406-13dea0cc5ef0.jsonl": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-ovcaq/5729c201-a2c0-438c-b406-13dea0cc5ef0.jsonl",
+      "git": {
+        "commit": "932f2d2257a411d2650bb09fd57277fcffa4336b",
+        "path": ".claude/projects/-Users-bob-git-src-github-com-buvis-ovcaq/5729c201-a2c0-438c-b406-13dea0cc5ef0.jsonl",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "455865e5c630014ca07c8ce9eca19d3bd736eb968c9e650fd8631b0580b1b936",
+      "size": 1747886
+    },
+    "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/54028013-2983-4968-a152-5dd0b0ee04dc.jsonl": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/54028013-2983-4968-a152-5dd0b0ee04dc.jsonl",
+      "git": {
+        "commit": "ab6b7f75024b16e8c60162cfb56a00c7ca93b033",
+        "path": ".claude/projects/-Users-bob/54028013-2983-4968-a152-5dd0b0ee04dc.jsonl",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "fb1889ae3f5b2f6aecbb1e60a9a23838b9fe1cf6912c5289a12d72568d8c8e85",
+      "size": 715897
+    },
+    "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/821762c9-8c93-4a1a-80e9-db949e2c5f90.jsonl": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/821762c9-8c93-4a1a-80e9-db949e2c5f90.jsonl",
+      "git": {
+        "commit": "79420d586e5cc34f837853487c78fcffcd008d55",
+        "path": ".claude/projects/-Users-bob/821762c9-8c93-4a1a-80e9-db949e2c5f90.jsonl",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "c4a1070c40ea439d3a6b494f1b2dad277c69eeb95e63c113f13439f6f99a042c",
+      "size": 704008
+    },
+    "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/8da8260b-77cf-4e5e-bc64-0dce47f66376.jsonl": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/8da8260b-77cf-4e5e-bc64-0dce47f66376.jsonl",
+      "git": {
+        "commit": "edff49335cc95fe5361fefaa0db7fd1b58410a4e",
+        "path": ".claude/projects/-Users-bob/8da8260b-77cf-4e5e-bc64-0dce47f66376.jsonl",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "a764bc1592cd5b905e4b7d2a7b93fbc4cf7c332aea7c0c26474bed410c656136",
+      "size": 814084
+    },
+    "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/9e96514d-ca3e-4c79-ac79-30d25a11e7bb.jsonl": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/9e96514d-ca3e-4c79-ac79-30d25a11e7bb.jsonl",
+      "git": {
+        "commit": "1a5f994e0e96a35d7ec88b41d347d50b7b0ac7f2",
+        "path": ".claude/projects/-Users-bob/9e96514d-ca3e-4c79-ac79-30d25a11e7bb.jsonl",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "98efd17570e1cb32a32e6dd9b1b1d512ae69a9149a6c40a3b8fdfc92a83983a6",
+      "size": 1187054
+    },
+    "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/c448f52d-d9e3-4161-9bb5-a9d46f7a0bdb.jsonl": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/c448f52d-d9e3-4161-9bb5-a9d46f7a0bdb.jsonl",
+      "git": {
+        "commit": "71fb087dc33c155c163ba87dec9dcc5bdf635d08",
+        "path": ".claude/projects/-Users-bob/c448f52d-d9e3-4161-9bb5-a9d46f7a0bdb.jsonl",
+        "repo": "/Users/bob/git/src/github.com/buvis/cellar"
+      },
+      "sha256": "c6c707721c36b578836aa869003a050237e1d7a8eb4e450ac65b3999338b4676",
+      "size": 737283
+    },
+    "/Users/bob/git/src/github.com/buvis/claude-aegis/docs/dev/project-management/prds/backlog/00008-block-invisible-unicode-v1.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/claude-aegis/docs/dev/project-management/prds/backlog/00008-block-invisible-unicode-v1.md",
+      "sha256": "a243d944c986b23fe8bbadb0707616f2b21afb288b5c6985ee3f5982fe892474",
+      "size": 8816
+    },
+    "/Users/bob/git/src/github.com/buvis/claude-autopilot/docs/dev/project-management/discovery/00177-cut-review-and-test-loop-overhead.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/claude-autopilot/docs/dev/project-management/discovery/00177-cut-review-and-test-loop-overhead.md",
+      "sha256": "969fd7df5f839642093afa2263a5db925e9e29251f376ac7038940c886f8abe9",
+      "size": 11653
+    },
+    "/Users/bob/git/src/github.com/buvis/claude-warden/docs/dev/project-management/prds/done/00016-scan-heredoc-script-bodies-v1.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/claude-warden/docs/dev/project-management/prds/done/00016-scan-heredoc-script-bodies-v1.md",
+      "sha256": "2b8c786e8b87eb3bd4c10cbed60543547d06f4dc0074c48e35e17122f8ab624c",
+      "size": 9731
+    },
+    "/Users/bob/git/src/github.com/buvis/container-images/apps/clara/backend/src/clara/jobs/reminders.py": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/container-images/apps/clara/backend/src/clara/jobs/reminders.py",
+      "sha256": "a69873be80dbb8a1f390d5623078766fef88b1eb60d190bed95bdba4290a850e",
+      "size": 4247
+    },
+    "/Users/bob/git/src/github.com/buvis/container-images/apps/mkdocs-git-sync/container-files/syncer/linkcheck/notifiers.py": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/container-images/apps/mkdocs-git-sync/container-files/syncer/linkcheck/notifiers.py",
+      "sha256": "ee718fc5f572b8af1b2d077d4005d562f744ea25bbde2dc6211096dca97f44d7",
+      "size": 4431
+    },
+    "/Users/bob/git/src/github.com/buvis/container-images/docs/dev/project-management/prds/backlog/00029-operator-retain-pvc-data-loss-v1.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/container-images/docs/dev/project-management/prds/backlog/00029-operator-retain-pvc-data-loss-v1.md",
+      "sha256": "81ac74b7f148d3de6569080f00e702e46d70a961ed6ca1b663d0335adc681c41",
+      "size": 4841
+    },
+    "/Users/bob/git/src/github.com/buvis/engram/docs/dev/project-management/prds/done/00001-engram-core-v1.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/engram/docs/dev/project-management/prds/done/00001-engram-core-v1.md",
+      "sha256": "0a74d72efa2a3098e9ee8ca002ffc76ebda6e2f7087a95c959cd9d2ac0724548",
+      "size": 13959
+    },
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/prds/done/00095-dot-pull-divergence-report-v1.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/prds/done/00095-dot-pull-divergence-report-v1.md",
+      "sha256": "75eaff37c3a16ac618828f2a133dd02990e8419a0cc66c7dd8dbcf5ebfe112ed",
+      "size": 15624
+    },
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/prds/done/00096-sysup-expiry-registry-v1.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/prds/done/00096-sysup-expiry-registry-v1.md",
+      "sha256": "77a9aa1c38aea96e0213b369f689065395110b37f0028d0bec96eee6cf91f2b8",
+      "size": 40092
+    },
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/prds/done/00105-sysup-uv-tool-python-pin-v1.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/prds/done/00105-sysup-uv-tool-python-pin-v1.md",
+      "sha256": "6b4e318a02a6073cbe3802ff4d422d4f0b2d573597b2b51fc4ed7e5a86857d48",
+      "size": 17434
+    },
+    "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/prds/done/00112-backup-live-progress-and-quiet-v1.md": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/gems/docs/dev/project-management/prds/done/00112-backup-live-progress-and-quiet-v1.md",
+      "sha256": "7f2dfcf0506c4f01f045f43a841528552bf910fc6eb9f6d632349f1d4e9cb097",
+      "size": 9193
+    },
+    "/Users/bob/git/src/github.com/buvis/gems/src/lib/buvis/pybase/adapters/console/console.py": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/gems/src/lib/buvis/pybase/adapters/console/console.py",
+      "sha256": "2e98b1d61e53e6325a87bf315960d00e5f1eb1672566489d518821e169654f95",
+      "size": 14093
+    },
+    "/Users/bob/git/src/github.com/buvis/mkdocs-zettelkasten/mkdocs_zettelkasten/plugin/utils/frontmatter.py": {
+      "expected_path": "/Users/bob/git/src/github.com/buvis/mkdocs-zettelkasten/mkdocs_zettelkasten/plugin/utils/frontmatter.py",
+      "sha256": "ae3885cc79243b827ee6902e9f91204a60f85f423256419519730a25aeec7077",
+      "size": 1097
+    },
+    "/Users/bob/git/src/github.com/doogat/ddb/ddb-core/src/git_ops/write_lock.rs": {
+      "expected_path": "/Users/bob/git/src/github.com/doogat/ddb/ddb-core/src/git_ops/write_lock.rs",
+      "sha256": "ceee15cbdbf430b01b932b5ee4631785face54050df5608a1e3a4cdfe9c77e1e",
+      "size": 9545
+    },
+    "/Users/bob/git/src/github.com/doogat/ddb/docs/dev/project-management/prds/done/00162-cross-process-write-lock-v1.md": {
+      "expected_path": "/Users/bob/git/src/github.com/doogat/ddb/docs/dev/project-management/prds/done/00162-cross-process-write-lock-v1.md",
+      "sha256": "f14b9f11107bf80a34754373dd552ec6bb40c2ec479acbb219f67b2b4068772b",
+      "size": 10256
+    },
+    "/Users/bob/git/src/github.com/doogat/ddb/docs/dev/project-management/prds/done/00165-deterministic-crdt-resolution-v1.md": {
+      "expected_path": "/Users/bob/git/src/github.com/doogat/ddb/docs/dev/project-management/prds/done/00165-deterministic-crdt-resolution-v1.md",
+      "sha256": "50fcee265e74a42e2b90f4264af2766dd14defbef6dd83417a1cb6be42b24214",
+      "size": 11154
+    },
+    "/Users/bob/git/src/github.com/doogat/ddb/docs/dev/project-management/prds/done/00200-make-merge-tree-three-way-v1.md": {
+      "expected_path": "/Users/bob/git/src/github.com/doogat/ddb/docs/dev/project-management/prds/done/00200-make-merge-tree-three-way-v1.md",
+      "sha256": "f2ed35dd41777251bc680a880942d23aeab680669ada435a9d4935523f11987b",
+      "size": 12487
+    },
+    "/Users/bob/git/src/github.com/doogat/ddb/docs/dev/project-management/prds/hold/00179-sql-identifier-escaping-materializer-v1.md": {
+      "expected_path": "/Users/bob/git/src/github.com/doogat/ddb/docs/dev/project-management/prds/hold/00179-sql-identifier-escaping-materializer-v1.md",
+      "sha256": "c487fc2a50a55204855c8a00856fbc483de83de17e3f1e2970e50169fb931f1a",
+      "size": 21453
+    },
+    "/Users/bob/git/src/github.com/doogat/jink/docs/dev/project-management/prds/backlog/00029-harden-favicon-fetch-pipeline-v1.md": {
+      "expected_path": "/Users/bob/git/src/github.com/doogat/jink/docs/dev/project-management/prds/backlog/00029-harden-favicon-fetch-pipeline-v1.md",
+      "sha256": "0aaae9eec91a86e1cd27ef0b7ebc5046c4756e3e744f28a5ceed68113dad8f55",
+      "size": 3857
+    },
+    "/Users/bob/git/src/github.com/tbouska/playground/docs/dev/project-management/discovery/00006-format-interop-netlist-hub.md": {
+      "expected_path": "/Users/bob/git/src/github.com/tbouska/playground/docs/dev/project-management/discovery/00006-format-interop-netlist-hub.md",
+      "sha256": "89dd9176d540b108972fe1c4b1ae1ea2197cd95ae1e227c3a02675f2bcabb4fe",
+      "size": 30197
+    }
+  },
+  "version": 1
+}

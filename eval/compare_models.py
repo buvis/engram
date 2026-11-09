@@ -17,7 +17,7 @@ import subprocess
 import time
 import tomllib
 from collections import defaultdict
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 from typing import Any
 
@@ -25,10 +25,12 @@ import yaml
 
 from engram.client import EmbeddingEntry, EngramConfig, Vector
 from engram.corpora import CorpusFile, hash_source
+from engram.harness import load_goldset
 from engram.indexer import _chunk_file
 from engram.query import query
 from engram.store import Chunk, ChunkWithVector, Scope, open_store
 from eval.benchmark_runtime import Server, request
+from eval.sources import STORAGE, load_sources
 
 ROOT = Path(__file__).resolve().parent
 CACHE = Path.home() / ".cache/engram/compare"
@@ -100,36 +102,44 @@ def select_snapshot(
     ]
 
 
-def prepare(full: bool = False, max_chars: int = MAX_CHARS) -> Path:
+def prepare(
+    full: bool = False, max_chars: int = MAX_CHARS, *, source_storage: Path = STORAGE
+) -> Path:
     labels = yaml.safe_load((ROOT / "passage_labels.yaml").read_text())
-    gold = yaml.safe_load((ROOT / "goldset.yaml").read_text())
+    sources = load_sources(ROOT / "goldset.yaml", ROOT / "sources.json", source_storage)
+    gold = [
+        asdict(entry)
+        for entry in load_goldset(ROOT / "goldset.yaml", source_paths=sources)
+    ]
+    retained = {source.expected_path: source.path for source in sources.values()}
     conn = sqlite3.connect(f"file:{SOURCE}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
     try:
         rows = [dict(row) for row in conn.execute("SELECT * FROM chunks ORDER BY id")]
-        by_source = {
-            (g["corpus"], str(Path(g["expected_path"]).resolve())) for g in gold
-        }
+        by_source = {(g["corpus"], g["expected_path"]) for g in gold}
         repos = {row["path"]: row["repo"] for row in rows}
-        # Gold files can move after production indexing. Refresh only in the
-        # snapshot, and fail instead of silently scoring an absent gold file.
+        # Use retained bytes only in this new snapshot. Keep the original source
+        # identity for scoring and embedding paths; never rewrite old campaigns.
         rows = [row for row in rows if (row["corpus"], row["path"]) not in by_source]
-        next_id = max(row["id"] for row in rows) + 1
+        next_id = max((row["id"] for row in rows), default=0) + 1
         for corpus, path in sorted(by_source):
             source = Path(path)
             repo = repos.get(
                 path,
-                source.parts[source.parts.index("github.com") + 2]
-                if "github.com" in source.parts
-                else "engram",
+                (
+                    source.parts[source.parts.index("github.com") + 2]
+                    if "github.com" in source.parts
+                    else "engram"
+                ),
             )
             chunks = _chunk_file(
-                CorpusFile(corpus=corpus, repo=repo, path=source), hash_source(source)
+                CorpusFile(corpus=corpus, repo=repo, path=retained[path]),
+                hash_source(retained[path]),
             )
             if not chunks:
                 raise ValueError(f"gold source has no chunks: {path}")
             for chunk in chunks:
-                rows.append({"id": next_id, **asdict(chunk)})
+                rows.append({"id": next_id, **asdict(replace(chunk, path=path))})
                 next_id += 1
         negatives: set[int] = set()
         for g in gold:
@@ -145,7 +155,7 @@ def prepare(full: bool = False, max_chars: int = MAX_CHARS) -> Path:
     finally:
         conn.close()
     for i, g in enumerate(gold):
-        g["path"] = str(Path(g.pop("expected_path")).resolve())
+        g["path"] = g.pop("expected_path")
         if i in labels:
             g["acceptable_starts"] = labels[i]
             available = {
@@ -163,6 +173,9 @@ def prepare(full: bool = False, max_chars: int = MAX_CHARS) -> Path:
     else:
         rows = [r for r in rows if r["corpus"] in {g["corpus"] for g in gold}]
     payload = {
+        "gold_sources_sha256": hashlib.sha256(
+            (ROOT / "sources.json").read_bytes()
+        ).hexdigest(),
         "mode": "full" if full else "screen",
         "max_chars": max_chars,
         "gold": gold,

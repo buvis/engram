@@ -59,6 +59,12 @@ class GoldEntry:
 
 
 @dataclass(frozen=True)
+class RetainedSource:
+    expected_path: str
+    path: Path
+
+
+@dataclass(frozen=True)
 class ModelScore:
     hit_rate: float
     per_corpus_hit_rate: dict[str, float]
@@ -126,24 +132,35 @@ def _candidate_db(work_dir: Path, entry: EmbeddingEntry, goldset) -> Path:
     return work_dir / f"{name}.db"
 
 
-def load_goldset(goldset_path: Path) -> list[GoldEntry]:
+def load_goldset(
+    goldset_path: Path, *, source_paths: dict[str, RetainedSource] | None = None
+) -> list[GoldEntry]:
+    """Validate live sources, or explicitly supplied retained copies.
+
+    Retained paths are for validation only; expected_path remains the original
+    scoring identity. Snapshot callers must verify hashes before supplying them.
+    The live harness deliberately does not pass this mapping.
+    """
     raw = yaml.safe_load(goldset_path.read_text())
     if len(raw) < 30:
         raise ValueError(f"goldset has {len(raw)} entries, need >= 30")
+    entries = []
     for entry in raw:
         if entry["corpus"] not in _VALID_CORPORA:
             raise ValueError(f"unknown corpus {entry['corpus']!r}")
-        resolved = str(Path(entry["expected_path"]).resolve())
-        if not Path(resolved).exists():
+        label = entry["expected_path"]
+        if source_paths is None:
+            source = Path(label).resolve()
+            resolved = str(source)
+        else:
+            if label not in source_paths:
+                raise ValueError(f"retained source missing: {label}")
+            source = source_paths[label].path
+            resolved = source_paths[label].expected_path
+        if not source.is_file():
             raise ValueError(f"expected_path does not exist: {resolved}")
-    return [
-        GoldEntry(
-            query=e["query"],
-            expected_path=str(Path(e["expected_path"]).resolve()),
-            corpus=e["corpus"],
-        )
-        for e in raw
-    ]
+        entries.append(GoldEntry(entry["query"], resolved, entry["corpus"]))
+    return entries
 
 
 def _score_candidate(

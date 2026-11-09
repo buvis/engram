@@ -11,6 +11,7 @@ from engram.harness import (
     GoldEntry,
     HarnessReport,
     ModelScore,
+    RetainedSource,
     _baseline_hit_rate,
     _sanitize_for_filename,
     _write_pinned,
@@ -238,6 +239,28 @@ def test_load_goldset_rejects_entry_with_missing_expected_path(tmp_path):
         load_goldset(goldset_path)
 
 
+def test_retained_sources_validate_without_relabeling_or_live_fallback(
+    tmp_path: Path,
+) -> None:
+    original = tmp_path / "deleted.md"
+    retained = tmp_path / "retained.md"
+    retained.write_text("# Original evidence\n")
+    goldset_path = tmp_path / "goldset.yaml"
+    _write_goldset(goldset_path, _valid_goldset_entries([original] * 30))
+
+    entries = load_goldset(
+        goldset_path,
+        source_paths={str(original): RetainedSource(str(original), retained)},
+    )
+    assert {e.expected_path for e in entries} == {str(original)}
+    with pytest.raises(ValueError, match="does not exist"):
+        load_goldset(goldset_path)
+
+    original.write_text("New live evidence must not fill an incomplete archive")
+    with pytest.raises(ValueError, match="retained source missing"):
+        load_goldset(goldset_path, source_paths={})
+
+
 # --- load_goldset: valid fixture accepted and normalized ---
 
 
@@ -276,18 +299,17 @@ def test_load_goldset_accepts_transcripts_and_code_corpora(tmp_path):
 # --- the shipped gold set itself loads clean and covers the heavy corpora ---
 
 
-def test_real_goldset_loads_clean_and_covers_transcripts_and_code():
-    # The synthetic tests above only exercise load_goldset's rules on fixtures;
-    # this one guards the actually-shipped eval/goldset.yaml. load_goldset
-    # re-checks that every expected_path exists, every corpus is known, and
-    # there are >= 30 entries, so it fails loud on PRD-lifecycle path drift (an
-    # entry pointing at a PRD that moved backlog->wip->done out from under it)
-    # and on a gold set that lost transcripts/code coverage. PRD 00002 added
-    # both heavy corpora, so both must be represented.
+def test_real_goldset_loads_clean_and_covers_transcripts_and_code() -> None:
+    # This is private-source acceptance, not a portable fixture test. Validate
+    # exact retained evidence and unchanged labels, independent of Cellar churn.
+    # The live harness still rejects missing live targets (covered above).
+    from eval.sources import load_sources
+
     goldset_path = Path(__file__).resolve().parent.parent / "eval" / "goldset.yaml"
 
-    entries = load_goldset(goldset_path)
+    entries = load_goldset(goldset_path, source_paths=load_sources())
 
+    assert len(entries) == 55
     corpora = {e.corpus for e in entries}
     assert "transcripts" in corpora
     assert "code" in corpora

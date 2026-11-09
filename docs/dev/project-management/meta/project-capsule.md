@@ -1,6 +1,6 @@
 # Project Capsule: engram
 
-Updated: 2026-11-05, after the separate file-held-out probe.
+Updated: 2026-11-10, after Session 2 evaluation-source retention.
 
 ## Key Invariants
 
@@ -145,3 +145,69 @@ Sessions 2–8 remain pending in `plans/2026-11-09-engram-next-work.md`. This wa
 bounded repair session, not new PRD execution; PRDs 00001–00007 and the previous
 global installation remain complete.
 No session worktree or scratch file remains.
+
+## Session 2 complete: evaluation sources (2026-11-10)
+
+This section supersedes earlier source-availability observations. The assessment
+baseline remains **501 main passed, one failed; 30 eval passed**. At session start,
+after Session 1, verification reproduced **517 main passed, one failed; 30 eval
+passed**, with the same missing gems transcript. Cellar had since committed the
+deletion in `eda46f05ef5ea06d19d470e7a2f04024255265b3` (November 9, 23:37 CET).
+The exact 558,897-byte source was recovered privately from
+`e2bc3d7b30027e542dd894db0f774e315c6baf0c`, blob
+`6e0a164b6d8508b6eee1a7403dbc93a89d5de1fd`; its SHA-256 is
+`40071e87472d4d7d2e9f63ffb4fef9d0685b8e6ad6d93fb20748507f5f2f2c32`.
+Its retained turns contain the rebase, GPG, signing-key, and SSH incident evidence.
+Cellar's worktree and index were not changed.
+
+`eval/sources.json` now pins the gold-set fingerprint, resolved scoring identities,
+source hashes/sizes, and available Git revisions. All **55 unchanged labels**
+have their **53 distinct sources** retained under
+`~/.local/share/engram/eval/sources/` (9,951,037 bytes, directories `0700`, files
+`0600`). Source bodies remain outside Git. Thirty-two sources have matching
+Cellar revisions; 21 require private backup if their live sources disappear.
+`PYTHONPATH=src:. .venv/bin/python -m eval.sources validate` verifies the archive;
+`restore` recovers missing copies only from matching live bytes or pinned Git
+history. Capture refuses overwrite; validation rejects missing/corrupt sources,
+label drift, and incomplete manifests. Frozen symlink identities survive source
+retargeting/deletion, including restoration through the original resolved path.
+
+New comparison preparation chunks retained bytes while preserving original
+scoring/embedding paths and records the manifest hash in its snapshot identity.
+All sources chunk successfully (**729 chunks**); all **eight passage-label
+queries** still match. No new campaign was prepared or scored. Gold queries,
+target labels, corpus labels, and passage labels are unchanged. The shipped-set
+test now explicitly validates retained private evidence. The live harness remains
+strict and still rejects the absent live gems transcript; this repair does not
+claim live portfolio coverage or a new retrieval score.
+
+Verification: **63 focused tests, 519 main tests, and 47 evaluation tests passed**.
+Black on changed code, isort on new modules, Ruff correctness rules (`E4,E7,E9,F`),
+and `git diff --check` passed. The full `tests/test_harness.py` formatting check
+retains the same three unrelated differences verified against HEAD.
+Eighteen additional regressions cover exact Git recovery,
+deletions, corruption, labels, overwrite refusal, permissions, symlink identities,
+original embedding/scoring paths, and read-only snapshot preparation. Fail-first
+checks reproduced the missing retained-source API, snapshot integration, and
+symlink restoration defects.
+
+Doubt review completed two passes: **ten doubts, four fixed, three verified,
+three known**. Fixes froze symlink identities, restored via their frozen origins,
+preserved parser basenames while removing an unused helper argument, and made
+gold loading a single pass instead of resolving identities twice. Verification
+covered full source/passage coverage, strict live validation, and unchanged labels
+and protected artifacts. Known limits: 21 sources depend on private backups;
+private acceptance is not portable CI coverage (Session 5 owns that separation);
+the three pre-existing test-formatting differences remain outside this repair.
+
+SHA-256 and modification-time comparisons confirmed no changes to the production
+database/configuration, three historical comparison snapshots, or their two
+campaign pointers. The production embedding model, rollback backups, and servers
+were untouched. No global installation, full index rebuild, frozen-repository
+work, or fresh PRD execution occurred. No session scratch files or worktrees
+remain. Pre-existing unrelated capsule edits are preserved outside this commit.
+
+Next: **Session 3, restore portfolio index health**. Investigate `herdr-plugins`,
+preserve/back up the live index, install the tested fixes through the established
+process, and refresh incrementally. Session 1's live memory migration remains
+assigned there. Sessions 3–8 remain pending; stop after this completed session.

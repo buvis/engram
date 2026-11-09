@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **eval**: retain exact gold-source evidence privately, recover deleted transcripts from pinned Git history, and reject source or label drift without changing historical scores.
 - **corpora**: restore repository-scoped memory recall for dotted project paths; keep ambiguous and unknown project directories unmapped.
 - **indexer**: skip code enumeration when indexing only another corpus, including memory attribution migrations.
 - **eval**: replace a transcript gold-set anchor removed by cellar sync with a
