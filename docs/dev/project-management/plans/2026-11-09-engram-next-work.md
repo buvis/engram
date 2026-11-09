@@ -65,7 +65,8 @@
    Retirement confirmed; complete Git archive verified at `4362ef4`. Fresh status: 7,142 dead rows.
    Index and registry backed up under `~/.local/share/engram/backups/session3-20261110/`; integrity passed.
    Tests: 85 focused, 519 main, 47 evaluation passed. No live refresh yet.
-   Await installation warrant `ad9e2dd9b263e61c1fccf3ff35f3c082` and registry warrant `d4c165e06b6611f16d5182d147ec42ec`.
+   Installation warrant `ad9e2dd9b263e61c1fccf3ff35f3c082` was refused: mise-managed uv is outside trusted executable roots.
+   Await direct host installation with saved constraints and registry warrant `d4c165e06b6611f16d5182d147ec42ec`.
 
 8. **Session 4: repair review-pack correctness.**
    Triage PRD 00003/00004 review findings against current source.

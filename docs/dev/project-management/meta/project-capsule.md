@@ -239,10 +239,15 @@ Existing rollback backups and unrelated working-tree capsule edits are retained.
 Verification: **85 focused, 519 main, and 47 evaluation tests passed**;
 `git diff --check` passed. Installed `corpora.py`, `indexer.py`, and `harness.py`
 still differ from tested source. Installation request
-`ad9e2dd9b263e61c1fccf3ff35f3c082` awaits host warrant approval.
+`ad9e2dd9b263e61c1fccf3ff35f3c082` was refused: the resolved mise-managed
+uv executable is outside warrant's trusted executable roots. Installation needs
+a direct host-terminal handoff; do not retry through a shell wrapper or change
+warrant policy. Use the backed-up `constraints.txt`, existing managed Python
+3.14, and this checkout with `uv tool install --reinstall`.
 Seatbelt denied the registry write; removal request
 `d4c165e06b6611f16d5182d147ec42ec` also awaits approval. Neither was bypassed.
-Next: finish **Session 3**, verify both receipts and installed modules, refresh
+Next: finish **Session 3**, verify the host installation, registry receipt, and
+installed modules, refresh
 incrementally, inspect portfolio status, and verify memory attribution/findings
 and protected artifacts. Do not start Session 4. No session scratch or worktree
 was created; the multi-session plan remains active. No fresh PRD execution occurred.
