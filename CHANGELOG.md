@@ -27,6 +27,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **eval**: replace a transcript gold-set anchor removed by cellar sync with a
+  source-verified OVCAQ/Herdr incident selected before scoring. Historical scores
+  are specific to the previous set.
 - **findings**: harvest decision audit logs as header and per-decision records,
   preserving previously lost design choices and rationale.
 - **cli**: report recent transcript churn as `in-flight` with a configurable

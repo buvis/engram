@@ -19,6 +19,13 @@
 # dev/local files were ignored, so there is no tracked deletion history. Four
 # PRD queries and one discovery query were replaced; the historical score is
 # specific to that revised set and is not a before/after quality comparison.
+#
+# Transcript replacement 2026-11-09: cellar sync removed session 5a656567
+# (the repository-template flexibility incident). Seed 20261109 over sorted
+# current transcript paths selected the first substantive human session after
+# three reviewer sessions: 5729c201 (OVCAQ/Herdr identity and state reporting).
+# Its retained turns at lines 13 and 389 establish the label, before any scoring.
+# The new query changes the evaluation set; previous scores are not comparable.
 
 # --- memory corpus ---
 - query: "does engram serve embeddings with llama-server or LlamaBarn"
@@ -185,8 +192,8 @@
 - query: "let sandboxed agents write into the personal notes vault directory"
   expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/54028013-2983-4968-a152-5dd0b0ee04dc.jsonl"
   corpus: transcripts
-- query: "repo structure skill must tell the agent to deviate when the template is too rigid for the repository"
-  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-agent-skills/5a656567-eccb-474e-833a-8ca6a7601e5a.jsonl"
+- query: "why headless child sessions confuse Herdr resume identity and how OVCAQ can report pane activity in worktrees"
+  expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-ovcaq/5729c201-a2c0-438c-b406-13dea0cc5ef0.jsonl"
   corpus: transcripts
 - query: "sandboxed agent could not install a built macOS app into the user applications folder"
   expected_path: "/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob/821762c9-8c93-4a1a-80e9-db949e2c5f90.jsonl"

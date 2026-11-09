@@ -31,12 +31,14 @@ bundle noise in ranked results.
 
 ### Success Metrics
 
-- Anonymous headings fall from **41.8%** of code chunks to **under 5%**.
+- Anonymous symbols with a named ancestor produce no separate chunk; their text
+  remains in the ancestor's body. Anonymous symbols without a named ancestor are
+  retained with an explicit `(anonymous)` heading. Regression fixtures verify both.
 - `easymde.min.js` and `highlight.min.js` contribute **0 chunks**.
 - `engram lookup --name stop_served --scope portfolio` returns the defining
   `path:line` with **zero embedding calls** (no llama-server process required).
-- Code corpus chunk count drops; the exact figure is recorded in the PRD's
-  completion notes rather than predicted here.
+- Record before/after code chunk counts and the retained anonymous share as
+  observations; neither is a quota for deleting otherwise useful symbols.
 
 ## Functional Decomposition
 
@@ -221,18 +223,19 @@ is untouched.
 - [x] Report the excluded-file count in `engram status`, beside the existing
       grammarless skipped count (depends on: Phase 1) - Acceptance: `status`
       output contains the excluded count for the code corpus.
-- [ ] Re-index the code corpus so excluded files are pruned and anonymous chunks
+- [x] Re-index the code corpus so excluded files are pruned and anonymous chunks
       are re-chunked (depends on: Phase 1). **Premise**: the live store at
       `~/.local/share/engram/engram.db` holds 41,716 code chunks, 17,449 of them
       anonymous, measured 2026-08-04. Re-check before acting; if the counts have
       materially moved, record the new baseline and continue rather than
       abandoning the task - Acceptance: after `engram index --scope portfolio
-      --corpus code`, a query against the store shows anonymous headings under 5%
-      of code chunks and zero chunks whose path ends `easymde.min.js` or
-      `highlight.min.js`.
+      --corpus code`, a query against the store shows zero legacy `None` headings
+      and zero chunks whose path ends `easymde.min.js` or `highlight.min.js`;
+      regression fixtures prove redundant callbacks are removed while their
+      text and useful top-level anonymous symbols remain retrievable.
 
 **Exit Criteria**: `engram lookup --name <a known symbol> --scope portfolio`
-prints its definition with no llama-server running.
+prints its definition with embedding access blocked.
 
 ## Test Strategy
 
@@ -276,7 +279,7 @@ prints its definition with no llama-server running.
 
 ## Delivery notes — 2026-11-09
 
-Implementation complete; held for the unmet corpus-composition acceptance target.
+Implementation complete; acceptance revision approved by the user on 2026-11-09.
 The direct implementation is authorized by the user in place of Autopilot.
 
 Live `index --scope portfolio --corpus code` completed with exit 0. Baseline:
@@ -289,9 +292,10 @@ indexed registered repositories explain the increase in total chunks. Exact
 The under-5% prediction is not achieved by the specified retention rules. Many
 test callbacks and exported arrows have no named ancestor in the parser's
 structure and must remain retrievable. Deleting them to meet the percentage
-would violate this PRD. Resolving the remaining criterion requires revising the
-corpus target or explicitly extending symbol naming/filtering scope. The final
-index task remains unchecked because its numeric acceptance is unmet.
+would violate this PRD. The user approved replacing the speculative percentage
+target with verified filtering, deduplication, and retention behavior. The chunk
+count is likewise an observation because the registered portfolio can grow.
+All tasks now meet the revised acceptance criteria; the PRD moves to done.
 
 See [delivery review](../../reviews/2026-11-09-backlog-delivery.md) for tests,
 review findings, and the recoverable live-database backup.

@@ -1,5 +1,8 @@
 # Direct delivery of PRDs 00005–00007
 
+Current status: all three PRDs are done after the user-approved closeout below.
+The original delivery evidence is retained as history.
+
 The user explicitly authorized implementation without Autopilot on 2026-11-09.
 No Autopilot state or frozen plugin repository was modified.
 
@@ -111,3 +114,35 @@ installed global executable is a copied uv tool installation and was not changed
 PRDs 00006 and 00007 are done; 00005 is on hold solely for the numeric target.
 No new worktrees or executed plan files were created. The database backup is
 intentionally retained for rollback.
+
+## Approved closeout — 2026-11-09
+
+The user approved replacing 00005's speculative percentage target with verified
+vendor exclusion, anonymous-child deduplication, and useful-symbol retention.
+The total chunk count is an observation, because the registered portfolio grows.
+The existing regression and live-index evidence satisfy these criteria; 00005
+moved from hold to done without deleting more source content.
+
+The missing gold-set transcript was deleted in cellar sync commit
+`ba64775ddd1e25c3628e0a416496e30bccc41780`. The old query was replaced under the
+gold set's existing pre-scoring sampling policy: seed 20261109 over sorted current
+transcript paths; draws 1–3 were automated reviewer sessions; draw 4 was the first
+substantive human session, 5729c201-a2c0-438c-b406-13dea0cc5ef0. Its retained turns
+at lines 13 and 389 establish OVCAQ/Herdr pane reporting and headless-session
+identity interference. No retrieval scores were consulted or tuned. Historical
+retrieval scores are not directly comparable to the revised 55-entry set.
+
+Replacement transcript SHA256:
+`455865e5c630014ca07c8ce9eca19d3bd736eb968c9e650fd8631b0580b1b936`.
+The source exists, is yielded by the actual transcript enumerator, and its kept
+chunks contain the incident. Cellar itself was not modified.
+
+Validation: **532 tests passed**; all 55 gold-set paths exist; `git diff --check`
+passed. A wheel was built successfully. No production code changes were needed
+for this closeout.
+
+Global installation is prepared through warrant, using the existing managed
+Python and dependencies constrained to `uv.lock`. The install uses the durable
+repository path, preserving the local-source upgrade workflow. Packaging scratch
+under `docs/dev/tmp/closeout-install/` remains live until installation finishes.
+The global CLI smoke test is pending installation approval.
