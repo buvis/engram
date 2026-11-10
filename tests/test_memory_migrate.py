@@ -1158,9 +1158,13 @@ def test_cli_prints_redacted_tsv_for_credential_file_name(
     assert run_cli(src, repo) == 1
 
     out, err = capsys.readouterr()
-    assert out == expected == (
-        "[redacted:github-token].md\tskip-credential\tgithub-token\n"
-        f"plain.md\tmigrate\t{DEST}plain.md\n"
+    assert (
+        out
+        == expected
+        == (
+            "[redacted:github-token].md\tskip-credential\tgithub-token\n"
+            f"plain.md\tmigrate\t{DEST}plain.md\n"
+        )
     )
     assert TOKEN not in out
     assert err == ""
