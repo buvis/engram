@@ -272,6 +272,10 @@ def _check_destination(dest: Path, src: Path, repo_root: Path) -> None:
     existing = dest
     while not os.path.lexists(existing):
         existing = existing.parent
+    if existing.is_symlink() and not existing.exists():
+        raise MigrationError(
+            redact(f"{existing.relative_to(repo_root)}: dangling symlink")
+        )
     resolved = existing.resolve()
     inside = resolved.is_relative_to(repo_root.resolve())
     overlaps_src = resolved.is_relative_to(src) or src.is_relative_to(resolved)

@@ -239,6 +239,24 @@ def test_migration_refuses_symlinked_destination_directory_and_changes_nothing(
     assert tree(tmp_path) == before
 
 
+@pytest.mark.parametrize("operation", [plan_migration, apply_migration])
+def test_migration_refuses_dangling_destination_symlink_and_keeps_the_link(
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
+    operation: Callable[[Path, Path], object],
+) -> None:
+    os.symlink("missing", repo / "docs")
+    before = tree(tmp_path)
+
+    with pytest.raises(MigrationError, match="docs: dangling symlink"):
+        operation(src, repo)
+
+    assert (repo / "docs").is_symlink()
+    assert os.readlink(repo / "docs") == "missing"
+    assert tree(tmp_path) == before
+
+
 def test_apply_allows_symlinked_docs_resolving_to_unrelated_dir_inside_repo(
     src: Path,
     repo: Path,
