@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "AfterTool": [
+      {
+        "matcher": "run_shell_command",
+        "hooks": [
+          {
+            "type": "command",
+            "name": "engram-nudge",
+            "command": "python3 \"<PLUGIN_ROOT: placeholder name unverified>/nudge/engram_nudge.py\" gemini"
+          }
+        ]
+      }
+    ]
+  }
+}

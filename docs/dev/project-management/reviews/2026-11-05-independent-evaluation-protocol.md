@@ -1,7 +1,10 @@
 # Independent-question evaluation protocol
 
-Status: collecting. Five independent questions received (2026-11-05 to
-2026-11-08), none frozen or scored. Wording, labels and evidence stay private.
+Status: secondary set since 2026-11-10. The primary independent evidence is now
+mined from agent sessions; see the
+[agent-session protocol](2026-11-10-agent-session-evaluation-protocol.md).
+Five human questions received (2026-11-05 to 2026-11-08), none frozen or
+scored. Wording, labels and evidence stay private. No more are being collected.
 Continues the [file-held-out probe](2026-11-05-probe-heldout.md).
 
 ## Collection and annotation
@@ -73,5 +76,5 @@ non-indexed sources (notes vault, project capsules, transcript tool content),
 and current-state facts whose only indexed evidence is stale. These are corpus
 coverage gaps, not ranking misses, and must be reported separately at scoring.
 
-Unresolved input: 15–25 more actual user questions collected before answer
-search. Freezing and scoring wait for at least the 20-question minimum.
+Superseded input request: this set no longer waits for 15–25 more user
+questions. Score it only alongside the agent-session set, reported separately.

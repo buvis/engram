@@ -1,6 +1,6 @@
 # Project Capsule: engram
 
-Updated: 2026-11-10, after Session 6 shared-memory specification.
+Updated: 2026-11-10, after Session 7 was redefined around agent sessions.
 
 ## Key Invariants
 
@@ -571,3 +571,44 @@ No servers were started. Probe scratch files were removed.
 Next: **Session 7, collect independent retrieval evidence** (needs genuine user
 questions). PRDs 00010 and then 00011 can run through `/autopilot:run-autopilot`
 independently. Stop after Session 6.
+
+## Session 7 redefined: agent adoption and evidence (2026-11-10)
+
+Not complete. The session changed direction on a user decision: Engram serves
+agents, so evidence comes from agent sessions, not from user-written questions.
+
+- **Adoption measured.** Claude sessions modified since 2026-11-01, this
+  repository excluded: 364 sessions, 40 projects. 14 sessions (4%) called
+  Engram, all through the catch-up skill, in 4 projects (33 query, 22 status,
+  20 index, 19 harvest, 0 lookup). 212 sessions ran 5,671 ad-hoc searches.
+  `engram pack` runs from scripts and is invisible to this scan. Nothing in
+  `AGENTS.md` names Engram.
+- **Pilot.** Eight random sessions held 91 search bursts. Most were lookups in
+  a known file; a minority were cross-repo, history, or decision questions.
+- **New protocol.** `reviews/2026-11-10-agent-session-evaluation-protocol.md`:
+  mine search bursts, label from the files the agent settled on, exclude each
+  question's own transcript from its pool. The 2026-11-05 human protocol is now
+  a secondary set of five private questions; `a30de13` recorded its ledger.
+  Two of those answers live only in non-indexed sources (BIM vault, a project
+  capsule): corpus coverage gaps, not ranking misses.
+- **Adoption design (user-approved order).** 1. agent-session evaluation;
+  2. orchestrator injection of Engram context into autopilot phase prompts
+  (agent-plugins intake 00066); 3. an Engram plugin: portable skill and MCP
+  server, plus per-host hooks.
+- **Spike.** `spikes/engram-plugin/` (throwaway, never merges). One plugin
+  directory passes the agent-plugins validator; a stdlib MCP server answers
+  `initialize`, `tools/list`, `tools/call`; one host-neutral nudge core emits
+  the documented post-tool output for Claude, Codex, Gemini, Copilot, and Kiro;
+  `ENGRAM_NUDGE=off` and `ENGRAM_PACK_FILE` keep it clear of orchestrator
+  injection. Run `python3 docs/dev/project-management/spikes/engram-plugin/demo.py`.
+  Not verified in a live host: payloads were built from each host's docs. The
+  Pi adapter is an unrun sketch. The graduate, refine, or discard decision is
+  the user's.
+
+Verification: documentation and a throwaway spike only. No production or
+evaluation code changed, so the suites were not rerun. `git diff --check`
+passed. Production model, configuration, index, snapshots, and backups were
+untouched; no servers were started beyond Engram's own on-demand query serving.
+
+Next: execute redefined **Session 7** (build the miner under `eval/`, freeze,
+score). Then decide intake 00066 and the plugin from the hit rate.

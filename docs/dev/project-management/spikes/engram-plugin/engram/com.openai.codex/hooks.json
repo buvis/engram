@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"<PLUGIN_ROOT: placeholder name unverified>/nudge/engram_nudge.py\" codex",
+            "timeout": 12
+          }
+        ]
+      }
+    ]
+  }
+}

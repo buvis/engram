@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      {
+        "type": "command",
+        "command": "python3 \"<PLUGIN_ROOT: placeholder name unverified>/nudge/engram_nudge.py\" copilot",
+        "timeoutSec": 12
+      }
+    ]
+  }
+}

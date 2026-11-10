@@ -117,18 +117,23 @@
     Blocker: the installed autopilot hook rejects `docs/dev/project-management/memory/` until intake 00065 ships.
     The rollout is attended: run the migration, review it, commit it, and push only after the user approves.
 
-11. **Session 7: collect independent retrieval evidence. (IN PROGRESS, parallel to autopilot on PRD 00010)**
-    Follow `docs/dev/project-management/reviews/2026-11-05-independent-evaluation-protocol.md`.
-    Start with five to ten genuine user questions collected before answer search.
-    Accumulate twenty to thirty questions without manufacturing missing coverage.
-    Keep private questions and evidence outside Git.
-    Preserve original wording, scope, provenance, and exclusions.
-    Label acceptable files and passages before scoring.
-    Freeze labels, source snapshots, runtime identities, and comparison variants.
-    Report missing independent input explicitly and continue unrelated work while collection remains incomplete.
+11. **Session 7: collect independent retrieval evidence from agent sessions. (REDEFINED — 2026-11-10)**
+    User decision: Engram serves agents, so the questions come from agent sessions, not from the user.
+    Follow `docs/dev/project-management/reviews/2026-11-10-agent-session-evaluation-protocol.md`.
+    Build the miner under `eval/`: sample sessions, find search bursts, keep intent, commands, and settled files.
+    Classify moments; drop known-file lookups; report class counts.
+    Label from the files the agent settled on, before any Engram run.
+    Exclude each question's own source transcript from its pool.
+    Keep questions and excerpts private under `~/.cache/engram/compare/agent-sessions/`.
+    Freeze, then score top-3 and top-5 file hit rate, MRR, and search calls saved.
+    The five human questions stay private as a secondary set; do not wait for more.
+    Done so far (2026-11-10): usage measured (14 of 364 sessions called Engram; 5,671 ad-hoc searches);
+    eight-session pilot ran; protocol written; human ledger annotated (`a30de13`).
+    Companion: agent-plugins intake 00066 (orchestrator injection of Engram context into phase prompts).
+    Spike: `docs/dev/project-management/spikes/engram-plugin/` (plugin with per-host hooks; awaits the user's decision).
 
 12. **Session 8: evaluate retrieval changes.**
-    Proceed only after independent questions and their evidence are available.
+    Proceed only after the Session 7 agent-session set is frozen.
     Compare existing fusion against dense-first AND and OR variants using the established protocol.
     Evaluate Qwen3 Reranker 0.6B without changing production retrieval.
     Report file and passage accuracy, individual regressions, exact identifiers, transcripts, findings coverage, and latency.
@@ -141,5 +146,5 @@
 14. Resolve these remaining questions in their assigned sessions.
     Resolved in Session 3: `herdr-plugins` was retired; its archive is verified and stale registration removed.
     Determine the shared-memory file contract during Session 6.
-    Obtain genuine independent retrieval questions during Session 7.
+    Resolved 2026-11-10: independent questions come from agent sessions (Session 7), not from the user.
     Ask only one indispensable question at a time.
