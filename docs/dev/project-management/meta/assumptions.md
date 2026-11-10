@@ -1,34 +1,35 @@
-# Assumptions ledger (PRD 00010)
+# Assumptions ledger (PRD 00011)
 
-## 1: Add src/engram/memory.py memory file validator
+## 1: Add plan_migration and MigrationLine in src/engram/migrate.py
 
-- Tess: an empty file (no first line) gives `frontmatter\tmissing`.
-- Tess: `parse_memory` lists schema violations before credential ones; order among several schema rules in one file is unspecified (multi-rule tests compare sorted lists).
-- Tess: an unreadable `MEMORY.md` (bad UTF-8 or a directory) suppresses every index rule, `index-missing-entry` included; per-file violations are still reported.
-- Tess: a non-string `name` and a list `source` give `missing`.
-- Ivan: `evidence` reports one `item <i>` violation per bad item.
-- Ivan: `index-missing-file` is reported once per distinct slug, in file order.
-- Ivan: forbidden-key walk tracks only the current container path, so cycles stop; an alias shared in two places is reported once per place.
-- Ivan: frontmatter delimiters must be exactly `---` (no trailing spaces).
-- Ivan: `type: null` and non-string `type` values give `must be one of feedback, project, reference`.
-- Ivan: whole diagnostic lines are redacted rather than each column (no pattern can span a tab).
+- Orchestrator: a file linked as `[[SK_...]]` whose own slug is a credential stops at skip-credential in pass A, so it never enters the rename map; the referring file migrates with the link unrewritten (contract wins over the planner's test instruction).
+- Tess: an invalid-target `MigrationError` message names only the failing files.
+- Tess: the `slug memory collides with MEMORY.md` check's order relative to the other rule-5 checks is unpinned.
+- Tess: an unresolved path such as `repo/sub/..` overlaps the repo root after `resolve()`.
+- Tess: index byte and line limits apply to the full would-be `MEMORY.md`, trailing newline included.
+- Tess: source files list in plain sorted path order (uppercase before lowercase).
+- Ivan: sources are read as bytes then decoded as UTF-8, so `\r\n` in a body survives byte for byte.
+- Ivan: rule 5 order is name, description, type, slug pattern, `memory` slug, host path.
+- Ivan: the slug check uses `NAME_RE.fullmatch`.
+- Ivan: imports the private `_ABSENT` sentinel from `engram.memory` so a missing type matches `_type_violations`.
+- Ivan: host-path checks get the original `src`, so `src.absolute()` catches the unresolved form.
+- Ivan: the index-limit `MigrationError` message is not passed through `redact` (integers only; Pat LOW).
+- Pat (LOW, not fixed, task 1): a directory named `<slug>.md` in the memory dir makes `read_bytes()` raise `IsADirectoryError`; a description with `\r` or ` ` passes the one-line check.
 
-## 2: Enumerate repository memory and skip shadowed legacy Claude memory in corpora.py
+## 2: Add apply_migration, AGENTS_SECTION and repository wiring in src/engram/migrate.py
 
-- Tess: legacy project dirs iterate in plain sorted name order; per-repo corpora follow registry row order.
-- Tess: a repo with no PRD/decision/discovery dirs yields only its memory files.
-- Tess/Ivan: a legacy dir counts for `legacy_shadowed` only when a top-level `*.md` regular file exists (`MEMORY.md` counts; subdirectories are not searched).
-- Tess: an empty registry is valid input and yields only `_unmapped` legacy files.
+- Orchestrator: `tests/test_memory_migrate.py` exceeds 800 lines (1054) by accepted exception; the PRD acceptance commands pin it.
+- Tess: an empty wiring file (0 bytes) gets just the line or `AGENTS_SECTION`, with no leading newline.
+- Tess: `AGENTS_SECTION` says "read `MEMORY.md` before ..." in that word order.
+- Tess: apply with an empty source returns `[]`, still writes wiring and an empty `MEMORY.md`.
+- Tess: the write order inside each stage (memory files, `MEMORY.md`, wiring) is not part of the contract.
+- Ivan: check-failure cause text is "postcondition failed: ..."; non-UTF-8 wiring refusal is "<path>: not UTF-8 text".
+- Ivan: restore deletes newly created files and empty directories directly; only original bytes go back through `_write_if_changed`.
+- Ivan: new files get `0o666 & ~umask` (umask probed at call time); existing files keep their mode.
+- Pat (LOW, not fixed): `_plan_wiring` reads each wiring file twice; a raw `OSError` from pre-write reads escapes as `OSError` rather than `MigrationError` (nothing written yet); task 1 code got formatting-only churn; the umask probe briefly sets the process umask to 0.
 
-## 3: Add engram memory check [PATH] subcommand in cli.py
+## 3: Add engram memory migrate --from --to [--apply] subcommand in src/engram/cli.py
 
-- Tess: pytest's `tmp_path` is already resolved, so expected paths match `PATH.resolve()` output.
-- Tess: the not-found line for a credential-shaped absent path equals `redact(str(path))` + `\tdirectory\tnot found`.
-- Tess: parser errors use argparse's standard stderr text (`invalid choice`, `unrecognized arguments`).
-- Tess: `GIT_CEILING_DIRECTORIES=tmp_path` still lets git find a repo whose `.git` sits below the ceiling.
-
-## 4: Add memory invalid and legacy-shadowed lines to engram status
-
-- Tess: the `invalid=` line precedes the `legacy-shadowed=` lines; shadowed lines follow the sorted `corpora.legacy_shadowed` order.
-- Tess: "still queryable" is read as "still yielded by enumerate_corpora during status"; no index or query runs in the test.
-- Tess: a `MEMORY.md` with index violations counts as one invalid file.
+- Ivan: `MigrationError` messages print as-is (already redacted at construction); `OSError` messages go through `redact`.
+- Tess: missing `--from`/`--to` exits through argparse's `SystemExit(2)`.
+- Tess: in `--apply` mode, skip-only or empty sources return the plan's lines without raising.

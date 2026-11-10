@@ -31,7 +31,7 @@ Updated: 2026-11-10, after Session 7 was redefined around agent sessions.
 
 ### Batch 202611100725
 - [x] 00010-repo-memory-corpus-v1 (2 cycles)
-- [ ] 00011-memory-migrate-command-v1
+- [ ] 00011-memory-migrate-command-v1 (wip, build started 2026-11-10)
 
 Observations: 00010 shipped `src/engram/memory.py`, repo memory enumeration and
 legacy skip in `corpora.py`, `engram memory check`, and status lines. Cycle 1
@@ -142,24 +142,22 @@ See the follow-up note for scope, evidence, and the unchanged `0644` file mode.
 
 ## Related context
 
-Topic (2026-11-10 batch): "Repository memory corpus and validator".
+Topic (2026-11-10, PRD 00011): "Memory migrate command". Repo and portfolio
+queries both returned only the PRD itself
+(`prds/wip/00011-memory-migrate-command-v1.md`: 7-10, 153-162, 183-187, 28-34,
+114-122; top score 0.0328); no prior related work indexed. Reuse targets are
+known directly: `src/engram/memory.py` (`parse_memory`, `check_directory`,
+`memory_dir`, credential guard) from PRD 00010.
 
-- `src/engram/corpora.py:41-67` (`_enumerate_repo_corpora`) — the function PRD 00010 extends.
-- `tests/test_memory_attribution.py:65-116` — repo-scope memory isolation; must stay green.
-- `prds/done/00001-engram-core-v1.md:80-87` — original corpus enumerator contract.
-- Portfolio: `agent-skills/skills/distil-memory/scripts/test_proposal.py:477-494` — another
-  memory-file validator (distil-memory); keep the schemas compatible.
-
-Repo index not refreshed this run; portfolio staleness not re-stamped (Session 3
-status stands).
+Staleness (`engram status --scope portfolio`, exit 1, 2026-11-10): memory
+stale=7, transcripts stale=3 dead=859, prd stale=1 dead=68, code stale=33
+dead=133. Harvest: 18 review files upserted, 14 missing frontmatter (known).
 
 ## GitHub State
 
-Remote: `https://github.com/buvis/engram`. One open PR:
-[#2](https://github.com/buvis/engram/pull/2), Renovate's
-`tree-sitter-language-pack` 1.14.0 → 1.25.0 update; no status checks reported.
-The only open issue is Dependency Dashboard #3. No releases or workflow runs
-were returned, and the checkout has no `.github` workflow configuration.
+Remote: `https://github.com/buvis/engram`. No open PRs (PR #2 closed). Only open
+issue: Dependency Dashboard #3. No releases. Workflow "Test" on master: last 5
+runs success (2026-11-10), so `c220c4d` CI did reach GitHub.
 
 ## Project Memories
 
