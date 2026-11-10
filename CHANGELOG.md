@@ -19,6 +19,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **memory**: validate repository memory files under
+  `docs/dev/project-management/memory/` (frontmatter schema, `MEMORY.md`
+  index, credential guard that never prints the matched text).
 - **cli**: `lookup --name NAME --scope repo|portfolio [--repo NAME]` and
   `lookup --file PATH` return code definitions without an embedding server.
 - **eval**: probe reranking after fusion tie-break and lexical-OR fixes on
