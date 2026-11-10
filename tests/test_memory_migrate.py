@@ -1,26 +1,52 @@
+import json
+import os
 from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-import yaml
+from _migrate_helpers import (
+    AWS_KEY,
+    DEST,
+    GITATTRS,
+    HOST,
+    IMPORT,
+    REFUSALS,
+    SETTINGS,
+    SK_SLUG,
+    SK_STEM,
+    TOKEN,
+    USER_SKIP,
+    WIRING,
+    index_slugs,
+    memory_text,
+    mtimes,
+    rendered,
+    snapshot,
+    triples,
+    valid,
+    write,
+    write_target,
+)
+
+from engram import migrate
+from engram.memory import (
+    INDEX_MAX_BYTES,
+    INDEX_MAX_LINES,
+    check_directory,
+    memory_dir,
+    parse_memory,
+    redact,
+)
 from engram.migrate import (
     ACTIONS,
+    AGENTS_SECTION,
     OK_ACTIONS,
     MigrationError,
     MigrationLine,
+    apply_migration,
     contains_host_path,
     plan_migration,
 )
-
-from engram.memory import INDEX_MAX_BYTES, INDEX_MAX_LINES, memory_dir, parse_memory
-
-DEST = "docs/dev/project-management/memory/"
-TOKEN = "ghp_" + "A1b2C3d4E5" * 3 + "F6g7H8"  # github-token: ghp_ + 36 alnum
-AWS_KEY = "AKIA" + "ABCDEFGHIJ234567"  # aws-access-key: AKIA + 16
-SK_STEM = "SK_ABCDEFGHIJKLMNOPQRST"
-SK_SLUG = "sk-" + "abcdefghijklmnopqrst"  # slug of SK_STEM, an sk-key match
-USER_SKIP = "user memory stays in host-global memory"
-HOST = "contains an absolute host path"
 
 
 @pytest.fixture(autouse=True)
@@ -44,67 +70,6 @@ def repo(tmp_path: Path) -> Path:
     path.mkdir()
     (path / "AGENTS.md").write_text("# Agents\n")
     return path
-
-
-def memory_text(front: object, body: str = "Body.\n") -> str:
-    dumped = yaml.safe_dump(front, sort_keys=False, allow_unicode=True, width=100_000)
-    return f"---\n{dumped}---\n{body}"
-
-
-def valid(
-    name: str = "note",
-    description: str = "A fact",
-    kind: str = "project",
-    body: str = "Body.\n",
-    **extra: object,
-) -> str:
-    front = {"name": name, "description": description, "type": kind, **extra}
-    return memory_text(front, body)
-
-
-def write(directory: Path, filename: str, content: str | bytes) -> Path:
-    path = directory / filename
-    if isinstance(content, bytes):
-        path.write_bytes(content)
-    else:
-        path.write_text(content, encoding="utf-8")
-    return path
-
-
-def rendered(slug: str, description: str, kind: str, source: str, body: str) -> bytes:
-    front = yaml.safe_dump(
-        {
-            "name": slug,
-            "description": description.strip(),
-            "type": kind,
-            "source": "migrated:claude-auto-memory/" + source,
-            "evidence": ["none recorded before migration"],
-        },
-        sort_keys=False,
-        allow_unicode=True,
-        width=10_000,
-    )
-    return f"---\n{front}---\n{body}".encode()
-
-
-def write_target(repo: Path, slug: str, content: bytes | None = None) -> Path:
-    target_dir = memory_dir(repo)
-    target_dir.mkdir(parents=True, exist_ok=True)
-    default = rendered(slug, "Existing fact", "project", f"{slug}.md", "Kept.\n")
-    path = target_dir / f"{slug}.md"
-    path.write_bytes(default if content is None else content)
-    return path
-
-
-def snapshot(root: Path) -> dict[str, bytes | None]:
-    return {
-        str(p.relative_to(root)): None if p.is_dir() else p.read_bytes()
-        for p in sorted(root.rglob("*"))
-    }
-
-
-def triples(lines: list[MigrationLine]) -> list[tuple[str, str, str]]:
-    return [(line.file, line.action, line.detail) for line in lines]
 
 
 def test_plan_constants_match_contract() -> None:
@@ -759,5 +724,285 @@ def test_plan_refuses_index_over_byte_limit(
     else:
         lines = plan_migration(src, repo)
         names = [f"big{i}" for i in range(len(sources))]
-        assert triples(lines) == [(f"{n}.md", "migrate", f"{DEST}{n}.md") for n in names]
+        assert triples(lines) == [
+            (f"{n}.md", "migrate", f"{DEST}{n}.md") for n in names
+        ]
     assert snapshot(tmp_path) == before
+
+
+def test_apply_migrates_three_types_into_empty_repository_with_wiring(
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    memories = [
+        ("Zeta_Ref.md", "zeta-ref", " Ref fact ", "reference"),
+        ("Mid_Note.md", "mid-note", "Feedback fact", "feedback"),
+        ("alpha.md", "alpha", "Project fact", "project"),
+    ]
+    for filename, slug, description, kind in memories:
+        write(src, filename, valid(slug[0], description, kind, f"{kind} body.\n"))
+    planned = triples(plan_migration(src, repo))
+    monkeypatch.chdir(tmp_path)
+
+    lines = apply_migration(src, repo)
+
+    assert triples(lines) == planned
+    assert planned == [
+        ("Mid_Note.md", "migrate", DEST + "mid-note.md"),
+        ("Zeta_Ref.md", "migrate", DEST + "zeta-ref.md"),
+        ("alpha.md", "migrate", DEST + "alpha.md"),
+    ]
+    target = memory_dir(repo)
+    for filename, slug, description, kind in memories:
+        expected = rendered(slug, description, kind, filename, f"{kind} body.\n")
+        assert (target / f"{slug}.md").read_bytes() == expected
+    assert index_slugs(repo) == ["alpha", "mid-note", "zeta-ref"]
+    assert check_directory(target) == []
+    assert (repo / ".gitattributes").read_text() == GITATTRS
+    assert (repo / "AGENTS.md").read_text() == "# Agents\n\n" + AGENTS_SECTION
+    assert (repo / "CLAUDE.md").read_text() == "@AGENTS.md\n" + IMPORT
+    settings = (repo / ".claude" / "settings.json").read_text()
+    assert json.loads(settings) == {"autoMemoryEnabled": False}
+    assert {str(p.relative_to(repo)) for p in repo.rglob("*") if p.is_file()} == {
+        ".claude/settings.json",
+        ".gitattributes",
+        "AGENTS.md",
+        "CLAUDE.md",
+        *(DEST + n for n in ("MEMORY.md", "alpha.md", "mid-note.md", "zeta-ref.md")),
+    }
+    assert {p.name for p in tmp_path.iterdir()} == {"claude-memory", "home", "repo"}
+
+
+def test_apply_mixed_actions_reports_every_action_and_keeps_directory_valid(
+    src: Path,
+    repo: Path,
+) -> None:
+    write(src, "fresh_one.md", valid(description="Fresh"))
+    write(src, "user_role.md", valid(kind="user"))
+    write(src, "token.md", valid(body=f"{TOKEN}\n"))
+    write(src, "nofront.md", "just text\n")
+    write(src, "kept.md", valid(description="Changed"))
+    write(src, "same.md", valid(description="Existing fact", body="Kept.\n"))
+    existing = {
+        p: p.read_bytes()
+        for p in (write_target(repo, "kept"), write_target(repo, "same"))
+    }
+    planned = triples(plan_migration(src, repo))
+
+    lines = apply_migration(src, repo)
+
+    assert triples(lines) == planned
+    assert planned == [
+        ("fresh_one.md", "migrate", DEST + "fresh-one.md"),
+        ("kept.md", "skip-exists", DEST + "kept.md"),
+        ("nofront.md", "skip-invalid", "frontmatter missing"),
+        ("same.md", "skip-identical", DEST + "same.md"),
+        ("token.md", "skip-credential", "github-token"),
+        ("user_role.md", "skip-user", USER_SKIP),
+    ]
+    assert {line.action for line in lines} == set(ACTIONS)
+    target = memory_dir(repo)
+    names = sorted(p.name for p in target.iterdir())
+    assert names == ["MEMORY.md", "fresh-one.md", "kept.md", "same.md"]
+    assert {p: p.read_bytes() for p in existing} == existing
+    assert index_slugs(repo) == ["fresh-one", "kept", "same"]
+    assert check_directory(target) == []
+    assert all(TOKEN.encode() not in p.read_bytes() for p in target.iterdir())
+
+
+def test_apply_renames_slugs_and_rewrites_links_to_them(src: Path, repo: Path) -> None:
+    write(src, "feedback_foo_bar.md", valid(kind="feedback"))
+    body = "See [[feedback_foo_bar]] and [[feedback_foo_bar_v2]].\n"
+    write(src, "linker.md", valid(description="Linker", body=body))
+
+    lines = apply_migration(src, repo)
+
+    assert triples(lines) == [
+        ("feedback_foo_bar.md", "migrate", DEST + "feedback-foo-bar.md"),
+        ("linker.md", "migrate", DEST + "linker.md"),
+    ]
+    target = memory_dir(repo)
+    assert not (target / "feedback_foo_bar.md").exists()
+    renamed = rendered(
+        "feedback-foo-bar", "A fact", "feedback", "feedback_foo_bar.md", "Body.\n"
+    )
+    assert (target / "feedback-foo-bar.md").read_bytes() == renamed
+    new_body = "See [[feedback-foo-bar]] and [[feedback_foo_bar_v2]].\n"
+    linker = rendered("linker", "Linker", "project", "linker.md", new_body)
+    assert (target / "linker.md").read_bytes() == linker
+    assert check_directory(target) == []
+
+
+@pytest.mark.parametrize(("name", "before", "after"), WIRING)
+def test_apply_wiring_adds_one_entry_per_file_and_never_duplicates(
+    src: Path,
+    repo: Path,
+    name: str,
+    before: str | None,
+    after: str,
+) -> None:
+    path = repo / name
+    path.unlink(missing_ok=True)
+    if before is not None:
+        path.write_bytes(before.encode())
+
+    for _ in range(2):
+        assert apply_migration(src, repo) == []
+        assert path.read_bytes() == after.encode()
+    assert check_directory(memory_dir(repo)) == []
+
+
+@pytest.mark.parametrize(("before", "after"), SETTINGS)
+def test_apply_wiring_disables_auto_memory_and_keeps_other_settings(
+    src: Path,
+    repo: Path,
+    before: str,
+    after: str,
+) -> None:
+    write(src, "note.md", valid())
+    path = repo / ".claude" / "settings.json"
+    path.parent.mkdir()
+    path.write_text(before, encoding="utf-8")
+
+    for _ in range(2):
+        apply_migration(src, repo)
+        assert path.read_text(encoding="utf-8") == after
+
+
+@pytest.mark.parametrize(("name", "content"), REFUSALS)
+def test_apply_refuses_unusable_wiring_file_and_changes_nothing(
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
+    name: str,
+    content: bytes,
+) -> None:
+    write(src, "note.md", valid())
+    path = repo / name
+    path.parent.mkdir(exist_ok=True)
+    path.write_bytes(content)
+    before = snapshot(tmp_path)
+
+    with pytest.raises(MigrationError) as raised:
+        apply_migration(src, repo)
+    if name.endswith(".json"):
+        assert "settings.json" in str(raised.value)
+        assert "not a JSON object" in str(raised.value)
+    assert snapshot(tmp_path) == before
+
+
+def test_apply_refuses_what_plan_refuses_before_any_wiring(
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
+) -> None:
+    write(src, "note.md", valid())
+    write_target(repo, "bad", b"no frontmatter\n")
+    before = snapshot(tmp_path)
+
+    with pytest.raises(MigrationError) as raised:
+        apply_migration(src, repo)
+    assert "bad.md" in str(raised.value)
+    assert snapshot(tmp_path) == before
+
+
+def test_apply_idempotent_second_run_changes_no_bytes_or_mtimes(
+    src: Path,
+    repo: Path,
+) -> None:
+    write(src, "Feedback_Foo.md", valid(kind="feedback"))
+    write(src, "other.md", valid(description="Linker", body="See [[Feedback_Foo]].\n"))
+    write(src, "user_role.md", valid(kind="user"))
+    apply_migration(src, repo)
+    for path in repo.rglob("*"):
+        os.utime(path, ns=(1_000_000_000, 1_000_000_000))
+    before, stamps = snapshot(repo), mtimes(repo)
+
+    lines = apply_migration(src, repo)
+
+    assert triples(lines) == [
+        ("Feedback_Foo.md", "skip-identical", DEST + "feedback-foo.md"),
+        ("other.md", "skip-identical", DEST + "other.md"),
+        ("user_role.md", "skip-user", USER_SKIP),
+    ]
+    assert snapshot(repo) == before
+    assert mtimes(repo) == stamps
+
+
+def test_apply_leaves_sources_untouched_and_writes_no_source_path(
+    src: Path,
+    repo: Path,
+) -> None:
+    write(src, "note.md", valid())
+    write(src, "user_role.md", valid(kind="user"))
+    write(src, "host.md", valid(body=f"Copied from {src}/x.\n"))
+    write(src, "MEMORY.md", "- [note](note.md) — A fact\n")
+    before, stamps = snapshot(src), mtimes(src)
+
+    for _ in range(2):
+        apply_migration(src, repo)
+
+    assert snapshot(src) == before
+    assert mtimes(src) == stamps
+    written = [p for p in repo.rglob("*") if p.is_file()]
+    assert len(written) == 6  # note.md, MEMORY.md and four wiring files
+    for marker in {str(src), str(src.resolve())}:
+        assert all(marker.encode() not in p.read_bytes() for p in written)
+
+
+@pytest.mark.parametrize("existing", [False, True], ids=["fresh", "existing-memory"])
+def test_apply_rolls_back_every_write_when_a_wiring_write_fails(
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    existing: bool,
+) -> None:
+    write(src, "note.md", valid())
+    write(src, "Other_Fact.md", valid(description="Other"))
+    write(repo, ".gitattributes", "*.png binary\n")
+    if existing:
+        write_target(repo, "good")
+        write(memory_dir(repo), "MEMORY.md", "- [good](good.md) — Existing fact\n")
+    before = snapshot(tmp_path)
+    real = migrate._write_if_changed
+    attempted: list[str] = []
+
+    def fail_on_claude(path: Path, data: bytes) -> None:
+        attempted.append(Path(path).name)
+        if Path(path).name == "CLAUDE.md":
+            raise OSError("disk full")
+        real(path, data)
+
+    monkeypatch.setattr("engram.migrate._write_if_changed", fail_on_claude)
+
+    with pytest.raises(MigrationError) as raised:
+        apply_migration(src, repo)
+    assert str(raised.value).startswith("apply failed, repository restored:")
+    assert "disk full" in str(raised.value)
+    earlier = set(attempted[: attempted.index("CLAUDE.md")])
+    assert {"note.md", "other-fact.md", "MEMORY.md"} <= earlier
+    assert snapshot(tmp_path) == before
+
+
+def test_wiring_agents_section_is_short_canonical_and_public_safe(src: Path) -> None:
+    lines = AGENTS_SECTION.splitlines()
+    assert AGENTS_SECTION.startswith("## Project memory\n")
+    assert AGENTS_SECTION.endswith("\n")
+    assert 2 <= len(lines) <= 25
+    assert [line.strip() for line in lines].count("## Project memory") == 1
+    for phrase in (
+        DEST,
+        "MEMORY.md",
+        "evidence",
+        "project",
+        "feedback",
+        "reference",
+        "docs(memory):",
+        "engram memory check",
+    ):
+        assert phrase in AGENTS_SECTION
+    assert contains_host_path(AGENTS_SECTION, src) is False
+    assert redact(AGENTS_SECTION) == AGENTS_SECTION
