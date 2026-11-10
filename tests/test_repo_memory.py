@@ -22,7 +22,7 @@ from engram.memory import (
     parse_memory,
     redact,
 )
-from engram.store import Scope, StatusReport, open_store
+from engram.store import CorpusStatus, Scope, StatusReport, open_store
 
 DROP = object()
 
@@ -1284,15 +1284,25 @@ def test_cli_check_rejects_unknown_memory_subcommand_and_extra_paths(
 
 # --- status: memory invalid and legacy-shadowed lines ---
 
+# Invalid files: alpha/broken, alpha-2/{bad-one,bad-two,broken}, beta/fine2 and
+# epsilon/MEMORY.md (index lists a missing ghost.md). b-ok is valid.
 STATUS_NOTES = {
-    "alpha": [("broken", {"description": DROP}), ("good", {})],
+    "alpha": [("b-ok", {}), ("broken", {"description": DROP}), ("good", {})],
     "alpha-2": [
         ("bad-one", {"description": DROP, "source": ""}),
         ("bad-two", {"type": "note"}),
+        ("broken", {"description": DROP}),
     ],
-    "beta": [("fine", {})],
+    "beta": [("fine", {}), ("fine2", {"type": "note"})],
     "delta": [("fine", {})],
+    "epsilon": [("fine", {})],
+    "omega": [("fine", {})],
 }
+STATUS_INDEX_ONLY = {"epsilon": ["ghost"]}
+STATUS_LEGACY = ("alpha", "alpha-2", "delta", "gamma", "omega")
+STALE_REPORT = StatusReport(
+    per_corpus={"docs": CorpusStatus(row_count=1, stale_files=["a.md"], dead_rows=0)},
+)
 
 
 @pytest.fixture
@@ -1301,28 +1311,36 @@ def status_run(tmp_path, side_channels, monkeypatch, capsys):
     for name, notes in STATUS_NOTES.items():
         for slug, overrides in notes:
             write_memory(memory_dir(repos / name), slug, **overrides)
-        write_index(memory_dir(repos / name), [f"- [{s}]({s}.md)" for s, _ in notes])
-    for name in ("alpha", "alpha-2", "delta", "gamma"):
+        slugs = sorted([s for s, _ in notes] + STATUS_INDEX_ONLY.get(name, []))
+        write_index(memory_dir(repos / name), [f"- [{s}]({s}.md)" for s in slugs])
+    for name in STATUS_LEGACY:
         write_notes(legacy_dir(projects, repos / name), "old.md")
     monkeypatch.setattr("engram.cli.symbols.count_excluded", lambda: 0)
-    monkeypatch.setattr(
-        "engram.cli.symbols.count_skipped",
-        lambda *a, **k: 0,
-        raising=False,
-    )
     monkeypatch.setattr(transcripts, "enumerate", lambda *a, **k: iter([]))
-    report = StatusReport(per_corpus={})
-    monkeypatch.setattr(
-        "engram.cli.open_store",
-        lambda *a, **k: _FakeStoreForStatus(report),
-    )
     seen = []
 
-    def run(scope, names=(*STATUS_NOTES, "gamma"), rows=None):
+    def run(
+        scope,
+        names=(*STATUS_NOTES, "gamma"),
+        rows=None,
+        report=None,
+        skipped=0,
+        keep="memory\t",
+    ):
+        report = StatusReport(per_corpus={}) if report is None else report
         rows = [(repos / n, n) for n in names] if rows is None else rows
         registry = write_registry(tmp_path / "repos.csv", rows)
         monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", registry)
         monkeypatch.setattr("engram.cli._resolve_repo_name", lambda: scope)
+        monkeypatch.setattr(
+            "engram.cli.open_store",
+            lambda *a, **k: _FakeStoreForStatus(report),
+        )
+        monkeypatch.setattr(
+            "engram.cli.symbols.count_skipped",
+            lambda *a, **k: skipped,
+            raising=False,
+        )
 
         def recording_enumerate(*args, **kwargs):
             for corpus_file in enumerate_corpora(registry, projects):
@@ -1332,7 +1350,7 @@ def status_run(tmp_path, side_channels, monkeypatch, capsys):
         monkeypatch.setattr("engram.cli.enumerate_corpora", recording_enumerate)
         exit_code = main(["status", "--scope", "repo" if scope else "portfolio"])
         out = capsys.readouterr().out.splitlines()
-        return exit_code, [line for line in out if line.startswith("memory\t")]
+        return exit_code, [line for line in out if line.startswith(keep)]
 
     return run, repos, seen
 
@@ -1347,20 +1365,25 @@ def test_status_portfolio_counts_distinct_invalid_files_and_lists_shadowed(statu
     assert result == (
         1,
         [
-            "memory\tinvalid=3",
+            "memory\tinvalid=6",
             "memory\tlegacy-shadowed=alpha",
             "memory\tlegacy-shadowed=alpha-2",
             "memory\tlegacy-shadowed=delta",
+            "memory\tlegacy-shadowed=omega",
         ],
     )
+    exit_code, lines = run(None, skipped=2, keep=("memory\tinvalid", "code\tskipped"))
+    assert exit_code == 1
+    assert sorted(lines) == ["code\tskipped=2", "memory\tinvalid=6"]
 
 
 @pytest.mark.parametrize(
     ("scope", "expected"),
     [
         ("alpha", (1, ["memory\tinvalid=1", "memory\tlegacy-shadowed=alpha"])),
-        ("alpha-2", (1, ["memory\tinvalid=2", "memory\tlegacy-shadowed=alpha-2"])),
-        ("beta", (0, [])),
+        ("alpha-2", (1, ["memory\tinvalid=3", "memory\tlegacy-shadowed=alpha-2"])),
+        ("beta", (1, ["memory\tinvalid=1"])),
+        ("epsilon", (1, ["memory\tinvalid=1"])),
         ("gamma", (0, [])),
     ],
 )
@@ -1378,11 +1401,13 @@ def test_status_legacy_shadowed_alone_prints_line_and_keeps_exit_zero(status_run
     run, _, _ = status_run
 
     assert run("delta") == (0, ["memory\tlegacy-shadowed=delta"])
-    assert run(None, names=("beta", "delta")) == (
+    assert run(None, names=("delta", "omega")) == (
         0,
-        ["memory\tlegacy-shadowed=delta"],
+        ["memory\tlegacy-shadowed=delta", "memory\tlegacy-shadowed=omega"],
     )
     assert run(None, names=()) == (0, [])
+    # valid memory never clears the failure owed to stale index rows
+    assert run("delta", report=STALE_REPORT) == (1, ["memory\tlegacy-shadowed=delta"])
 
 
 def test_status_duplicate_registry_rows_count_shared_invalid_file_once(status_run):
@@ -1394,3 +1419,6 @@ def test_status_duplicate_registry_rows_count_shared_invalid_file_once(status_ru
     assert corpora.repo_memory_dirs.count(("alpha", memory_dir(alpha))) == 2
     assert exit_code == 1
     assert [line for line in lines if "invalid" in line] == ["memory\tinvalid=1"]
+    renamed = run(None, rows=[(alpha, "alpha"), (alpha, "alpha-copy")])
+    assert renamed[0] == 1
+    assert [line for line in renamed[1] if "invalid" in line] == ["memory\tinvalid=1"]
