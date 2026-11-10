@@ -1137,15 +1137,26 @@ def test_cli_check_absent_or_non_memory_target_prints_single_not_found_line(
     near_miss = tmp_path / "other" / "dev" / "project-management" / "memory"
     write_memory(near_miss, "beta")
     write_index(near_miss, ["- [Beta](beta.md)"])
+    docs_notes = tmp_path / "docs" / "notes" / "memory"
+    write_memory(docs_notes, "gamma")
+    write_index(docs_notes, ["- [Gamma](gamma.md)"])
 
     for target, expected in [
         (absent_memory, absent_memory),
         (tmp_path / "missing", memory_dir(tmp_path / "missing")),
         (unrelated, memory_dir(unrelated)),
         (near_miss, memory_dir(near_miss)),
+        (docs_notes, memory_dir(docs_notes)),
     ]:
         line = f"{expected}\tdirectory\tnot found"
         assert run_check(capsys, target) == (1, [line], "")
+
+    secret = memory_dir(tmp_path / GITHUB_TOKEN)
+    exit_code, out, err = run_check(capsys, secret)
+    assert (exit_code, err) == (1, "")
+    assert out == [f"{redact(str(secret))}\tdirectory\tnot found"]
+    assert GITHUB_TOKEN not in out[0]
+    assert "[redacted:github-token]" in out[0]
 
 
 def test_cli_check_explicit_repo_root_or_memory_dir_resolves_to_memory_dir(
@@ -1179,8 +1190,7 @@ def test_cli_check_dot_inside_index_less_memory_dir_checks_that_dir(
     write_memory(directory, "alpha")
     write_memory(directory, "beta")
     monkeypatch.chdir(directory)
-
-    assert run_check(capsys, ".") == (
+    expected = (
         1,
         [
             f"{directory / 'alpha.md'}\tindex-missing-entry\talpha.md",
@@ -1188,6 +1198,11 @@ def test_cli_check_dot_inside_index_less_memory_dir_checks_that_dir(
         ],
         "",
     )
+
+    assert run_check(capsys, ".") == expected
+    assert run_check(capsys, "../memory") == expected
+    monkeypatch.chdir(tmp_path)
+    assert run_check(capsys, "repo") == expected
 
 
 def test_cli_check_without_path_checks_memory_dir_of_git_toplevel_of_cwd(
@@ -1205,9 +1220,13 @@ def test_cli_check_without_path_checks_memory_dir_of_git_toplevel_of_cwd(
     write_index(memory_dir(beta), ["- [Beta](beta.md)"])
     write_memory(alpha / "src", "stray", type="note")
 
-    monkeypatch.chdir(alpha / "src")
+    nested = alpha / "pkg" / "deep" / "nested"
+    nested.mkdir(parents=True)
+
     alpha_line = f"{memory_dir(alpha) / 'alpha.md'}\tdescription\tmissing"
-    assert run_check(capsys) == (1, [alpha_line], "")
+    for cwd in (alpha / "src", nested, memory_dir(alpha)):
+        monkeypatch.chdir(cwd)
+        assert run_check(capsys) == (1, [alpha_line], "")
     monkeypatch.chdir(beta)
     assert run_check(capsys) == (0, [], "")
     monkeypatch.chdir(gamma)
@@ -1231,3 +1250,32 @@ def test_cli_check_without_path_outside_git_worktree_fails_with_hint(
 
     assert (exit_code, out) == (1, [])
     assert err.splitlines() == [NOT_IN_GIT]
+
+    repo = _init_git_repo(tmp_path / "r")
+    write_memory(memory_dir(repo), "alpha", description=DROP)
+    write_index(memory_dir(repo), ["- [Alpha](alpha.md)"])
+    monkeypatch.chdir(repo)
+    repo_line = f"{memory_dir(repo) / 'alpha.md'}\tdescription\tmissing"
+    assert run_check(capsys) == (1, [repo_line], "")
+
+
+@pytest.mark.parametrize(
+    ("argv", "reason"),
+    [
+        (["bogus"], "invalid choice: 'bogus'"),
+        (["check", "a", "b"], "unrecognized arguments: b"),
+    ],
+)
+def test_cli_check_rejects_unknown_memory_subcommand_and_extra_paths(
+    capsys,
+    no_store,
+    argv,
+    reason,
+):
+    with pytest.raises(SystemExit) as raised:
+        main(["memory", *argv])
+
+    captured = capsys.readouterr()
+    assert raised.value.code == 2
+    assert captured.out == ""
+    assert reason in captured.err
