@@ -21,7 +21,8 @@ from engram.corpora import GITA_REPOS_CSV, enumerate_corpora
 from engram.findings import FINDINGS_CORPUS
 from engram.harvest import _resolve_repo_for_path, harvest
 from engram.indexer import index, reembed_code
-from engram.memory import MEMORY_SUBDIR, check_directory, memory_dir
+from engram.memory import MEMORY_SUBDIR, check_directory, memory_dir, redact
+from engram.migrate import OK_ACTIONS, MigrationError, apply_migration, plan_migration
 from engram.pack import build
 from engram.query import query
 from engram.store import (
@@ -116,6 +117,25 @@ def _add_memory_parser(subparsers: argparse._SubParsersAction) -> None:
     memory_sub = memory_parser.add_subparsers(dest="memory_command", required=True)
     check_parser = memory_sub.add_parser("check")
     check_parser.add_argument("path", nargs="?", type=Path, default=None)
+    migrate_parser = memory_sub.add_parser("migrate")
+    migrate_parser.add_argument("--from", dest="src", type=Path, required=True)
+    migrate_parser.add_argument("--to", dest="repo_root", type=Path, required=True)
+    migrate_parser.add_argument("--apply", action="store_true")
+
+
+def _run_memory_migrate(args: argparse.Namespace) -> int:
+    run = apply_migration if args.apply else plan_migration
+    try:
+        lines = run(args.src, args.repo_root)
+    except MigrationError as e:
+        print(f"engram memory migrate: {e}", file=sys.stderr)
+        return 1
+    except OSError as e:
+        print(f"engram memory migrate: {redact(str(e))}", file=sys.stderr)
+        return 1
+    for line in lines:
+        print(line.tsv())
+    return 0 if all(line.action in OK_ACTIONS for line in lines) else 1
 
 
 def _run_memory_check(args: argparse.Namespace) -> int:
@@ -567,5 +587,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "pack":
         return _run_pack(args, parser)
     if args.command == "memory":
+        if args.memory_command == "migrate":
+            return _run_memory_migrate(args)
         return _run_memory_check(args)
     return _run_status(args)

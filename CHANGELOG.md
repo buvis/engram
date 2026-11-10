@@ -19,6 +19,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **memory**: `engram memory migrate --from <claude-memory-dir> --to <repo>`
+  prints a TSV plan for moving Claude auto-memory into repository memory;
+  `--apply` writes the converted files, regenerates `MEMORY.md`, and wires
+  `.gitattributes`, `AGENTS.md`, `CLAUDE.md` and `.claude/settings.json`. It
+  skips user, credential-bearing, invalid and host-path memories, never
+  commits, and restores the repository if a write fails.
 - **memory**: validate repository memory files under
   `docs/dev/project-management/memory/` (frontmatter schema, `MEMORY.md`
   index, credential guard that never prints the matched text). Frontmatter
