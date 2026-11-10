@@ -109,8 +109,12 @@ def main() -> int:
     host = sys.argv[1] if len(sys.argv) > 1 else "plain"
     if os.environ.get("ENGRAM_NUDGE") == "off":  # clash guard, part 1
         return 0
+    raw = sys.stdin.read()
+    if len(sys.argv) > 2:  # spike only: capture the real host payload for inspection
+        Path(sys.argv[2]).mkdir(parents=True, exist_ok=True)
+        (Path(sys.argv[2]) / f"{host}-{os.getpid()}.json").write_text(raw)
     try:
-        command, cwd = read_event(sys.stdin.read())
+        command, cwd = read_event(raw)
     except (ValueError, AttributeError) as error:
         print(f"engram-nudge: unreadable hook payload: {error}", file=sys.stderr)
         return 0

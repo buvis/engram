@@ -55,3 +55,33 @@ and official hook docs for Copilot, Kiro, and Codex.
 | Pi | yes | yes (stdio, HTTP) | block or mutate only | `tool_result` can modify result | `before_agent_start` system prompt | TypeScript extension |
 
 Common denominator: every host can add text **after** a tool call.
+
+## Round 1 result (simulated payloads)
+
+`python3 demo.py`: validator passes; MCP `initialize`, `tools/list`,
+`tools/call` answer; the nudge emits each host's documented output; a search
+inside the repo is silent; `ENGRAM_NUDGE=off` is silent; `ENGRAM_PACK_FILE`
+drops packed hits.
+
+## Round 2 result (live hosts, 2026-11-10)
+
+Goal: replace simulated payloads with real ones. Each host ran one prompt in a
+scratch repository whose hook config pointed at the nudge.
+
+| Host | Result |
+|---|---|
+| Copilot CLI 1.0.108 | **Verified end to end.** Repo hook `.github/hooks/*.json` + `--trust-folder`; the model quoted the three recall lines. Real payload: `toolName: "bash"`, `toolArgs` is an object (not a string), `cwd`, `sessionId`, `toolCallId`. |
+| Codex 0.167.0 | **Not verified.** User-level hooks fire (and the user's gateguard hook blocks the first Bash call, then allows the retry). A repo `.codex/hooks.json` PostToolUse hook never fired, even with `--dangerously-bypass-hook-trust` and a project trust override. Delivery must be user-level `hooks.json` or a real plugin install; neither was tried. |
+| Claude Code | **Adapter not run.** A nested `claude -p` cannot authenticate inside the agent sandbox. The mechanism itself is known good: this session received `additionalContext` from other PreToolUse hooks. |
+| Pi 1.5.0 | **Not run.** The local model server is down and the Copilot provider rejects the sandbox token. The adapter stays an unrun sketch. |
+| Gemini CLI 0.67.0 | **Not usable on this machine.** Authentication fails with `IneligibleTierError` (client no longer supported for the account tier). Drop Gemini from the host list unless that changes. |
+| Kiro | **Not run.** No Kiro CLI on PATH in the sandbox. |
+
+Contract changes from round 2:
+
+- Copilot's `toolArgs` arrives as an object; keep accepting the string form too.
+- A repo-level hook file is not a reliable delivery path on Codex. The plugin
+  must install hooks where each host loads them for every session.
+- Existing user hooks run beside the nudge (gateguard blocked first). The nudge
+  must stay post-tool and never block, so it cannot fight a gate.
+- Claude, Pi, Codex-as-plugin, and Kiro need a run outside the sandbox.
