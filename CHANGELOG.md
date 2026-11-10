@@ -25,6 +25,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **corpora**: index each registered repository's memory files as corpus
   `memory`; once a repository has repository memory, its Claude auto-memory is
   no longer indexed and the next incremental index prunes those rows.
+- **cli**: `engram memory check [PATH]` validates one memory directory and
+  prints `<file>\t<rule>\t<detail>` per violation (exit 1 on any, or when the
+  directory is absent); it needs no registry, index, or embedding server.
 - **cli**: `lookup --name NAME --scope repo|portfolio [--repo NAME]` and
   `lookup --file PATH` return code definitions without an embedding server.
 - **eval**: probe reranking after fusion tie-break and lexical-OR fixes on

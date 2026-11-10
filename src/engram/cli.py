@@ -21,6 +21,7 @@ from engram.corpora import GITA_REPOS_CSV, enumerate_corpora
 from engram.findings import FINDINGS_CORPUS
 from engram.harvest import _resolve_repo_for_path, harvest
 from engram.indexer import index, reembed_code
+from engram.memory import MEMORY_SUBDIR, check_directory, memory_dir
 from engram.pack import build
 from engram.query import query
 from engram.store import (
@@ -105,7 +106,39 @@ def _build_parser() -> argparse.ArgumentParser:
     pack_parser.add_argument("--prd", default=None)
     pack_parser.add_argument("--capsule", default=None)
 
+    memory_parser = subparsers.add_parser("memory")
+    memory_sub = memory_parser.add_subparsers(dest="memory_command", required=True)
+    check_parser = memory_sub.add_parser("check")
+    check_parser.add_argument("path", nargs="?", type=Path, default=None)
+
     return parser
+
+
+def _run_memory_check(args: argparse.Namespace) -> int:
+    if args.path is None:
+        result = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=Path.cwd(),
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            print(
+                "engram memory check: not inside a git worktree; pass PATH",
+                file=sys.stderr,
+            )
+            return 1
+        target = memory_dir(Path(result.stdout.strip()))
+    else:
+        resolved = args.path.resolve()
+        if resolved.parts[-len(MEMORY_SUBDIR) :] == MEMORY_SUBDIR:
+            target = resolved
+        else:
+            target = memory_dir(resolved)
+    lines = check_directory(target)
+    for line in lines:
+        print(line)
+    return 1 if lines else 0
 
 
 def _run_lookup(args: argparse.Namespace) -> int:
@@ -505,4 +538,6 @@ def main(argv: list[str] | None = None) -> int:
         return _run_harvest(args)
     if args.command == "pack":
         return _run_pack(args, parser)
+    if args.command == "memory":
+        return _run_memory_check(args)
     return _run_status(args)
