@@ -3,8 +3,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
-from engram.memory import INDEX_MAX_BYTES, INDEX_MAX_LINES, memory_dir, parse_memory
 from engram.migrate import (
     ACTIONS,
     OK_ACTIONS,
@@ -13,6 +11,8 @@ from engram.migrate import (
     contains_host_path,
     plan_migration,
 )
+
+from engram.memory import INDEX_MAX_BYTES, INDEX_MAX_LINES, memory_dir, parse_memory
 
 DEST = "docs/dev/project-management/memory/"
 TOKEN = "ghp_" + "A1b2C3d4E5" * 3 + "F6g7H8"  # github-token: ghp_ + 36 alnum
@@ -116,11 +116,13 @@ def test_plan_constants_match_contract() -> None:
         "skip-exists",
         "skip-identical",
     )
-    assert OK_ACTIONS == frozenset({"migrate", "skip-identical"})
+    assert frozenset({"migrate", "skip-identical"}) == OK_ACTIONS
 
 
 def test_plan_migrates_valid_memories_under_lowercased_hyphen_slugs(
-    tmp_path: Path, src: Path, repo: Path
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
 ) -> None:
     write(src, "Feedback_Foo_Bar.md", valid(kind="feedback"))
     write(src, "project-notes.md", valid(description="Other fact"))
@@ -137,7 +139,10 @@ def test_plan_migrates_valid_memories_under_lowercased_hyphen_slugs(
 
 
 def test_plan_resolves_relative_paths_against_cwd(
-    tmp_path: Path, src: Path, repo: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     write(src, "rel_note.md", valid())
     write_target(repo, "existing")
@@ -153,7 +158,8 @@ def test_plan_resolves_relative_paths_against_cwd(
 
 
 def test_plan_lists_every_source_markdown_file_in_sorted_order(
-    src: Path, repo: Path
+    src: Path,
+    repo: Path,
 ) -> None:
     write(src, "b.md", valid())
     write(src, "a.md", valid(name="other"))
@@ -173,7 +179,9 @@ def test_plan_lists_every_source_markdown_file_in_sorted_order(
 
 
 def test_plan_returns_no_lines_for_empty_source(
-    tmp_path: Path, src: Path, repo: Path
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
 ) -> None:
     before = snapshot(tmp_path)
 
@@ -183,7 +191,9 @@ def test_plan_returns_no_lines_for_empty_source(
 
 
 def test_plan_skips_user_memory_but_migrates_project_memory(
-    tmp_path: Path, src: Path, repo: Path
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
 ) -> None:
     write(src, "user_role.md", valid(kind="user"))
     write(src, "project_role.md", valid(kind="project"))
@@ -206,7 +216,11 @@ def test_plan_falls_back_to_metadata_type(src: Path, repo: Path) -> None:
     write(src, "meta_scalar.md", memory_text({**front, "metadata": "feedback"}))
     write(src, "top_wins.md", memory_text(top_wins))
     identical = rendered(
-        "meta-feedback", "Meta fact", "feedback", "meta_feedback.md", "Body.\n"
+        "meta-feedback",
+        "Meta fact",
+        "feedback",
+        "meta_feedback.md",
+        "Body.\n",
     )
     write_target(repo, "meta-feedback", identical)
 
@@ -221,7 +235,9 @@ def test_plan_falls_back_to_metadata_type(src: Path, repo: Path) -> None:
 
 
 def test_plan_reports_credential_labels_without_the_secret(
-    tmp_path: Path, src: Path, repo: Path
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
 ) -> None:
     write(src, "token.md", valid(body=f"Use {TOKEN} here.\n"))
     write(src, "both.md", valid(body=f"{AWS_KEY} and {TOKEN}\n"))
@@ -328,20 +344,29 @@ def test_plan_skips_every_file_whose_slug_collides(src: Path, repo: Path) -> Non
     write(src, "C_D.md", valid(kind="user"))
     write(src, "c-d.md", valid())
     write(src, "solo.md", valid())
+    for name in ("X_y-z.md", "x-y-z.md", "x_y_z.md"):
+        write(src, name, valid())
+    three = "slug collision: X_y-z.md, x-y-z.md, x_y_z.md"
 
     lines = plan_migration(src, repo)
 
     assert triples(lines) == [
         ("C_D.md", "skip-user", USER_SKIP),
+        ("X_y-z.md", "skip-invalid", three),
         ("a-b.md", "skip-invalid", "slug collision: a-b.md, a_b.md"),
         ("a_b.md", "skip-invalid", "slug collision: a-b.md, a_b.md"),
         ("c-d.md", "migrate", DEST + "c-d.md"),
         ("solo.md", "migrate", DEST + "solo.md"),
+        ("x-y-z.md", "skip-invalid", three),
+        ("x_y_z.md", "skip-invalid", three),
     ]
 
 
 def test_plan_skips_sources_naming_absolute_host_paths(
-    tmp_path: Path, src: Path, repo: Path, home: Path
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
+    home: Path,
 ) -> None:
     write(src, "home_body.md", valid(body=f"Notes live in {home}/notes.\n"))
     write(src, "src_desc.md", valid(description=f"Copied from {src}"))
@@ -369,7 +394,10 @@ def test_plan_skips_sources_naming_absolute_host_paths(
         ("read /etc/hosts", True),
         ("(/Volumes/disk/a)", True),
         ("https://h/opt/x", False),
+        ("https://h/home/x", False),
         ("a/tmp/b", False),
+        ("a/Users/b", False),
+        ("a/etc/b", False),
         ("~/notes/x", False),
         ("/usr/local/bin", False),
         ("/Usersx/alice", False),
@@ -378,21 +406,67 @@ def test_plan_skips_sources_naming_absolute_host_paths(
     ],
 )
 def test_plan_contains_host_path_matches_host_roots_only(
-    src: Path, text: str, expected: bool
+    src: Path,
+    text: str,
+    expected: bool,
 ) -> None:
     assert contains_host_path(text, src) is expected
 
 
 def test_plan_contains_host_path_matches_home_and_source_markers(
-    src: Path, home: Path
+    src: Path,
+    home: Path,
 ) -> None:
     assert contains_host_path(f"x{home}y", src) is True
     assert contains_host_path(f"x{src}y", src) is True
     assert contains_host_path("x/claude-memory/y", src) is False
 
 
+def test_plan_contains_host_path_matches_markers_outside_host_roots(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake_home = Path("/zz-engram-home/h")
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake_home))
+    source = Path("/zz-engram-src/mem")
+
+    assert contains_host_path("x/zz-engram-src/mem/y", source) is True
+    assert contains_host_path("see /zz-engram-home/h/notes", source) is True
+    assert contains_host_path("/zz-engram-src/other /zz-engram-home/x", source) is False
+
+
+LONG = " ".join(["word"] * 30)  # 149 chars: default YAML width would fold it
+UNICODE = "Café ü naïve"
+
+
+@pytest.mark.parametrize(
+    ("source", "target", "action"),
+    [
+        ((LONG, "project"), (LONG, "project"), "skip-identical"),
+        ((UNICODE, "feedback"), (UNICODE, "feedback"), "skip-identical"),
+        (("New fact", "project"), ("Old fact", "project"), "skip-exists"),
+        (("Same fact", "feedback"), ("Same fact", "project"), "skip-exists"),
+    ],
+    ids=["long-description", "non-ascii", "description-changed", "type-changed"],
+)
+def test_plan_compares_whole_rendered_file_against_target(
+    src: Path,
+    repo: Path,
+    source: tuple[str, str],
+    target: tuple[str, str],
+    action: str,
+) -> None:
+    write(src, "fact.md", valid(description=source[0], kind=source[1]))
+    write_target(repo, "fact", rendered("fact", *target, "fact.md", "Body.\n"))
+
+    lines = plan_migration(src, repo)
+
+    assert triples(lines) == [("fact.md", action, DEST + "fact.md")]
+
+
 def test_plan_reports_identical_and_existing_targets(
-    tmp_path: Path, src: Path, repo: Path
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
 ) -> None:
     dropped = {"author": "me", "date": "2026-01-01", "metadata": {"type": "user"}}
     same = valid("Orig Name", "  Trimmed fact  ", "reference", "Exact.\n", **dropped)
@@ -421,7 +495,10 @@ def test_plan_reports_identical_and_existing_targets(
     assert snapshot(tmp_path) == before
 
 
-LINKS = "See [[Feedback_Foo]], [[User_Note]] and [Feedback_Foo](Feedback_Foo.md).\n"
+LINKS = (
+    "See [[Feedback_Foo]], [[User_Note]] and [Feedback_Foo](Feedback_Foo.md).\n"
+    "Again [[Feedback_Foo]].\n"
+)
 REWRITTEN = LINKS.replace("[[Feedback_Foo]]", "[[feedback-foo]]")
 
 
@@ -430,18 +507,23 @@ REWRITTEN = LINKS.replace("[[Feedback_Foo]]", "[[feedback-foo]]")
     [
         (REWRITTEN, "skip-identical"),
         (LINKS, "skip-exists"),
+        (LINKS.replace("[[Feedback_Foo]]", "[[feedback-foo]]", 1), "skip-exists"),
         (REWRITTEN.replace("[[User_Note]]", "[[user-note]]"), "skip-exists"),
         (LINKS.replace("Feedback_Foo", "feedback-foo"), "skip-exists"),
     ],
     ids=[
         "rewritten",
         "unrewritten",
+        "first-link-only-rewritten",
         "skipped-target-rewritten",
         "markdown-link-rewritten",
     ],
 )
 def test_plan_rewrites_wiki_links_to_renamed_slugs_before_comparing(
-    src: Path, repo: Path, target_body: str, action: str
+    src: Path,
+    repo: Path,
+    target_body: str,
+    action: str,
 ) -> None:
     write(src, "Feedback_Foo.md", valid())
     write(src, "User_Note.md", valid(kind="user"))
@@ -459,7 +541,9 @@ def test_plan_rewrites_wiki_links_to_renamed_slugs_before_comparing(
 
 
 def test_plan_never_prints_secret_from_renamed_link_target(
-    tmp_path: Path, src: Path, repo: Path
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
 ) -> None:
     write(src, f"{SK_STEM}.md", valid())
     referrer = valid(description="Points at it", body=f"See [[{SK_STEM}]].\n")
@@ -481,16 +565,25 @@ OVERLAPS: list[Callable[[Path], Path]] = [
     lambda repo: repo / "sub" / "..",
     memory_dir,
     lambda repo: repo / ".claude",
+    lambda repo: repo / "notes",
 ]
 
 
 @pytest.mark.parametrize(
     "overlap",
     OVERLAPS,
-    ids=["repo-root", "repo-root-unresolved", "memory-dir", "claude"],
+    ids=[
+        "repo-root",
+        "repo-root-unresolved",
+        "memory-dir",
+        "claude",
+        "repo-subfolder",
+    ],
 )
 def test_plan_refuses_source_overlapping_repository_write_targets(
-    tmp_path: Path, repo: Path, overlap: Callable[[Path], Path]
+    tmp_path: Path,
+    repo: Path,
+    overlap: Callable[[Path], Path],
 ) -> None:
     (repo / "sub").mkdir()
     source = overlap(repo)
@@ -504,7 +597,9 @@ def test_plan_refuses_source_overlapping_repository_write_targets(
 
 
 def test_plan_refuses_source_file_symlinked_into_repository(
-    tmp_path: Path, src: Path, repo: Path
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
 ) -> None:
     (repo / "notes").mkdir()
     real = write(repo / "notes", "real.md", valid())
@@ -517,7 +612,8 @@ def test_plan_refuses_source_file_symlinked_into_repository(
 
 
 def test_plan_accepts_source_beside_repository_with_shared_name_prefix(
-    tmp_path: Path, repo: Path
+    tmp_path: Path,
+    repo: Path,
 ) -> None:
     beside = tmp_path / "repo-memory"
     beside.mkdir()
@@ -534,10 +630,14 @@ def test_plan_accepts_source_beside_repository_with_shared_name_prefix(
 
 
 @pytest.mark.parametrize(
-    "broken", ["src-missing", "repo-missing", "src-file", "repo-file"]
+    "broken",
+    ["src-missing", "repo-missing", "src-file", "repo-file"],
 )
 def test_plan_refuses_paths_that_are_not_directories(
-    tmp_path: Path, src: Path, repo: Path, broken: str
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
+    broken: str,
 ) -> None:
     write(src, "note.md", valid())
     paths = {"src": src, "repo": repo}
@@ -561,7 +661,10 @@ def test_plan_refuses_paths_that_are_not_directories(
     ids=["no-frontmatter", "credential", "host-path-body", "host-path-description"],
 )
 def test_plan_refuses_invalid_existing_target_file(
-    tmp_path: Path, src: Path, repo: Path, content: bytes
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
+    content: bytes,
 ) -> None:
     write(src, "note.md", valid())
     write_target(repo, "good")
@@ -621,13 +724,33 @@ def test_plan_refuses_index_over_line_limit(
     assert snapshot(tmp_path) == before
 
 
+HALF = INDEX_MAX_BYTES // 2
+
+
 @pytest.mark.parametrize(
-    ("length", "refused"), [(INDEX_MAX_BYTES - 100, False), (INDEX_MAX_BYTES, True)]
+    ("existing", "sources", "refused"),
+    [
+        ([], [INDEX_MAX_BYTES - 100], False),
+        ([], [INDEX_MAX_BYTES], True),
+        ([], [HALF - 100, HALF - 100], False),
+        ([], [HALF, HALF], True),
+        ([HALF], [HALF], True),
+    ],
+    ids=["one-under", "one-over", "two-under", "two-over", "existing-plus-new-over"],
 )
 def test_plan_refuses_index_over_byte_limit(
-    tmp_path: Path, src: Path, repo: Path, length: int, refused: bool
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
+    existing: list[int],
+    sources: list[int],
+    refused: bool,
 ) -> None:
-    write(src, "big.md", valid(description="x" * length))
+    for i, length in enumerate(existing):
+        content = rendered(f"old{i}", "y" * length, "project", f"old{i}.md", "Kept.\n")
+        write_target(repo, f"old{i}", content)
+    for i, length in enumerate(sources):
+        write(src, f"big{i}.md", valid(description="x" * length))
     before = snapshot(tmp_path)
 
     if refused:
@@ -635,5 +758,6 @@ def test_plan_refuses_index_over_byte_limit(
             plan_migration(src, repo)
     else:
         lines = plan_migration(src, repo)
-        assert triples(lines) == [("big.md", "migrate", DEST + "big.md")]
+        names = [f"big{i}" for i in range(len(sources))]
+        assert triples(lines) == [(f"{n}.md", "migrate", f"{DEST}{n}.md") for n in names]
     assert snapshot(tmp_path) == before
