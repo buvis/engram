@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from engram.memory import INDEX_ENTRY_RE, memory_dir
+from engram.memory import memory_dir
 from engram.migrate import AGENTS_SECTION, MigrationLine
 
 DEST = "docs/dev/project-management/memory/"
@@ -84,10 +84,17 @@ def triples(lines: list[MigrationLine]) -> list[tuple[str, str, str]]:
     return [(line.file, line.action, line.detail) for line in lines]
 
 
-def index_slugs(repo: Path) -> list[str]:
-    text = (memory_dir(repo) / "MEMORY.md").read_text(encoding="utf-8")
-    matches = (INDEX_ENTRY_RE.match(line) for line in text.splitlines())
-    return [m.group("slug") for m in matches if m]
+def identities(root: Path) -> dict[str, tuple[int, int]]:
+    """Inode and ctime per path: any rewrite changes them, os.utime cannot hide it."""
+    return {
+        str(p.relative_to(root)): (p.stat().st_ino, p.stat().st_ctime_ns)
+        for p in root.rglob("*")
+    }
+
+
+def index_bytes(*entries: tuple[str, str]) -> bytes:
+    """MEMORY.md for (slug, description) entries: name equals slug after migration."""
+    return "".join(f"- [{s}]({s}.md) — {d}\n" for s, d in entries).encode()
 
 
 def settings_json(obj: dict) -> str:
@@ -140,4 +147,16 @@ REFUSALS = [
     (".claude/settings.json", b'"autoMemoryEnabled"\n'),
     ("CLAUDE.md", b"@AGENTS.md\n\xff\xfe\n"),
     ("AGENTS.md", b"# Agents\n\xff\n"),
+    (".gitattributes", b"*.png binary\n\xff\n"),
 ]
+
+# write order stage per file apply writes: memory files, then MEMORY.md, then wiring
+ROLLBACK_STAGES = {
+    "note.md": 0,
+    "other-fact.md": 0,
+    "MEMORY.md": 1,
+    ".gitattributes": 2,
+    "AGENTS.md": 2,
+    "CLAUDE.md": 2,
+    "settings.json": 2,
+}

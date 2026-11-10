@@ -11,13 +11,15 @@ from _migrate_helpers import (
     HOST,
     IMPORT,
     REFUSALS,
+    ROLLBACK_STAGES,
     SETTINGS,
     SK_SLUG,
     SK_STEM,
     TOKEN,
     USER_SKIP,
     WIRING,
-    index_slugs,
+    identities,
+    index_bytes,
     memory_text,
     mtimes,
     rendered,
@@ -746,7 +748,7 @@ def test_apply_migrates_three_types_into_empty_repository_with_wiring(
     planned = triples(plan_migration(src, repo))
     monkeypatch.chdir(tmp_path)
 
-    lines = apply_migration(src, repo)
+    lines = apply_migration(Path(src.name), Path(repo.name))
 
     assert triples(lines) == planned
     assert planned == [
@@ -758,7 +760,11 @@ def test_apply_migrates_three_types_into_empty_repository_with_wiring(
     for filename, slug, description, kind in memories:
         expected = rendered(slug, description, kind, filename, f"{kind} body.\n")
         assert (target / f"{slug}.md").read_bytes() == expected
-    assert index_slugs(repo) == ["alpha", "mid-note", "zeta-ref"]
+    assert (target / "MEMORY.md").read_bytes() == index_bytes(
+        ("alpha", "Project fact"),
+        ("mid-note", "Feedback fact"),
+        ("zeta-ref", "Ref fact"),
+    )
     assert check_directory(target) == []
     assert (repo / ".gitattributes").read_text() == GITATTRS
     assert (repo / "AGENTS.md").read_text() == "# Agents\n\n" + AGENTS_SECTION
@@ -807,7 +813,9 @@ def test_apply_mixed_actions_reports_every_action_and_keeps_directory_valid(
     names = sorted(p.name for p in target.iterdir())
     assert names == ["MEMORY.md", "fresh-one.md", "kept.md", "same.md"]
     assert {p: p.read_bytes() for p in existing} == existing
-    assert index_slugs(repo) == ["fresh-one", "kept", "same"]
+    assert (target / "MEMORY.md").read_bytes() == index_bytes(
+        ("fresh-one", "Fresh"), ("kept", "Existing fact"), ("same", "Existing fact")
+    )
     assert check_directory(target) == []
     assert all(TOKEN.encode() not in p.read_bytes() for p in target.iterdir())
 
@@ -826,7 +834,11 @@ def test_apply_renames_slugs_and_rewrites_links_to_them(src: Path, repo: Path) -
     target = memory_dir(repo)
     assert not (target / "feedback_foo_bar.md").exists()
     renamed = rendered(
-        "feedback-foo-bar", "A fact", "feedback", "feedback_foo_bar.md", "Body.\n"
+        "feedback-foo-bar",
+        "A fact",
+        "feedback",
+        "feedback_foo_bar.md",
+        "Body.\n",
     )
     assert (target / "feedback-foo-bar.md").read_bytes() == renamed
     new_body = "See [[feedback-foo-bar]] and [[feedback_foo_bar_v2]].\n"
@@ -918,7 +930,7 @@ def test_apply_idempotent_second_run_changes_no_bytes_or_mtimes(
     apply_migration(src, repo)
     for path in repo.rglob("*"):
         os.utime(path, ns=(1_000_000_000, 1_000_000_000))
-    before, stamps = snapshot(repo), mtimes(repo)
+    before, stamps, ids = snapshot(repo), mtimes(repo), identities(repo)
 
     lines = apply_migration(src, repo)
 
@@ -929,6 +941,7 @@ def test_apply_idempotent_second_run_changes_no_bytes_or_mtimes(
     ]
     assert snapshot(repo) == before
     assert mtimes(repo) == stamps
+    assert identities(repo) == ids
 
 
 def test_apply_leaves_sources_untouched_and_writes_no_source_path(
@@ -952,6 +965,7 @@ def test_apply_leaves_sources_untouched_and_writes_no_source_path(
         assert all(marker.encode() not in p.read_bytes() for p in written)
 
 
+@pytest.mark.parametrize("fail", [n for n in ROLLBACK_STAGES if n != "other-fact.md"])
 @pytest.mark.parametrize("existing", [False, True], ids=["fresh", "existing-memory"])
 def test_apply_rolls_back_every_write_when_a_wiring_write_fails(
     tmp_path: Path,
@@ -959,6 +973,7 @@ def test_apply_rolls_back_every_write_when_a_wiring_write_fails(
     repo: Path,
     monkeypatch: pytest.MonkeyPatch,
     existing: bool,
+    fail: str,
 ) -> None:
     write(src, "note.md", valid())
     write(src, "Other_Fact.md", valid(description="Other"))
@@ -970,21 +985,46 @@ def test_apply_rolls_back_every_write_when_a_wiring_write_fails(
     real = migrate._write_if_changed
     attempted: list[str] = []
 
-    def fail_on_claude(path: Path, data: bytes) -> None:
+    def fail_once(path: Path, data: bytes) -> None:
         attempted.append(Path(path).name)
-        if Path(path).name == "CLAUDE.md":
+        if attempted[-1] == fail and attempted.count(fail) == 1:
             raise OSError("disk full")
         real(path, data)
 
-    monkeypatch.setattr("engram.migrate._write_if_changed", fail_on_claude)
+    monkeypatch.setattr("engram.migrate._write_if_changed", fail_once)
 
     with pytest.raises(MigrationError) as raised:
         apply_migration(src, repo)
     assert str(raised.value).startswith("apply failed, repository restored:")
     assert "disk full" in str(raised.value)
-    earlier = set(attempted[: attempted.index("CLAUDE.md")])
-    assert {"note.md", "other-fact.md", "MEMORY.md"} <= earlier
+    earlier = set(attempted[: attempted.index(fail)])
+    stage = ROLLBACK_STAGES[fail]
+    assert {n for n, s in ROLLBACK_STAGES.items() if s < stage} <= earlier
     assert snapshot(tmp_path) == before
+
+
+def test_apply_rollback_names_paths_it_could_not_restore(
+    src: Path,
+    repo: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    write(src, "note.md", valid())
+    write_target(repo, "good")
+    write(memory_dir(repo), "MEMORY.md", "- [good](good.md) — Existing fact\n")
+    real = migrate._write_if_changed
+
+    def fail_index(path: Path, data: bytes) -> None:
+        if Path(path).name == "MEMORY.md":
+            raise OSError("disk full")
+        real(path, data)
+
+    monkeypatch.setattr("engram.migrate._write_if_changed", fail_index)
+
+    with pytest.raises(MigrationError) as raised:
+        apply_migration(src, repo)
+    message = str(raised.value)
+    assert message.startswith("apply failed, repository restored: ")
+    assert "MEMORY.md" in message[message.index("disk full") + len("disk full") :]
 
 
 def test_wiring_agents_section_is_short_canonical_and_public_safe(src: Path) -> None:
@@ -1000,9 +1040,13 @@ def test_wiring_agents_section_is_short_canonical_and_public_safe(src: Path) -> 
         "project",
         "feedback",
         "reference",
-        "docs(memory):",
+        "docs(memory): <verb> <slug>",
         "engram memory check",
     ):
         assert phrase in AGENTS_SECTION
+    plain = AGENTS_SECTION.lower().replace("`", "")
+    assert "read memory.md before" in plain
+    for inverted in ("never read", "never run", "do not run", "delete any"):
+        assert inverted not in plain
     assert contains_host_path(AGENTS_SECTION, src) is False
     assert redact(AGENTS_SECTION) == AGENTS_SECTION
