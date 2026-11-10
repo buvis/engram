@@ -117,7 +117,7 @@
     Blocker: the installed autopilot hook rejects `docs/dev/project-management/memory/` until intake 00065 ships.
     The rollout is attended: run the migration, review it, commit it, and push only after the user approves.
 
-**WAIT FOR AUTOPILOT BEING DONE IN engram repo:**
+>>> **WAIT FOR AUTOPILOT BEING DONE IN engram repo:**
 
 11. **Session 7: collect independent retrieval evidence from agent sessions. (REDEFINED — 2026-11-10)**
     User decision: Engram serves agents, so the questions come from agent sessions, not from the user.
