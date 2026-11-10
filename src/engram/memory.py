@@ -87,6 +87,23 @@ def _forbidden_keys(node: object, prefix: str, ancestors: set[int]) -> list[str]
     return found
 
 
+def _type_violations(front: dict) -> list[str]:
+    metadata = front.get("metadata")
+    if "type" in front:
+        memory_type = front["type"]
+    elif isinstance(metadata, dict) and "type" in metadata:
+        memory_type = metadata["type"]
+    else:
+        memory_type = _ABSENT
+    if memory_type is _ABSENT:
+        return ["type\tmissing"]
+    if memory_type == "user":
+        return ["type\tuser memory belongs in host-global memory"]
+    if not isinstance(memory_type, str) or memory_type not in ALLOWED_TYPES:
+        return ["type\tmust be one of " + ", ".join(sorted(ALLOWED_TYPES))]
+    return []
+
+
 def _field_violations(front: dict, stem: str) -> list[str]:
     found = []
     name = front.get("name")
@@ -105,19 +122,7 @@ def _field_violations(front: dict, stem: str) -> list[str]:
     elif "\n" in description.strip():
         found.append("description\tmust be one line")
 
-    metadata = front.get("metadata")
-    if "type" in front:
-        memory_type = front["type"]
-    elif isinstance(metadata, dict) and "type" in metadata:
-        memory_type = metadata["type"]
-    else:
-        memory_type = _ABSENT
-    if memory_type is _ABSENT:
-        found.append("type\tmissing")
-    elif memory_type == "user":
-        found.append("type\tuser memory belongs in host-global memory")
-    elif not isinstance(memory_type, str) or memory_type not in ALLOWED_TYPES:
-        found.append("type\tmust be one of " + ", ".join(sorted(ALLOWED_TYPES)))
+    found += _type_violations(front)
 
     source = front.get("source")
     if not isinstance(source, str):
