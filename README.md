@@ -66,6 +66,38 @@ on any violation or when the directory is absent. Each violation prints as
 has at least one repository memory file, engram stops indexing its Claude
 auto-memory.
 
+## Migrating Claude auto-memory
+
+`engram memory migrate --from <claude-memory-dir> --to <repo-root> [--apply]`
+moves Claude auto-memory into repository memory.
+
+Without `--apply` it is a dry run and writes nothing. It prints one line per
+source file as `<file><TAB><action><TAB><detail>`. Actions are `migrate`,
+`skip-user`, `skip-credential`, `skip-invalid`, `skip-exists`, and
+`skip-identical`. It exits 0 when every line is `migrate` or `skip-identical`,
+and 1 otherwise. User memories and files that hold a credential are skipped.
+A file whose body or description holds an absolute host path is skipped as
+`skip-invalid` ("contains an absolute host path").
+
+`--apply` writes `docs/dev/project-management/memory/<slug>.md` files,
+regenerates `MEMORY.md`, and wires `.gitattributes`, `AGENTS.md`, `CLAUDE.md`,
+and `.claude/settings.json` (`autoMemoryEnabled: false`). It never commits or
+pushes and never changes the source directory. If a write fails, it restores
+the repo and exits 1.
+
+Roll out one repo at a time:
+
+1. Start from a clean worktree.
+2. Run the dry run.
+3. Review every `migrate` line for public safety. The repo may be public.
+4. Run it again with `--apply`.
+5. Run `engram memory check`.
+6. Make one `docs(memory): migrate claude auto-memory` commit per repo.
+7. Push only after the user approves the batch.
+
+To undo before the commit, run `git restore` and `git clean` on the reported
+paths. They return the repo to its prior state.
+
 ## Install
 
 Requires Python 3.12+, [uv](https://docs.astral.sh/uv/), and `llama-server`
