@@ -6,6 +6,7 @@ Writes docs/dev/tmp/engram-plugin-live.json and prints one line per host.
 """
 
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -25,13 +26,33 @@ PROMPT = (
 )
 
 
+def host_env() -> dict[str, str]:
+    """Give the nested claude the setup token the run-agent launcher uses.
+
+    A plain terminal falls back to the Keychain login, which may be expired.
+    The token is passed to the child process only and is never printed.
+    """
+    env = dict(os.environ)
+    token_file = Path.home() / ".local" / "secrets" / "claude-setup-token"
+    if "CLAUDE_CODE_OAUTH_TOKEN" not in env and token_file.is_file():
+        env["CLAUDE_CODE_OAUTH_TOKEN"] = token_file.read_text().strip()
+    return env
+
+
 def run_host(name: str, cmd: list[str], cwd: Path, captured: Path) -> dict:
     if not shutil.which(cmd[0]):
         return {"host": name, "status": f"{cmd[0]} not on PATH"}
     subprocess.run(["git", "init", "-q", str(cwd)], check=True)
     try:
-        done = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True, timeout=300,
-                              stdin=subprocess.DEVNULL)
+        done = subprocess.run(
+            cmd,
+            cwd=cwd,
+            env=host_env(),
+            capture_output=True,
+            text=True,
+            timeout=300,
+            stdin=subprocess.DEVNULL,
+        )
     except subprocess.TimeoutExpired:
         return {"host": name, "status": "timeout after 300 s"}
     output = done.stdout + done.stderr
@@ -54,23 +75,41 @@ def main() -> int:
     claude_dir, pi_dir = root / "claude", root / "pi"
     (claude_dir / ".claude").mkdir(parents=True)
     pi_dir.mkdir()
-    hook = {"type": "command", "command": f"python3 {NUDGE} claude {captured}", "timeout": 15}
+    hook = {
+        "type": "command",
+        "command": f"python3 {NUDGE} claude {captured}",
+        "timeout": 15,
+    }
     (claude_dir / ".claude" / "settings.json").write_text(
-        json.dumps({"hooks": {"PostToolUse": [{"matcher": "Bash", "hooks": [hook]}]}})
+        json.dumps({"hooks": {"PostToolUse": [{"matcher": "Bash", "hooks": [hook]}]}}),
     )
     pi_cmd = ["pi", "-p", "--no-session", "-e", str(PI_EXT)]
     if len(sys.argv) > 1:
         pi_cmd += ["--model", sys.argv[1]]
     results = [
-        run_host("claude", ["claude", "-p", PROMPT, "--model", "haiku",
-                            "--allowedTools", "Bash(rg:*)"], claude_dir, captured),
+        run_host(
+            "claude",
+            [
+                "claude",
+                "-p",
+                PROMPT,
+                "--model",
+                "haiku",
+                "--allowedTools",
+                "Bash(rg:*)",
+            ],
+            claude_dir,
+            captured,
+        ),
         run_host("pi", [*pi_cmd, PROMPT], pi_dir, captured),
     ]
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(results, indent=2))
     shutil.rmtree(root)
     for result in results:
-        print(f"{result['host']}: {result['status']}, recall seen = {result.get('recall_seen')}")
+        print(
+            f"{result['host']}: {result['status']}, recall seen = {result.get('recall_seen')}"
+        )
     print(f"wrote {OUT}")
     return 0
 
