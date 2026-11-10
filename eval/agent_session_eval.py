@@ -62,7 +62,10 @@ def file_ranks(paths: list[str], labels: set[str], leaked: str) -> int | None:
 def fingerprint() -> dict[str, str]:
     root = Path(__file__).resolve().parents[1]
     head = subprocess.run(
-        ["git", "-C", str(root), "rev-parse", "HEAD"], capture_output=True, text=True, check=True
+        ["git", "-C", str(root), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout.strip()
     files = {name: sha256(PRIVATE / name) for name in QUESTION_FILES}
     return {
@@ -86,13 +89,17 @@ def run() -> None:
     frozen = json.loads(FREEZE.read_text())
     if frozen != fingerprint():
         raise SystemExit("frozen inputs changed after freeze")
-    questions = [q for name in QUESTION_FILES for q in json.loads((PRIVATE / name).read_text())]
+    questions = [
+        q for name in QUESTION_FILES for q in json.loads((PRIVATE / name).read_text())
+    ]
     sessions = full_session_ids()
     config = load_config(CONFIG)
     rows = []
     with open_readonly(POOL) as store:
         for q in questions:
-            pointers = query(store, config, q["question"], Scope("portfolio", None), k=DEPTH)
+            pointers = query(
+                store, config, q["question"], Scope("portfolio", None), k=DEPTH
+            )
             paths = [p.path for p in pointers]
             leaked = sessions[q["session"]]
             labels = set(q["labels"])
@@ -103,8 +110,10 @@ def run() -> None:
                     "rank": file_ranks(paths, labels, leaked),
                     "rank_unfiltered": file_ranks(paths, labels, "\0"),
                     "leaked_transcript_in_top5": leak_in_top5,
-                    "label_corpus": sorted({p.corpus for p in pointers if p.path in labels}),
-                }
+                    "label_corpus": sorted(
+                        {p.corpus for p in pointers if p.path in labels}
+                    ),
+                },
             )
             print(q["q"], rows[-1]["rank"], flush=True)
     n = len(rows)
@@ -117,7 +126,10 @@ def run() -> None:
         out = {}
         for value in sorted({r[key] for r in rows}):
             sub = [r for r in rows if r[key] == value]
-            out[value] = {"n": len(sub), "top3": sum(r["rank"] is not None and r["rank"] <= 3 for r in sub)}
+            out[value] = {
+                "n": len(sub),
+                "top3": sum(r["rank"] is not None and r["rank"] <= 3 for r in sub),
+            }
         return out
 
     summary = {
