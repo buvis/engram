@@ -95,8 +95,10 @@ Roll out one repo at a time:
 6. Make one `docs(memory): migrate claude auto-memory` commit per repo.
 7. Push only after the user approves the batch.
 
-To undo before the commit, run `git restore` and `git clean` on the reported
-paths. They return the repo to its prior state.
+To undo before the commit, run `git restore` and `git clean` on the migrated
+memory files, `MEMORY.md`, and the four wiring files: `.gitattributes`,
+`AGENTS.md`, `CLAUDE.md`, and `.claude/settings.json`. They return the repo to
+its prior state.
 
 ## Install
 
