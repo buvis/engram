@@ -106,12 +106,16 @@ def _build_parser() -> argparse.ArgumentParser:
     pack_parser.add_argument("--prd", default=None)
     pack_parser.add_argument("--capsule", default=None)
 
+    _add_memory_parser(subparsers)
+
+    return parser
+
+
+def _add_memory_parser(subparsers: argparse._SubParsersAction) -> None:
     memory_parser = subparsers.add_parser("memory")
     memory_sub = memory_parser.add_subparsers(dest="memory_command", required=True)
     check_parser = memory_sub.add_parser("check")
     check_parser.add_argument("path", nargs="?", type=Path, default=None)
-
-    return parser
 
 
 def _run_memory_check(args: argparse.Namespace) -> int:
