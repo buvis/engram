@@ -21,7 +21,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **memory**: validate repository memory files under
   `docs/dev/project-management/memory/` (frontmatter schema, `MEMORY.md`
-  index, credential guard that never prints the matched text).
+  index, credential guard that never prints the matched text). Frontmatter
+  with an impossible date such as `2026-13-45` is reported as unparseable
+  instead of crashing the check.
 - **corpora**: index each registered repository's memory files as corpus
   `memory`; once a repository has repository memory, its Claude auto-memory is
   no longer indexed and the next incremental index prunes those rows.

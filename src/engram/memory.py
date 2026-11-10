@@ -160,7 +160,7 @@ def _split_frontmatter(text: str) -> tuple[object, str, str | None]:
         return None, "", "unterminated"
     try:
         front = yaml.safe_load("".join(lines[1:end]))
-    except yaml.YAMLError:
+    except (yaml.YAMLError, ValueError):  # ValueError: bad timestamps like 2026-13-45
         return None, "", "unparseable"
     if not isinstance(front, dict):
         return None, "", "not a mapping"

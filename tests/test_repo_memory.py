@@ -268,6 +268,7 @@ def test_schema_unreadable_file_reports_read_violation_with_exception_class(tmp_
         ("\n---\nname: alpha\n---\nbody\n", "missing"),
         ("---\nname: alpha\ndescription: d\n", "unterminated"),
         ("---\nname: [unclosed\n---\nbody\n", "unparseable"),
+        ("---\nname: alpha\nsource: 2026-13-45\n---\nbody\n", "unparseable"),
         ("---\n- a\n- b\n---\nbody\n", "not a mapping"),
         ("---\njust a scalar\n---\nbody\n", "not a mapping"),
     ],
