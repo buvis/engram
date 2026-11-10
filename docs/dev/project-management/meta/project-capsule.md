@@ -607,9 +607,16 @@ agents, so evidence comes from agent sessions, not from user-written questions.
   the documented post-tool output for Claude, Codex, Gemini, Copilot, and Kiro;
   `ENGRAM_NUDGE=off` and `ENGRAM_PACK_FILE` keep it clear of orchestrator
   injection. Run `python3 docs/dev/project-management/spikes/engram-plugin/demo.py`.
-  Not verified in a live host: payloads were built from each host's docs. The
-  Pi adapter is an unrun sketch. The graduate, refine, or discard decision is
-  the user's.
+  Later rounds verified the nudge live in Claude Code, Codex 0.167.0 (config-level
+  hook only; a repository `.codex/hooks.json` did not fire), and Copilot CLI
+  1.0.108. Pi is unrun, Kiro untested, and Gemini CLI cannot authenticate here.
+- **Graduated (user decision).** Engram PRD `00012-agent-recall-surfaces-v1`
+  (backlog): `engram mcp` and `engram nudge <host>`, so hooks call a bare
+  command and need no plugin-root path. Its `eligibility` check waits for
+  `Adoption decision: proceed` in the agent-session protocol. agent-plugins PRD
+  `00067-engram-plugin-v1` (backlog, unpushed there): skill, `mcp.json`, and
+  per-host hook files; eligible once `engram nudge --help` works. Both passed
+  the grounding gate with 0 blocking rows. Delete the spike when 00012 lands.
 
 Verification: documentation and a throwaway spike only. No production or
 evaluation code changed, so the suites were not rerun. `git diff --check`
@@ -617,4 +624,5 @@ passed. Production model, configuration, index, snapshots, and backups were
 untouched; no servers were started beyond Engram's own on-demand query serving.
 
 Next: execute redefined **Session 7** (build the miner under `eval/`, freeze,
-score). Then decide intake 00066 and the plugin from the hit rate.
+score). Then set the protocol's `Adoption decision:` line from the hit rate;
+that line releases PRD 00012, and intake 00066 is decided from the same result.

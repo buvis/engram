@@ -2,6 +2,12 @@
 
 Throwaway. Nothing here ships. Date: 2026-11-10.
 
+Status: graduated 2026-11-10 into Engram PRD `00012-agent-recall-surfaces-v1`
+(`engram mcp`, `engram nudge`) and agent-plugins PRD `00067-engram-plugin-v1`
+(the plugin, configuration only). The PRDs moved the nudge logic into the
+Engram CLI, so no hook needs a plugin-root path. Delete this directory when
+PRD 00012's implementation lands.
+
 ## Idea (user, verbatim)
 
 > we can't rely on hooks, the solution must be portable and hooks aren't

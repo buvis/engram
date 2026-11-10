@@ -60,6 +60,12 @@ protocol (same ports, read-only indexes, production untouched).
 
 ## Decision this feeds
 
+Adoption decision: pending
+
+The line above is machine-read: PRD 00012's `eligibility` check passes only
+when it reads `Adoption decision: proceed`. Change it when scoring is reported,
+to `proceed` or to `fix retrieval first`, with the measured hit rate beside it.
+
 If top-3 hits are usually relevant, proceed with orchestrator injection
 (agent-plugins intake 00066) and the Engram plugin
 (`../spikes/engram-plugin/`). If not, fix retrieval first (intakes 00008 and

@@ -130,7 +130,10 @@
     Done so far (2026-11-10): usage measured (14 of 364 sessions called Engram; 5,671 ad-hoc searches);
     eight-session pilot ran; protocol written; human ledger annotated (`a30de13`).
     Companion: agent-plugins intake 00066 (orchestrator injection of Engram context into phase prompts).
-    Spike: `docs/dev/project-management/spikes/engram-plugin/` (plugin with per-host hooks; awaits the user's decision).
+    Spike `docs/dev/project-management/spikes/engram-plugin/` graduated: verified live in Claude Code, Codex, and Copilot CLI.
+    It became Engram PRD 00012 (`engram mcp`, `engram nudge`) and agent-plugins PRD 00067 (the plugin).
+    Both PRDs wait: 00012 until the protocol reads `Adoption decision: proceed`; 00067 until `engram nudge` is installed.
+    When scoring is reported, set the `Adoption decision:` line in the protocol.
 
 12. **Session 8: evaluate retrieval changes.**
     Proceed only after the Session 7 agent-session set is frozen.
