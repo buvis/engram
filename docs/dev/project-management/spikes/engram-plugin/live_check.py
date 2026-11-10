@@ -108,7 +108,7 @@ def main() -> int:
     shutil.rmtree(root)
     for result in results:
         print(
-            f"{result['host']}: {result['status']}, recall seen = {result.get('recall_seen')}"
+            f"{result['host']}: {result['status']}, recall seen = {result.get('recall_seen')}",
         )
     print(f"wrote {OUT}")
     return 0

@@ -99,3 +99,18 @@ Contract changes from round 2:
   `docs/dev/tmp/engram-plugin-live.json`. Inside the sandbox it ran and reported
   both hosts unauthenticated, as expected.
 - Kiro stays untested: no CLI in the sandbox and the hook file schema is unread.
+
+## Round 4 (2026-11-10, user run outside the sandbox)
+
+- **Claude Code: verified end to end.** Project `.claude/settings.json`
+  PostToolUse hook; the model quoted the recall lines. Real payload keys:
+  `tool_name`, `tool_input`, `cwd`, `session_id`, `hook_event_name`,
+  `permission_mode`, `tool_use_id`, `transcript_path`, `duration_ms`, `effort`,
+  `prompt_id`. A plain terminal needs `CLAUDE_CODE_OAUTH_TOKEN`; the Keychain
+  login was expired.
+- **Pi: still not run.** Pi has no `github-copilot` login ("No API key found"),
+  and its only configured provider, the local llama server, was down. The
+  adapter needs one run with that server up: `python3 live_check.py`.
+
+Verified live: Claude Code, Codex, Copilot CLI. Unverified: Pi (adapter
+unrun), Kiro (schema unread). Unusable here: Gemini CLI.
