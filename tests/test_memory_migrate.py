@@ -1115,7 +1115,8 @@ CLI_SKIPS = {
     ids=["all-ok", "skip-user", "skip-credential", "skip-invalid", "skip-exists"],
 )
 @pytest.mark.parametrize("empty", [False, True], ids=["with-good", "without-good"])
-def test_cli_dry_run_exits_one_iff_any_line_is_not_ok(
+@pytest.mark.parametrize("apply", [False, True], ids=["dry-run", "apply"])
+def test_cli_exits_one_iff_any_line_is_not_ok(
     tmp_path: Path,
     src: Path,
     repo: Path,
@@ -1123,6 +1124,7 @@ def test_cli_dry_run_exits_one_iff_any_line_is_not_ok(
     skip: str | None,
     code: int,
     empty: bool,
+    apply: bool,
 ) -> None:
     line = ""
     if skip is not None:
@@ -1134,13 +1136,34 @@ def test_cli_dry_run_exits_one_iff_any_line_is_not_ok(
     write_target(repo, "kept")
     before = snapshot(tmp_path)
 
-    assert run_cli(src, repo) == code
+    assert run_cli(src, repo, *(["--apply"] if apply else [])) == code
 
     out, err = capsys.readouterr()
     assert out == line + ("" if empty else GOOD_LINE)
     assert err == ""
     assert TOKEN not in out
-    assert snapshot(tmp_path) == before
+    if not apply:
+        assert snapshot(tmp_path) == before
+
+
+def test_cli_prints_redacted_tsv_for_credential_file_name(
+    src: Path,
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write(src, f"{TOKEN}.md", valid())
+    write(src, "plain.md", valid())
+    expected = "".join(line.tsv() + "\n" for line in plan_migration(src, repo))
+
+    assert run_cli(src, repo) == 1
+
+    out, err = capsys.readouterr()
+    assert out == expected == (
+        "[redacted:github-token].md\tskip-credential\tgithub-token\n"
+        f"plain.md\tmigrate\t{DEST}plain.md\n"
+    )
+    assert TOKEN not in out
+    assert err == ""
 
 
 def test_cli_apply_writes_memories_and_wiring_then_reruns_identical(
@@ -1224,9 +1247,11 @@ def test_cli_resolves_relative_paths_against_cwd(
     assert main(argv) == 1
 
     out, err = capsys.readouterr()
-    assert out == ""
-    assert err.startswith("engram memory migrate: ")
     assert snapshot(tmp_path) == before
+    with pytest.raises(MigrationError) as raised:
+        apply_migration(Path(src.name), Path(repo.name))
+    assert out == ""
+    assert err == f"engram memory migrate: {raised.value}\n"
 
 
 def test_cli_apply_refuses_settings_json_array_with_one_stderr_line(
@@ -1243,12 +1268,13 @@ def test_cli_apply_refuses_settings_json_array_with_one_stderr_line(
     assert run_cli(src, repo, "--apply") == 1
 
     out, err = capsys.readouterr()
-    assert out == ""
-    assert err.startswith("engram memory migrate: ")
-    assert "settings.json" in err
-    assert err.endswith("\n")
-    assert err.count("\n") == 1
     assert snapshot(tmp_path) == before
+    with pytest.raises(MigrationError) as raised:
+        apply_migration(src, repo)
+    assert out == ""
+    assert err == f"engram memory migrate: {raised.value}\n"
+    assert "settings.json" in err
+    assert err.count("\n") == 1
 
 
 @pytest.mark.skipif(os.geteuid() == 0, reason="root can list an unreadable directory")
@@ -1271,8 +1297,34 @@ def test_cli_reports_os_error_redacted_and_without_traceback(
     assert out == ""
     assert err.startswith("engram memory migrate: ")
     assert len(err.strip()) > len("engram memory migrate:")
+    assert err.count("\n") == 1
+    assert "Traceback" not in err
     assert TOKEN not in err
     assert not memory_dir(repo).exists()
+
+
+@pytest.mark.parametrize("apply", [False, True], ids=["dry-run", "apply"])
+def test_cli_reports_any_os_error_as_one_redacted_stderr_line(
+    src: Path,
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    apply: bool,
+) -> None:
+    def fail(*args: object, **kwargs: object) -> None:
+        raise OSError(f"disk gone {TOKEN}")
+
+    for name in ("plan_migration", "apply_migration"):
+        monkeypatch.setattr(migrate, name, fail)
+        monkeypatch.setattr(f"engram.cli.{name}", fail, raising=False)
+    write(src, "note.md", valid())
+
+    assert run_cli(src, repo, *(["--apply"] if apply else [])) == 1
+
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err == f"engram memory migrate: {redact(f'disk gone {TOKEN}')}\n"
+    assert TOKEN not in err
 
 
 @pytest.mark.parametrize(
