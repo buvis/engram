@@ -76,7 +76,10 @@ WIRING_NAMES = ["CLAUDE.md", ".gitattributes", ".claude/settings.json"]
 
 @pytest.mark.parametrize("name", WIRING_NAMES)
 def test_apply_refuses_symlinked_wiring_file_and_changes_nothing(
-    tmp_path: Path, src: Path, repo: Path, name: str
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
+    name: str,
 ) -> None:
     link_wiring(repo, name)
     before = tree(tmp_path)
@@ -92,7 +95,8 @@ def test_apply_refuses_symlinked_wiring_file_and_changes_nothing(
 
 
 def test_apply_symlink_refusal_names_only_the_offending_wiring_file(
-    src: Path, repo: Path
+    src: Path,
+    repo: Path,
 ) -> None:
     link_wiring(repo, ".gitattributes")
 
@@ -106,7 +110,9 @@ def test_apply_symlink_refusal_names_only_the_offending_wiring_file(
 
 
 def test_apply_refuses_symlinked_wiring_even_when_other_wiring_is_regular(
-    tmp_path: Path, src: Path, repo: Path
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
 ) -> None:
     (repo / "AGENTS.md").write_text("# Agents\n")
     (repo / ".gitattributes").write_text("*.png binary\n")
@@ -123,7 +129,10 @@ def test_apply_refuses_symlinked_wiring_even_when_other_wiring_is_regular(
 
 @pytest.mark.parametrize("name", WIRING_NAMES)
 def test_plan_ignores_symlinked_wiring_file_and_writes_nothing(
-    tmp_path: Path, src: Path, repo: Path, name: str
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
+    name: str,
 ) -> None:
     link_wiring(repo, name)
     before = tree(tmp_path)
@@ -231,7 +240,8 @@ def test_migration_refuses_symlinked_destination_directory_and_changes_nothing(
 
 
 def test_apply_allows_symlinked_docs_resolving_to_unrelated_dir_inside_repo(
-    src: Path, repo: Path
+    src: Path,
+    repo: Path,
 ) -> None:
     (repo / "real-docs").mkdir()
     os.symlink("real-docs", repo / "docs")
@@ -246,7 +256,8 @@ def test_apply_allows_symlinked_docs_resolving_to_unrelated_dir_inside_repo(
 
 
 def test_apply_allows_symlinked_claude_resolving_to_unrelated_dir_inside_repo(
-    src: Path, repo: Path
+    src: Path,
+    repo: Path,
 ) -> None:
     (repo / "real-claude").mkdir()
     os.symlink("real-claude", repo / ".claude")
@@ -259,7 +270,9 @@ def test_apply_allows_symlinked_claude_resolving_to_unrelated_dir_inside_repo(
 
 
 def test_plan_allows_symlinked_docs_resolving_to_unrelated_dir_inside_repo(
-    tmp_path: Path, src: Path, repo: Path
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
 ) -> None:
     (repo / "real-docs").mkdir()
     os.symlink("real-docs", repo / "docs")

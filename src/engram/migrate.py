@@ -263,6 +263,23 @@ def _check_paths(src: Path, repo_root: Path) -> None:
         raise MigrationError(
             redact("source files resolve inside the repository: " + ", ".join(aliased)),
         )
+    for root in (memory_dir(repo_root), repo_root / ".claude"):
+        _check_destination(root, src, repo_root)
+
+
+def _check_destination(dest: Path, src: Path, repo_root: Path) -> None:
+    """Refuse when the deepest existing part of dest resolves outside the repo or into src."""
+    existing = dest
+    while not os.path.lexists(existing):
+        existing = existing.parent
+    resolved = existing.resolve()
+    inside = resolved.is_relative_to(repo_root.resolve())
+    overlaps_src = resolved.is_relative_to(src) or src.is_relative_to(resolved)
+    if not inside or overlaps_src:
+        name = existing.relative_to(repo_root)
+        raise MigrationError(
+            redact(f"{name}: symlink resolves outside the repository or into the source"),
+        )
 
 
 def _existing_entries(target_dir: Path, src: Path) -> list[tuple[str, str, str]]:
@@ -326,9 +343,10 @@ def _plan(
 
 def _write_if_changed(path: Path, data: bytes) -> None:
     """Atomically replace path with data through a unique temporary file."""
-    if path.exists() and path.read_bytes() == data:
+    exists = path.exists()
+    if exists and path.read_bytes() == data:
         return
-    if path.exists():
+    if exists:
         mode = stat.S_IMODE(path.stat().st_mode)
     else:
         umask = os.umask(0)
@@ -365,8 +383,7 @@ def _appended(text: str | None, line: str, addition: str, fresh: str) -> str:
     return text + addition
 
 
-def _settings_text(path: Path) -> str:
-    text = _read_wiring(path)
+def _settings_text(path: Path, text: str | None) -> str:
     obj: object = {}
     if text is not None:
         try:
@@ -387,32 +404,32 @@ def _plan_wiring(repo_root: Path) -> dict[Path, bytes]:
         repo_root / name for name in (".gitattributes", "AGENTS.md", "CLAUDE.md")
     )
     settings = repo_root / ".claude" / "settings.json"
-    agents_text = _read_wiring(agents)
+    for path in (attrs, agents, claude, settings):
+        if path.is_symlink():
+            name = path.relative_to(repo_root)
+            raise MigrationError(
+                redact(f"{name}: is a symlink; replace it with a regular file first"),
+            )
+    old = {p: _read_wiring(p) for p in (attrs, agents, claude, settings)}
+    attrs_line = GITATTRIBUTES_LINE + "\n"
     new = {
-        attrs: _appended(
-            _read_wiring(attrs),
-            GITATTRIBUTES_LINE,
-            GITATTRIBUTES_LINE + "\n",
-            GITATTRIBUTES_LINE + "\n",
-        ),
+        attrs: _appended(old[attrs], GITATTRIBUTES_LINE, attrs_line, attrs_line),
         agents: _appended(
-            agents_text,
+            old[agents],
             AGENTS_HEADING,
-            "\n" + AGENTS_SECTION if agents_text else AGENTS_SECTION,
+            "\n" + AGENTS_SECTION if old[agents] else AGENTS_SECTION,
             AGENTS_SECTION,
         ),
         claude: _appended(
-            _read_wiring(claude),
+            old[claude],
             CLAUDE_IMPORT_LINE,
             CLAUDE_IMPORT_LINE + "\n",
             "@AGENTS.md\n" + CLAUDE_IMPORT_LINE + "\n",
         ),
-        settings: _settings_text(settings),
+        settings: _settings_text(settings, old[settings]),
     }
     return {
-        path: text.encode("utf-8")
-        for path, text in new.items()
-        if _read_wiring(path) != text
+        path: text.encode("utf-8") for path, text in new.items() if old[path] != text
     }
 
 
