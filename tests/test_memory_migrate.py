@@ -814,7 +814,9 @@ def test_apply_mixed_actions_reports_every_action_and_keeps_directory_valid(
     assert names == ["MEMORY.md", "fresh-one.md", "kept.md", "same.md"]
     assert {p: p.read_bytes() for p in existing} == existing
     assert (target / "MEMORY.md").read_bytes() == index_bytes(
-        ("fresh-one", "Fresh"), ("kept", "Existing fact"), ("same", "Existing fact")
+        ("fresh-one", "Fresh"),
+        ("kept", "Existing fact"),
+        ("same", "Existing fact"),
     )
     assert check_directory(target) == []
     assert all(TOKEN.encode() not in p.read_bytes() for p in target.iterdir())
@@ -942,6 +944,24 @@ def test_apply_idempotent_second_run_changes_no_bytes_or_mtimes(
     assert snapshot(repo) == before
     assert mtimes(repo) == stamps
     assert identities(repo) == ids
+
+
+def test_apply_keeps_existing_modes_and_gives_new_files_umask_modes(
+    src: Path,
+    repo: Path,
+) -> None:
+    write(src, "note.md", valid())
+    agents = repo / "AGENTS.md"
+    agents.chmod(0o640)
+    old_umask = os.umask(0o022)
+    try:
+        apply_migration(src, repo)
+    finally:
+        os.umask(old_umask)
+
+    assert agents.stat().st_mode & 0o777 == 0o640
+    assert (memory_dir(repo) / "note.md").stat().st_mode & 0o777 == 0o644
+    assert (repo / "CLAUDE.md").stat().st_mode & 0o777 == 0o644
 
 
 def test_apply_leaves_sources_untouched_and_writes_no_source_path(
