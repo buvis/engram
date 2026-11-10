@@ -31,7 +31,8 @@ Updated: 2026-11-10, after Session 7 was redefined around agent sessions.
 
 ### Batch 202611100725
 - [x] 00010-repo-memory-corpus-v1 (2 cycles)
-- [ ] 00011-memory-migrate-command-v1 (wip, build started 2026-11-10)
+- [x] 00011-memory-migrate-command-v1 (3 cycles)
+- [ ] 00012-agent-recall-surfaces-v1 (backlog, skipped: needs "Adoption decision: proceed" in the agent-session evaluation review)
 
 Observations: 00010 shipped `src/engram/memory.py`, repo memory enumeration and
 legacy skip in `corpora.py`, `engram memory check`, and status lines. Cycle 1
