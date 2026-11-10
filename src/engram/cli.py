@@ -365,6 +365,23 @@ def _run_status(args: argparse.Namespace) -> int:
     if excluded > 0:
         print(f"code\texcluded={excluded}")
 
+    def in_scope(name: str) -> bool:
+        return scope.kind == "portfolio" or name == scope.repo
+
+    invalid = len(
+        {
+            line.split("\t", 1)[0]
+            for d in {d for name, d in corpora.repo_memory_dirs if in_scope(name)}
+            for line in check_directory(d)
+        },
+    )
+    if invalid > 0:
+        print(f"memory\tinvalid={invalid}")
+        exit_code = 1
+    for name in corpora.legacy_shadowed:
+        if in_scope(name):
+            print(f"memory\tlegacy-shadowed={name}")
+
     _print_missing(corpora.missing_dirs, scope)
     if any(
         item.startswith("code:")

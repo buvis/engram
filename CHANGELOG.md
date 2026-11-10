@@ -28,6 +28,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **cli**: `engram memory check [PATH]` validates one memory directory and
   prints `<file>\t<rule>\t<detail>` per violation (exit 1 on any, or when the
   directory is absent); it needs no registry, index, or embedding server.
+- **cli**: `engram status` prints `memory\tinvalid=<n>` (and exits 1) when
+  repository memory fails validation, and `memory\tlegacy-shadowed=<repo>` for
+  repositories whose Claude auto-memory is no longer indexed.
 - **cli**: `lookup --name NAME --scope repo|portfolio [--repo NAME]` and
   `lookup --file PATH` return code definitions without an embedding server.
 - **eval**: probe reranking after fusion tie-break and lexical-OR fixes on
