@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import stat
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -327,9 +328,16 @@ def _write_if_changed(path: Path, data: bytes) -> None:
     """Atomically replace path with data through a unique temporary file."""
     if path.exists() and path.read_bytes() == data:
         return
+    if path.exists():
+        mode = stat.S_IMODE(path.stat().st_mode)
+    else:
+        umask = os.umask(0)
+        os.umask(umask)
+        mode = 0o666 & ~umask
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
     try:
         with os.fdopen(fd, "wb") as handle:
+            os.fchmod(handle.fileno(), mode)
             handle.write(data)
         os.replace(tmp, path)
     except BaseException:
