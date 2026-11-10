@@ -80,7 +80,7 @@ def _forbidden_keys(node: object, prefix: str, ancestors: set[int]) -> list[str]
     found = []
     for key, value in items:
         path = f"{prefix}.{key}" if prefix else key
-        if isinstance(node, dict) and key in FORBIDDEN_KEYS:
+        if key in FORBIDDEN_KEYS:
             found.append(f"forbidden-key\t{path}: Git records it")
         found += _forbidden_keys(value, path, ancestors)
     ancestors.discard(id(node))
@@ -148,7 +148,8 @@ def _split_frontmatter(text: str) -> tuple[object, str, str | None]:
     if not lines or lines[0].rstrip("\r\n") != "---":
         return None, "", "missing"
     end = next(
-        (i for i in range(1, len(lines)) if lines[i].rstrip("\r\n") == "---"), None
+        (i for i in range(1, len(lines)) if lines[i].rstrip("\r\n") == "---"),
+        None,
     )
     if end is None:
         return None, "", "unterminated"
@@ -223,11 +224,11 @@ def _index_violations(index: Path, files: list[Path]) -> list[str]:
         found.append(f"{index}\tindex-unsorted\tentries must be sorted by slug")
     if len(lines) > INDEX_MAX_LINES:
         found.append(
-            f"{index}\tindex-too-long\t{len(lines)} lines > {INDEX_MAX_LINES}"
+            f"{index}\tindex-too-long\t{len(lines)} lines > {INDEX_MAX_LINES}",
         )
     if len(raw) > INDEX_MAX_BYTES:
         found.append(
-            f"{index}\tindex-too-large\t{len(raw)} bytes > {INDEX_MAX_BYTES}"
+            f"{index}\tindex-too-large\t{len(raw)} bytes > {INDEX_MAX_BYTES}",
         )
     return found
 
