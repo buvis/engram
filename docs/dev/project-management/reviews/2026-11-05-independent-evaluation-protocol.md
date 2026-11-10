@@ -1,6 +1,7 @@
 # Independent-question evaluation protocol
 
-Status: collecting. No independent questions received or scored.
+Status: collecting. Five independent questions received (2026-11-05 to
+2026-11-08), none frozen or scored. Wording, labels and evidence stay private.
 Continues the [file-held-out probe](2026-11-05-probe-heldout.md).
 
 ## Collection and annotation
@@ -56,4 +57,21 @@ If gains hold, measure warm persistent reranker latency and down-server fallback
 in an isolated follow-up. Scope fusion and reranking separately in intakes 00009
 and 00008. Production changes, rebuilds and model migration require authorization.
 
-Unresolved input: actual user questions collected before answer search.
+## Collection ledger (2026-11-10)
+
+Score-blind annotation state of the private ledger. No model inference has run.
+
+| Status | Count | Note |
+|---|---|---|
+| Partial labels verified | 2 | Several acceptable answers; frozen pool lacks some live examples. |
+| Partial label, primary answer outside corpora | 1 | Full answer is in a notes vault engram does not index; one transcript chunk gives partial evidence. |
+| Partial inventory, scope freeze needed | 1 | Count question; frozen pool lacks part of the inventory. |
+| Ambiguous package name | 1 | No exact match; the near match is not labelled silently. |
+
+Coverage gaps found so far (report, do not fill): answers held only in
+non-indexed sources (notes vault, project capsules, transcript tool content),
+and current-state facts whose only indexed evidence is stale. These are corpus
+coverage gaps, not ranking misses, and must be reported separately at scoring.
+
+Unresolved input: 15–25 more actual user questions collected before answer
+search. Freezing and scoring wait for at least the 20-question minimum.
