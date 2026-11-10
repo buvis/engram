@@ -1,6 +1,6 @@
 # Project Capsule: engram
 
-Updated: 2026-11-10, after Session 4 review-pack repairs.
+Updated: 2026-11-10, after Session 5 dependency review and CI.
 
 ## Key Invariants
 
@@ -367,3 +367,60 @@ The multi-session plan is retained and Session 4 is marked complete.
 
 Next: **Session 5, review dependencies and establish portable CI**, preserving
 private-source acceptance checks. Stop after this completed Session 4.
+
+## Session 5 complete: dependencies and portable CI (2026-11-10)
+
+This section supersedes earlier dependency and CI observations. PR #2
+(Renovate, `tree-sitter-language-pack` 1.14.0 → 1.25.0) was tested on current
+master in an isolated worktree, not merged as-is. Its relevant breaking changes:
+`process()` raises typed `Error` subclasses instead of `RuntimeError` (no engram
+caller catches `RuntimeError` from it; the indexer catches `Exception` and
+retries), and since 1.20 `str()` of an `Other` structure kind is JSON. Grammars
+download lazily into a per-version cache (`~/Library/Caches/tree-sitter-language-pack/vX/`);
+the 1.14.0 cache held 43 grammars, 1.25.0 starts empty. Linux and macOS 15+
+wheels exist; the host and `ubuntu-latest` qualify.
+
+A read-only census chunked the whole portfolio code corpus under both versions:
+**21,250 files**, identical enumeration, **6,907 identical exclusions**,
+identical language detection (2,450 unsupported), **zero parse errors** in
+18,800 parsed files. Chunks rose 71,955 → 73,004 and anonymous headings fell
+17,793 → 17,294. **760 files** changed chunks: JS/TS/TSX arrow functions
+mostly gained names (one JS file lost some), Swift structs stop reading as
+classes, C headers gained 875 constants, 123 macros, and 95 types. Those 1,093
+`Other` symbols rendered as `{"Other":"Constant"}` in doc types, headings, and
+diff symbols. Fixed with `symbols.kind_name()` (the kind payload); fail-first
+regressions in `test_symbols.py` and `test_diffmap.py`. Two Python diffs in
+the census were concurrent file edits, not parser changes.
+
+`4eb8af5 fix(symbols): adopt tree-sitter-language-pack 1.25.0` is pushed to
+`origin/master` with the six earlier session commits (`ba912d5..4eb8af5`).
+PR #2 is superseded; Renovate should close it on its next run. The dev `.venv`
+now has 1.25.0. **The installed global CLI still has 1.14.0** and lacks the
+Session 4 and 5 fixes. After a future installation the first index downloads
+1.25.0 grammars, and unchanged code sources keep their 1.14.0 chunks until
+edited (hash cache); no re-chunk or rebuild was run or is required.
+
+CI: `.github/workflows/test.yml` runs both suites on `ubuntu-latest`, Python
+3.12 and 3.14, with SHA-pinned actions matching buvis/gems, ripgrep, and
+`uv sync --locked`. The `private` pytest marker (registered with
+`--strict-markers`) tags `test_real_goldset_loads_clean_and_covers_transcripts_and_code`;
+CI deselects it with `-m "not private"`. Local default runs still include it.
+README and eval README state that green CI does not validate private evidence.
+An empty-`HOME` simulation found four status tests reading the real Cellar
+checkout; the file's autouse fixture now stubs that producer. Only the private
+test fails without private state.
+
+**Commit `c220c4d ops(ci): …` is not pushed.** The agent PAT lacks the
+`workflow` scope, so GitHub refused the workflow file. The user must push from
+a host terminal. CI has therefore never run on GitHub; only the local
+simulation passed.
+
+Verification: 120 focused tests passed; CI simulation (empty `HOME`, minimal
+`PATH`, worktree cwd) **548 main passed, 1 deselected; 47 eval passed**; full
+local **549 main and 47 evaluation tests passed**, including the private test.
+`uv lock --check`, Ruff correctness rules, Black on changed modules, and
+`git diff --check` passed. The production model, configuration, index,
+historical snapshots, and rollback backups were untouched; no servers were
+started or stopped. The session worktree, branch, and scratch files were removed.
+
+Next: **Session 6, specify shared project memory**. Stop after Session 5.

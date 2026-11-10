@@ -89,7 +89,7 @@
    Production runtime, model/configuration, index, historical snapshots, backups, and unrelated capsule edits remain unchanged.
    Continue with Session 5; stop after this session.
 
-9. **Session 5: review dependencies and establish CI.**
+9. **Session 5: review dependencies and establish CI. (COMPLETE — 2026-11-10)**
    Review `https://github.com/buvis/engram/pull/2` against current dependency requirements.
    Test the tree-sitter-language-pack update from 1.14.0 to 1.25.0 in an isolated checkout.
    Verify parser compatibility, symbol extraction, exclusions, and index behavior.
@@ -97,6 +97,12 @@
    Separate private-source acceptance checks from portable tests explicitly.
    Preserve those acceptance checks without claiming CI validates unavailable private evidence.
    Follow the existing Git policy for publishing or merging changes.
+   Portfolio census: 21,250 files, identical detection/exclusions, zero parse errors, 760 files with changed chunks.
+   Fixed raw-JSON `Other` kinds (1,093 symbols); adopted 1.25.0 in `4eb8af5` (pushed; supersedes PR #2).
+   Added Ubuntu CI (Python 3.12/3.14) with a `private` marker deselected in CI; four leaky status tests made hermetic.
+   CI commit `c220c4d` awaits a user push: the agent PAT lacks the `workflow` scope.
+   Results: 120 focused; CI simulation 548 main (1 deselected) and 47 eval; full 549 main and 47 eval passed.
+   Continue with Session 6; stop after this session.
 
 10. **Session 6: specify shared project memory.**
     Read `docs/dev/project-management/intake/new/00010-shared-project-memory/idea.md`.
