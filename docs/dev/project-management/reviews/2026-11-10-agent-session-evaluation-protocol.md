@@ -1,6 +1,6 @@
 # Agent-session evaluation protocol
 
-Status: specified 2026-11-10, not started. Replaces human-question collection
+Status: scored 2026-11-10 (see Results). Replaces human-question collection
 as the primary independent evidence (user decision, Session 7). The
 [human-question protocol](2026-11-05-independent-evaluation-protocol.md) and its
 five private questions stay as a small secondary set.
@@ -60,13 +60,101 @@ protocol (same ports, read-only indexes, production untouched).
 
 ## Decision this feeds
 
-Adoption decision: pending
+Adoption decision: fix retrieval first (measured top-3 file hit rate 41.7%, 10 of 24, 95% Wilson interval 24% to 61%)
 
 The line above is machine-read: PRD 00012's `eligibility` check passes only
 when it reads `Adoption decision: proceed`. Change it when scoring is reported,
 to `proceed` or to `fix retrieval first`, with the measured hit rate beside it.
 
+Pass threshold (fixed by the user 2026-11-10, before any scoring): "usually
+relevant" means top-3 file hit rate of at least 60% on scored questions, with
+the 95% Wilson lower bound above 50%. Otherwise `fix retrieval first`.
+
 If top-3 hits are usually relevant, proceed with orchestrator injection
 (agent-plugins intake 00066) and the Engram plugin
 (`../spikes/engram-plugin/`). If not, fix retrieval first (intakes 00008 and
 00009); pushing weak hits into every prompt teaches agents to ignore them.
+
+## Results (2026-11-10)
+
+Result: **fix retrieval first**. Top-3 file hit rate 10 of 24 (41.7%); the
+95% Wilson interval is 24% to 61%. The threshold needed at least 60% with a
+lower bound above 50%, which at n=24 means 17 hits. The upper end of the
+interval (61%) barely reaches the 60% bar. Scores are in `eval/results-agent-sessions.json`
+(per-question ranks by id, no question text). Tool: `eval/agent_session_eval.py`.
+
+| Metric | Value |
+|---|---|
+| Scored questions | 24 (13 projects; largest project 4) |
+| Top-3 file hit rate | 10 / 24 = 41.7% (Wilson 24% to 61%) |
+| Top-5 file hit rate | 11 / 24 = 45.8% (Wilson 28% to 65%) |
+| MRR | 0.310 |
+| Median search calls the agent spent | 3.5 |
+| Questions with no label file in the top 60 chunks | 11 of 24 |
+
+By class (top-3 hits / questions): identifier 8/16, cross-repo 1/4, decision
+1/3, history 0/1. By answer corpus: code-answer questions 9/19, PRD or
+discovery-answer questions 1/4 (Q1 has a mixed code and PRD label and missed).
+Top-3 hits: 9 from the `code` corpus, 1 from `prd`; S1 (`prd`) came at rank 5.
+No label sat in transcripts, memory or decision, so those corpora are untested
+here.
+
+Top-3 misses (14): Q1, Q2, Q6, Q10, Q13, Q15, Q16, Q17, S1, S2, S4, S7, S8, S9.
+Eleven found no label file in the top 60 chunks (Q1, Q2, Q6, Q13, Q16, Q17,
+S2, S4, S7, S8, S9). Q10 (rank 7), Q15 (rank 10) and S1 (rank 5) found the
+label late.
+
+Leakage: for 15 of 24 questions the question's own session transcript sat in
+the unfiltered top 5. It was excluded before ranking, as the protocol requires.
+Excluding it did not change the top-3 count (10 either way) but moved several
+hits up a rank.
+
+### Sample and method
+
+- Source: 642 search bursts (three or more search calls within six tool
+  calls) in 179 of 386 eligible Claude sessions modified since 2026-11-01.
+  Seed 20261110. This repository's sessions, test temp dirs and live-probe
+  dirs were excluded. 38 bursts had no later read or edit (`unresolved`).
+- 136 bursts settled on at least one file inside the indexed pool. The other
+  468 (604 minus 136) settled only on files outside it, mostly the installed
+  plugin cache, notes vault, scratch files and ledgers: `outside-corpora`,
+  neither scored nor classified one by one.
+- Of the 136, 24 became scored questions. The rest were `known-file` lookups
+  (the agent already worked inside the file), repeats from a session already
+  used, or intent too thin to state as a question. I did not tally the split by
+  reason, so the dropped share by reason is not reported. Classes of the 24:
+  identifier 16, cross-repo 4, decision 3, history 1.
+- Questions use the agent's or user's stated words where present; otherwise the
+  command description. Labels are the in-pool files the agent read or edited
+  next. They were written before any Engram run.
+- Pool: a `sqlite3 .backup` copy of the production index taken 2026-11-10
+  (not the November 1 campaign snapshot, which predates these sessions).
+  Production was only read. All labels existed in the copy before freezing.
+- Retrieval: production `engram.query.query`, portfolio scope, no corpus
+  filter, pinned bge-m3 Q8 on the running server at port 8083, 60 fused
+  chunks deduplicated to files. No reranker. Questions, copy, config, script
+  and git head are frozen by SHA-256 in the private `freeze.json`.
+
+### Limits
+
+- n=24 is below the 30 to 50 target. The remaining bursts were in-task code
+  navigation without a clear question, and I did not pad the set.
+- Selection requires a settled file in the pool. That removes cases where
+  Engram could not help at all, so the rate is not biased against it, but it
+  also means 468 of 604 settled bursts were out of reach of the current
+  corpora. That is a coverage gap, not a ranking result.
+- Labels are what the agent happened to read. Other files may also answer the
+  question, so hit rates are conservative. The five human questions were not
+  scored (still secondary).
+- S3 and S4 come from one session; Q8 and Q9 share one label file.
+- Wording of some questions mixes the agent's intent with its command text.
+  Long natural-language questions may lose under production's AND-matched
+  lexical leg (the November campaign tested OR as a variant). That is a
+  candidate cause, not tested here.
+
+### Next step
+
+Per the decision rule: do not start PRD 00012. Retrieval work goes to intakes
+00008 (reranking) and 00009 (fusion). The earlier campaign found OR-lexical
+fusion and the Qwen3 reranker helped on gold questions; rerun this frozen set
+with those variants before choosing, since the questions and pool are now fixed.

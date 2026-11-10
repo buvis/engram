@@ -1,0 +1,383 @@
+{
+  "n": 24,
+  "top3": 10,
+  "top5": 11,
+  "top3_rate": 0.4166666666666667,
+  "top5_rate": 0.4583333333333333,
+  "top3_wilson95": [
+    0.24467347246538232,
+    0.6116566235061137
+  ],
+  "top5_wilson95": [
+    0.2789105835168143,
+    0.6492544644689336
+  ],
+  "mrr": 0.3101190476190476,
+  "median_search_calls": 3.5,
+  "by_class": {
+    "cross-repo": {
+      "n": 4,
+      "top3": 1
+    },
+    "decision": {
+      "n": 3,
+      "top3": 1
+    },
+    "history": {
+      "n": 1,
+      "top3": 0
+    },
+    "identifier": {
+      "n": 16,
+      "top3": 8
+    }
+  },
+  "by_project": {
+    "agent-plugins": {
+      "n": 4,
+      "top3": 0
+    },
+    "agent-skills": {
+      "n": 4,
+      "top3": 2
+    },
+    "bim": {
+      "n": 2,
+      "top3": 2
+    },
+    "buvis": {
+      "n": 1,
+      "top3": 1
+    },
+    "claude": {
+      "n": 1,
+      "top3": 0
+    },
+    "claude-agoge": {
+      "n": 1,
+      "top3": 0
+    },
+    "claude-plugins": {
+      "n": 1,
+      "top3": 0
+    },
+    "config": {
+      "n": 1,
+      "top3": 1
+    },
+    "docs": {
+      "n": 1,
+      "top3": 0
+    },
+    "gems": {
+      "n": 2,
+      "top3": 1
+    },
+    "herdr-app": {
+      "n": 3,
+      "top3": 2
+    },
+    "home": {
+      "n": 1,
+      "top3": 1
+    },
+    "ovcaq": {
+      "n": 2,
+      "top3": 0
+    }
+  },
+  "leaked_transcript_in_top5": 15,
+  "misses_top3": [
+    "Q1",
+    "Q2",
+    "Q6",
+    "Q10",
+    "Q13",
+    "Q15",
+    "Q16",
+    "Q17",
+    "S1",
+    "S2",
+    "S4",
+    "S7",
+    "S8",
+    "S9"
+  ],
+  "pass": false,
+  "freeze": {
+    "questions_a.json": "76c9204314c1f33c80086e56baa883032e46c2ece66916497fe5980e155b3b19",
+    "questions_b.json": "02f649fb3eaac7872f9c56f9298cd6e6883abbfe7417ad3c2d4006e218c4f491",
+    "pool.db": "4f8783975d1fa288827290d47728f6c2efc7adf0f3ce2032f205314715875222",
+    "config.toml": "8fd46026a7685604e6ff9d881458fecdd550d7ee15ea2b3d5e93823db034b3df",
+    "script": "b2fd250f445be38e03fc81a375d2bd52e0b89ba84e4d0f85b277f7703dd76601",
+    "engram_head": "fb67cb5499c83e93774c54e2cd509574e58af5ee"
+  },
+  "rows": [
+    {
+      "q": "Q1",
+      "project": "claude-agoge",
+      "class": "identifier",
+      "calls": 3,
+      "rank": null,
+      "rank_unfiltered": null,
+      "leaked_transcript_in_top5": true,
+      "label_corpus": []
+    },
+    {
+      "q": "Q2",
+      "project": "ovcaq",
+      "class": "decision",
+      "calls": 3,
+      "rank": null,
+      "rank_unfiltered": null,
+      "leaked_transcript_in_top5": true,
+      "label_corpus": []
+    },
+    {
+      "q": "Q3",
+      "project": "bim",
+      "class": "identifier",
+      "calls": 3,
+      "rank": 2,
+      "rank_unfiltered": 3,
+      "leaked_transcript_in_top5": true,
+      "label_corpus": [
+        "code"
+      ]
+    },
+    {
+      "q": "Q5",
+      "project": "gems",
+      "class": "identifier",
+      "calls": 4,
+      "rank": 2,
+      "rank_unfiltered": 2,
+      "leaked_transcript_in_top5": false,
+      "label_corpus": [
+        "code"
+      ]
+    },
+    {
+      "q": "Q6",
+      "project": "gems",
+      "class": "identifier",
+      "calls": 4,
+      "rank": null,
+      "rank_unfiltered": null,
+      "leaked_transcript_in_top5": true,
+      "label_corpus": []
+    },
+    {
+      "q": "Q7",
+      "project": "home",
+      "class": "decision",
+      "calls": 3,
+      "rank": 1,
+      "rank_unfiltered": 1,
+      "leaked_transcript_in_top5": false,
+      "label_corpus": [
+        "prd"
+      ]
+    },
+    {
+      "q": "Q8",
+      "project": "herdr-app",
+      "class": "identifier",
+      "calls": 3,
+      "rank": 1,
+      "rank_unfiltered": 2,
+      "leaked_transcript_in_top5": true,
+      "label_corpus": [
+        "code"
+      ]
+    },
+    {
+      "q": "Q9",
+      "project": "config",
+      "class": "cross-repo",
+      "calls": 5,
+      "rank": 2,
+      "rank_unfiltered": 3,
+      "leaked_transcript_in_top5": true,
+      "label_corpus": [
+        "code"
+      ]
+    },
+    {
+      "q": "Q10",
+      "project": "ovcaq",
+      "class": "identifier",
+      "calls": 5,
+      "rank": 7,
+      "rank_unfiltered": 8,
+      "leaked_transcript_in_top5": true,
+      "label_corpus": [
+        "code"
+      ]
+    },
+    {
+      "q": "Q11",
+      "project": "buvis",
+      "class": "identifier",
+      "calls": 5,
+      "rank": 2,
+      "rank_unfiltered": 3,
+      "leaked_transcript_in_top5": true,
+      "label_corpus": [
+        "code"
+      ]
+    },
+    {
+      "q": "Q13",
+      "project": "docs",
+      "class": "cross-repo",
+      "calls": 5,
+      "rank": null,
+      "rank_unfiltered": null,
+      "leaked_transcript_in_top5": true,
+      "label_corpus": []
+    },
+    {
+      "q": "Q15",
+      "project": "claude",
+      "class": "identifier",
+      "calls": 4,
+      "rank": 10,
+      "rank_unfiltered": 10,
+      "leaked_transcript_in_top5": false,
+      "label_corpus": [
+        "code"
+      ]
+    },
+    {
+      "q": "Q16",
+      "project": "claude-plugins",
+      "class": "cross-repo",
+      "calls": 3,
+      "rank": null,
+      "rank_unfiltered": null,
+      "leaked_transcript_in_top5": false,
+      "label_corpus": []
+    },
+    {
+      "q": "Q17",
+      "project": "agent-plugins",
+      "class": "decision",
+      "calls": 4,
+      "rank": null,
+      "rank_unfiltered": null,
+      "leaked_transcript_in_top5": false,
+      "label_corpus": []
+    },
+    {
+      "q": "Q18",
+      "project": "agent-skills",
+      "class": "identifier",
+      "calls": 4,
+      "rank": 1,
+      "rank_unfiltered": 1,
+      "leaked_transcript_in_top5": true,
+      "label_corpus": [
+        "code"
+      ]
+    },
+    {
+      "q": "S1",
+      "project": "agent-skills",
+      "class": "history",
+      "calls": 3,
+      "rank": 5,
+      "rank_unfiltered": 5,
+      "leaked_transcript_in_top5": false,
+      "label_corpus": [
+        "prd"
+      ]
+    },
+    {
+      "q": "S2",
+      "project": "agent-skills",
+      "class": "cross-repo",
+      "calls": 3,
+      "rank": null,
+      "rank_unfiltered": null,
+      "leaked_transcript_in_top5": false,
+      "label_corpus": []
+    },
+    {
+      "q": "S3",
+      "project": "herdr-app",
+      "class": "identifier",
+      "calls": 4,
+      "rank": 2,
+      "rank_unfiltered": 3,
+      "leaked_transcript_in_top5": true,
+      "label_corpus": [
+        "code"
+      ]
+    },
+    {
+      "q": "S4",
+      "project": "herdr-app",
+      "class": "identifier",
+      "calls": 3,
+      "rank": null,
+      "rank_unfiltered": null,
+      "leaked_transcript_in_top5": true,
+      "label_corpus": []
+    },
+    {
+      "q": "S5",
+      "project": "agent-skills",
+      "class": "identifier",
+      "calls": 3,
+      "rank": 1,
+      "rank_unfiltered": 2,
+      "leaked_transcript_in_top5": true,
+      "label_corpus": [
+        "code"
+      ]
+    },
+    {
+      "q": "S6",
+      "project": "bim",
+      "class": "identifier",
+      "calls": 4,
+      "rank": 2,
+      "rank_unfiltered": 2,
+      "leaked_transcript_in_top5": false,
+      "label_corpus": [
+        "code"
+      ]
+    },
+    {
+      "q": "S7",
+      "project": "agent-plugins",
+      "class": "identifier",
+      "calls": 4,
+      "rank": null,
+      "rank_unfiltered": null,
+      "leaked_transcript_in_top5": true,
+      "label_corpus": []
+    },
+    {
+      "q": "S8",
+      "project": "agent-plugins",
+      "class": "identifier",
+      "calls": 3,
+      "rank": null,
+      "rank_unfiltered": null,
+      "leaked_transcript_in_top5": true,
+      "label_corpus": []
+    },
+    {
+      "q": "S9",
+      "project": "agent-plugins",
+      "class": "identifier",
+      "calls": 3,
+      "rank": null,
+      "rank_unfiltered": null,
+      "leaked_transcript_in_top5": false,
+      "label_corpus": []
+    }
+  ]
+}
