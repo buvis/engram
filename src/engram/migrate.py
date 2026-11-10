@@ -274,7 +274,7 @@ def _check_destination(dest: Path, src: Path, repo_root: Path) -> None:
         existing = existing.parent
     if existing.is_symlink() and not existing.exists():
         raise MigrationError(
-            redact(f"{existing.relative_to(repo_root)}: dangling symlink")
+            redact(f"{existing.relative_to(repo_root)}: dangling symlink"),
         )
     resolved = existing.resolve()
     inside = resolved.is_relative_to(repo_root.resolve())
@@ -283,7 +283,7 @@ def _check_destination(dest: Path, src: Path, repo_root: Path) -> None:
         name = existing.relative_to(repo_root)
         raise MigrationError(
             redact(
-                f"{name}: symlink resolves outside the repository or into the source"
+                f"{name}: symlink resolves outside the repository or into the source",
             ),
         )
 
@@ -477,7 +477,7 @@ def apply_migration(src: Path, repo_root: Path) -> list[MigrationLine]:
         problems = check_directory(target_dir)
         if problems:
             raise MigrationError(
-                "postcondition failed: " + "; ".join(map(str, problems))
+                "postcondition failed: " + "; ".join(map(str, problems)),
             )
     except (OSError, MigrationError) as error:
         failed = _restore(journal)
