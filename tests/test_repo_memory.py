@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+
 from engram import corpora
 from engram.client import EmbeddingEntry, EngramConfig, Vector
 from engram.corpora import CorpusFile, enumerate_corpora
@@ -103,10 +104,10 @@ def violations_of(path):
 def test_index_memory_dir_joins_repo_root_with_memory_subdir_without_existence_check():
     assert MEMORY_SUBDIR == ("docs", "dev", "project-management", "memory")
     assert memory_dir(Path("/repos/alpha")) == Path(
-        "/repos/alpha/docs/dev/project-management/memory"
+        "/repos/alpha/docs/dev/project-management/memory",
     )
     assert memory_dir(Path("/srv/beta")) == Path(
-        "/srv/beta/docs/dev/project-management/memory"
+        "/srv/beta/docs/dev/project-management/memory",
     )
 
 
@@ -252,7 +253,7 @@ def test_schema_unreadable_file_reports_read_violation_with_exception_class(tmp_
     assert violations_of(bad_utf8) == ["read\tunreadable: UnicodeDecodeError"]
     assert violations_of(as_dir) == ["read\tunreadable: IsADirectoryError"]
     assert violations_of(tmp_path / "gone.md") == [
-        "read\tunreadable: FileNotFoundError"
+        "read\tunreadable: FileNotFoundError",
     ]
 
 
@@ -376,7 +377,7 @@ def test_schema_forbidden_keys_reported_at_every_depth_with_dotted_path(tmp_path
             "forbidden-key\tmetadata.date: Git records it",
             "forbidden-key\textra.0.0.author: Git records it",
             "forbidden-key\textra.1.inner.author: Git records it",
-        ]
+        ],
     )
 
 
@@ -502,7 +503,7 @@ def test_index_check_directory_reports_missing_directory(tmp_path):
     regular.write_text("x\n", encoding="utf-8")
 
     assert check_directory(tmp_path / "absent") == [
-        f"{tmp_path / 'absent'}\tdirectory\tnot found"
+        f"{tmp_path / 'absent'}\tdirectory\tnot found",
     ]
     assert check_directory(regular) == [f"{regular}\tdirectory\tnot found"]
 
@@ -561,7 +562,7 @@ def test_index_missing_entry_reported_on_the_memory_file_path(tmp_path):
     write_index(tmp_path, ["- [Alpha](alpha.md)"])
 
     assert check_directory(tmp_path) == [
-        f"{tmp_path / 'alpha-2.md'}\tindex-missing-entry\talpha-2.md"
+        f"{tmp_path / 'alpha-2.md'}\tindex-missing-entry\talpha-2.md",
     ]
 
 
@@ -603,7 +604,7 @@ def test_index_unsorted_reported_when_entries_out_of_slug_order(tmp_path):
     index = write_index(tmp_path, ["- [Zed title](beta.md)", "- [Aaa title](alpha.md)"])
 
     assert check_directory(tmp_path) == [
-        f"{index}\tindex-unsorted\tentries must be sorted by slug"
+        f"{index}\tindex-unsorted\tentries must be sorted by slug",
     ]
 
 
@@ -611,7 +612,8 @@ def test_index_unsorted_counts_duplicates_in_file_order(tmp_path):
     write_memory(tmp_path, "alpha")
     write_memory(tmp_path, "beta")
     index = write_index(
-        tmp_path, ["- [A](alpha.md)", "- [B](beta.md)", "- [A](alpha.md)"]
+        tmp_path,
+        ["- [A](alpha.md)", "- [B](beta.md)", "- [A](alpha.md)"],
     )
 
     assert check_directory(tmp_path) == [
@@ -631,7 +633,10 @@ def test_index_unsorted_counts_duplicates_in_file_order(tmp_path):
     ],
 )
 def test_index_too_long_flags_more_than_200_lines(
-    tmp_path, total_lines, final_newline, expected
+    tmp_path,
+    total_lines,
+    final_newline,
+    expected,
 ):
     write_memory(tmp_path, "alpha")
     lines = ["# Memory", "- [Alpha](alpha.md)"] + ["prose"] * (total_lines - 2)
@@ -645,10 +650,13 @@ def test_index_too_long_flags_more_than_200_lines(
 
 
 @pytest.mark.parametrize(
-    ("total_bytes", "flagged"), [(25_000, False), (25_001, True), (25_900, True)]
+    ("total_bytes", "flagged"),
+    [(25_000, False), (25_001, True), (25_900, True)],
 )
 def test_index_too_large_counts_raw_bytes_not_characters(
-    tmp_path, total_bytes, flagged
+    tmp_path,
+    total_bytes,
+    flagged,
 ):
     write_memory(tmp_path, "alpha")
     base = "# Memory\n- [Alpha](alpha.md)\n"
@@ -681,7 +689,9 @@ def test_index_too_long_precedes_too_large(tmp_path):
     [(False, "UnicodeDecodeError"), (True, "IsADirectoryError")],
 )
 def test_index_unreadable_memory_index_reports_read_only(
-    tmp_path, as_directory, error
+    tmp_path,
+    as_directory,
+    error,
 ):
     write_memory(tmp_path, "alpha", description=DROP)
     index = tmp_path / "MEMORY.md"
@@ -797,12 +807,16 @@ def portfolio(tmp_path, side_channels):
     write_notes(memory_dir(paths["alpha"]), "zeta-note.md", "alpha-note.md")
     write_notes(memory_dir(paths["alpha"]), "broken.md", text="no frontmatter\n")
     write_notes(memory_dir(paths["alpha"]), "MEMORY.md", text="- [Z](zeta-note.md)\n")
+    write_notes(memory_dir(paths["alpha"]), "notes.txt", "x.mdx")
+    write_notes(memory_dir(paths["alpha"]) / "sub", "nested.md")
     write_notes(memory_dir(paths["beta"]), "beta-note.md")
     write_notes(memory_dir(paths["gamma"]), "MEMORY.md")
     paths["delta"].mkdir()
     memory_dir(paths["omega"]).parent.mkdir(parents=True)
     memory_dir(paths["omega"]).write_text("not a directory\n", encoding="utf-8")
     write_notes(memory_dir(paths["first"]), "first.md")
+    paths["empty"] = repos / "empty"
+    memory_dir(paths["empty"]).mkdir(parents=True)
     write_notes(legacy_dir(projects, paths["alpha"]), "old.md")
     write_notes(legacy_dir(projects, paths["beta"]), "MEMORY.md")
     for repo in ("gamma", "delta", "omega"):
@@ -826,10 +840,10 @@ def test_enumerate_yields_repo_memory_per_repo_unresolved_without_memory_index(
         for name in ("alpha-note.md", "broken.md", "zeta-note.md")
     ]
     assert files_of(files, "beta") == [
-        CorpusFile("memory", "beta", memory_dir(paths["beta"]) / "beta-note.md")
+        CorpusFile("memory", "beta", memory_dir(paths["beta"]) / "beta-note.md"),
     ]
     assert files_of(files, "first") == [
-        CorpusFile("memory", "first", memory_dir(paths["first"]) / "first.md")
+        CorpusFile("memory", "first", memory_dir(paths["first"]) / "first.md"),
     ]
     assert files_of(files, "second") == []
     assert not any(f.path.name == "MEMORY.md" for f in files)
@@ -843,22 +857,33 @@ def test_enumerate_legacy_skips_shadowed_slugs_and_keeps_others(portfolio):
     for repo in ("gamma", "delta", "omega"):
         assert files_of(files, repo) == [
             CorpusFile(
-                "memory", repo, legacy_file(projects, paths[repo], f"{repo}-old.md")
-            )
+                "memory",
+                repo,
+                legacy_file(projects, paths[repo], f"{repo}-old.md"),
+            ),
         ]
     assert sorted(f.path for f in files_of(files, "_unmapped")) == sorted(
         [
             legacy_file(projects, paths["first"], "shared.md"),
             legacy_file(projects, f"{paths['alpha']}-old", "kept.md"),
-        ]
+        ],
     )
     shadowed = {
         legacy_dir(projects, paths[repo]).resolve() for repo in ("alpha", "beta")
     }
     assert not any(f.path.parent in shadowed for f in files)
-    assert len(files) == 10
-    is_legacy = [f.path.is_relative_to(projects.resolve()) for f in files]
-    assert is_legacy == sorted(is_legacy, reverse=True)
+    assert [(f.repo, f.path.name) for f in files] == [
+        ("_unmapped", "shared.md"),
+        ("_unmapped", "kept.md"),
+        ("delta", "delta-old.md"),
+        ("gamma", "gamma-old.md"),
+        ("omega", "omega-old.md"),
+        ("alpha", "alpha-note.md"),
+        ("alpha", "broken.md"),
+        ("alpha", "zeta-note.md"),
+        ("beta", "beta-note.md"),
+        ("first", "first.md"),
+    ]
 
 
 def test_enumerate_records_repo_memory_dirs_and_legacy_shadowed(portfolio):
@@ -867,13 +892,15 @@ def test_enumerate_records_repo_memory_dirs_and_legacy_shadowed(portfolio):
     list(enumerate_corpora(registry, projects))
 
     assert sorted(corpora.repo_memory_dirs) == [
-        (name, memory_dir(paths[name])) for name in ("alpha", "beta", "first", "gamma")
+        (name, memory_dir(paths[name]))
+        for name in ("alpha", "beta", "empty", "first", "gamma")
     ]
     assert corpora.legacy_shadowed == ["alpha", "beta"]
 
 
 def test_enumerate_legacy_shadowed_is_sorted_deduped_and_needs_a_legacy_md_file(
-    tmp_path, side_channels
+    tmp_path,
+    side_channels,
 ):
     root, projects = tmp_path / "r", tmp_path / "projects"
     rows = [
@@ -884,27 +911,33 @@ def test_enumerate_legacy_shadowed_is_sorted_deduped_and_needs_a_legacy_md_file(
         (root / "five", "bravo"),
         (root / "six", "alpha"),
         (root / "seven", "charlie"),
+        (root / "eight", "dup"),
     ]
-    for path, _ in rows[:5]:
-        write_notes(memory_dir(path), "note.md")
+    for name in ("one", "two", "four", "five", "eight"):
+        write_notes(memory_dir(root / name), "note.md")
     write_notes(memory_dir(root / "seven"), "MEMORY.md")
-    for path in (root / "one", root / "two", root / "six", root / "seven"):
-        write_notes(legacy_dir(projects, path), "legacy.md")
-    write_notes(legacy_dir(projects, root / "three"), "MEMORY.md")
+    for name in ("two", "three", "six", "seven", "eight"):
+        write_notes(legacy_dir(projects, root / name), "legacy.md")
+    write_notes(legacy_dir(projects, root / "one"), "MEMORY.md")
     write_notes(legacy_dir(projects, root / "four"), "notes.txt", "notes.mdx")
+    write_notes(legacy_dir(projects, root / "four") / "sub", "x.md")
     registry = write_registry(tmp_path / "repos.csv", rows)
 
     files = list(enumerate_corpora(registry, projects))
 
     assert corpora.legacy_shadowed == ["dup", "zulu"]
-    legacy_repos = sorted(
-        f.repo for f in files if f.path.is_relative_to(projects.resolve())
-    )
-    assert legacy_repos == ["alpha", "charlie"]
+    legacy = [
+        (f.repo, f.path) for f in files if f.path.is_relative_to(projects.resolve())
+    ]
+    assert legacy == [
+        (repo, legacy_file(projects, root / name, "legacy.md"))
+        for name, repo in (("seven", "charlie"), ("six", "alpha"), ("three", "dup"))
+    ]
 
 
 def test_enumerate_absent_repo_memory_dir_adds_no_missing_dirs_entry(
-    tmp_path, side_channels
+    tmp_path,
+    side_channels,
 ):
     root, projects = tmp_path / "repo", tmp_path / "projects"
     root.mkdir()
@@ -913,6 +946,7 @@ def test_enumerate_absent_repo_memory_dir_adds_no_missing_dirs_entry(
 
     assert list(enumerate_corpora(registry, projects)) == []
     absent = list(corpora.missing_dirs)
+    assert not any(e.startswith("memory:") for e in absent)
     assert corpora.repo_memory_dirs == []
 
     write_notes(memory_dir(root), "note.md")
@@ -959,19 +993,27 @@ def fake_embed(texts, entry):
 
 
 def test_enumerate_incremental_index_replaces_shadowed_legacy_rows_with_repo_memory(
-    tmp_path, side_channels, index_store, monkeypatch
+    tmp_path,
+    side_channels,
+    index_store,
+    monkeypatch,
 ):
     projects = tmp_path / "projects"
     alpha, beta = tmp_path / "repos" / "alpha", tmp_path / "repos" / "beta"
     registry = write_registry(
-        tmp_path / "repos.csv", [(alpha, "alpha"), (beta, "beta")]
+        tmp_path / "repos.csv",
+        [(alpha, "alpha"), (beta, "beta")],
     )
     write_notes(memory_dir(beta), "MEMORY.md")
     (old,) = write_notes(
-        legacy_dir(projects, alpha), "old.md", text="# Old\nlegacymarker\n"
+        legacy_dir(projects, alpha),
+        "old.md",
+        text="# Old\nlegacymarker\n",
     )
     (kept,) = write_notes(
-        legacy_dir(projects, beta), "kept.md", text="# Kept\nlegacymarker\n"
+        legacy_dir(projects, beta),
+        "kept.md",
+        text="# Kept\nlegacymarker\n",
     )
     monkeypatch.setattr(
         "engram.indexer.enumerate_corpora",
