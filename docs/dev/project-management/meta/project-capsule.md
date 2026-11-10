@@ -1,6 +1,6 @@
 # Project Capsule: engram
 
-Updated: 2026-11-10, after Session 5 dependency review and CI.
+Updated: 2026-11-10, after Session 6 shared-memory specification.
 
 ## Key Invariants
 
@@ -424,3 +424,82 @@ historical snapshots, and rollback backups were untouched; no servers were
 started or stopped. The session worktree, branch, and scratch files were removed.
 
 Next: **Session 6, specify shared project memory**. Stop after Session 5.
+
+## Session 6 complete: shared project memory spec (2026-11-10)
+
+Intake 00010 was elicited at comprehensive depth and moved to
+`intake/processed/00010-shared-project-memory/` (`discovery.md` beside
+`idea.md`). User decision: repository memory must be **public-safe**, because
+28 of 29 `buvis` repositories are public (only `cellar` is private).
+Host-private, personal, and secret facts stay in host-global memory.
+
+The contract has six parts:
+
+- **Path and format.** Memory lives in `docs/dev/project-management/memory/`,
+  one `<slug>.md` file per fact. Each file has frontmatter `name`, which must
+  equal the file stem, `description`, `type`
+  (`project`/`feedback`/`reference`, `user` refused; Claude `metadata.type`
+  accepted), `source`, and a non-empty `evidence` list. Git records the author,
+  the date, and every revision.
+- **Index.** `MEMORY.md` is sorted, limited to 200 lines and 25 KB, and marked
+  `merge=union` in `.gitattributes`.
+- **Changes.** A correction edits the file; a retraction deletes it. Each change
+  is its own `docs(memory): <verb> <slug>` commit. Incremental indexing prunes
+  deleted memories.
+- **Scope.** New memory goes to the current repository. Recall defaults to repo
+  scope; portfolio scope is explicit. Callers enforce blind-role exclusion.
+- **Hosts.** `AGENTS.md` carries a "Project memory" section for all hosts. For
+  Claude, the repository sets `autoMemoryEnabled: false` and `CLAUDE.md` adds
+  `@docs/dev/project-management/memory/MEMORY.md`. Native Codex and Copilot
+  memory was not verified (2026-11-10 docs check), so it is not used.
+  `autoMemoryDirectory` was rejected: only absolute and `~/` paths are
+  documented. A probe could not run, because nested `claude` failed OAuth in
+  the sandbox.
+- **Migration.** 159 mapped legacy files across 21 repositories; the 136 unmapped
+  files, including 80 in the `~/.claude` project, stay in Claude auto-memory.
+
+Two backlog PRDs. Both passed the grounding gate with 0 blocking findings:
+
+- `00010-repo-memory-corpus-v1`: `src/engram/memory.py` validator,
+  repository memory enumeration, legacy-skip for repositories with repository
+  memory, `engram memory check`, and the status lines `invalid` (exit 1) and
+  `legacy-shadowed`.
+- `00011-memory-migrate-command-v1`: `engram memory migrate --from --to
+  [--apply]`, a dry-run TSV report, conversion that writes no absolute host
+  path, idempotent wiring (`.gitattributes`, `AGENTS.md`, `CLAUDE.md`,
+  `.claude/settings.json`), and no commit or push. It becomes eligible after
+  00010 is done.
+
+The rollout is attended, not a PRD. For each repository: dry run, public-safe
+review, apply, `engram memory check`, one commit. Push only after the user
+approves the batch. Then update `~/.claude/rules/memory.md` and
+`~/.claude/AGENTS.md` to say that project facts go to repository memory.
+
+**Blocker found.** The installed autopilot `enforce_prd_location.py` hook
+(0.10.0, source only in frozen `claude-autopilot`) rejects writes to
+`docs/dev/project-management/memory/`. It also rejects `meta/` subdirectories.
+Agents cannot write repository memory until the companion change ships.
+
+Companion work:
+
+- agent-plugins intake 00065 (`b91f37b`): layout vocabulary and blind-role
+  recall exclusion.
+- agent-skills intake 00176: catchup `load-memories.sh` (its `tr '/.' '-'`
+  repeats the Session 1 encoding bug), distil-memory writes, promote-memories,
+  layout.md, and brush. A concurrent 00135 autopilot session swept this staged
+  file into its commit `982c885`. The content is intact; history was not
+  rewritten.
+
+Observed separate debt: stray `pytest-of-bob-…test_cli_clean_exit_for_ordina0`
+project directories (runs 718–725) under `~/.claude/projects` show that some
+test suite writes into the real Claude projects directory. No source under
+`~/git/src` matched, so the origin is unknown.
+
+Verification: documentation and specification only. No production code
+changed, so the test suites were not rerun. `git diff --check` passed. The
+production model, configuration, index, snapshots, and backups were untouched.
+No servers were started. Probe scratch files were removed.
+
+Next: **Session 7, collect independent retrieval evidence** (needs genuine user
+questions). PRDs 00010 and then 00011 can run through `/autopilot:run-autopilot`
+independently. Stop after Session 6.

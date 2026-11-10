@@ -1,6 +1,6 @@
 # Shared project memory in repository files
 
-Status: intake, not yet specced. Recorded 2026-11-04.
+Status: processed, specced as PRD 00010 and PRD 00011. Recorded 2026-11-04.
 
 Source: moved on 2026-11-04 from `buvis/docs` (`src/agents/components.md`,
 sections "Engram" and "Shared memory") so the public reference keeps only the

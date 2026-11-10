@@ -104,13 +104,18 @@
    Results: 120 focused; CI simulation 548 main (1 deselected) and 47 eval; full 549 main and 47 eval passed.
    Continue with Session 6; stop after this session.
 
-10. **Session 6: specify shared project memory.**
+10. **Session 6: specify shared project memory. (COMPLETE — 2026-11-10)**
     Read `docs/dev/project-management/intake/new/00010-shared-project-memory/idea.md`.
     Define repository paths, file format, evidence fields, migration, concurrent edits, scope, and deletion behavior.
     Keep authoritative memory in repository files and attribution in Git history.
     Define compatible host integration for Claude, Codex, and Copilot.
     Use the requirements and PRD skills to prepare bounded implementation work.
     Record companion work in `agent-plugins` or `agent-skills` where necessary.
+    User decision: repository memory must be public-safe; host-private facts stay in host-global memory.
+    Discovery is at `intake/processed/00010-shared-project-memory/discovery.md`; PRDs 00010 and 00011 are in the backlog.
+    Companion items: agent-plugins intake 00065 (`b91f37b`) and agent-skills intake 00176 (in `982c885`).
+    Blocker: the installed autopilot hook rejects `docs/dev/project-management/memory/` until intake 00065 ships.
+    The rollout is attended: run the migration, review it, commit it, and push only after the user approves.
 
 11. **Session 7: collect independent retrieval evidence.**
     Follow `docs/dev/project-management/reviews/2026-11-05-independent-evaluation-protocol.md`.
