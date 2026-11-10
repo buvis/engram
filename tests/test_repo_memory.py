@@ -5,8 +5,9 @@ from pathlib import Path
 import pytest
 import yaml
 from _cli_helpers import _init_git_repo, _refuse
+from test_cli_index_status import _FakeStoreForStatus
 
-from engram import corpora
+from engram import corpora, transcripts
 from engram.cli import main
 from engram.client import EmbeddingEntry, EngramConfig, Vector
 from engram.corpora import CorpusFile, enumerate_corpora
@@ -21,7 +22,7 @@ from engram.memory import (
     parse_memory,
     redact,
 )
-from engram.store import Scope, open_store
+from engram.store import Scope, StatusReport, open_store
 
 DROP = object()
 
@@ -1279,3 +1280,117 @@ def test_cli_check_rejects_unknown_memory_subcommand_and_extra_paths(
     assert raised.value.code == 2
     assert captured.out == ""
     assert reason in captured.err
+
+
+# --- status: memory invalid and legacy-shadowed lines ---
+
+STATUS_NOTES = {
+    "alpha": [("broken", {"description": DROP}), ("good", {})],
+    "alpha-2": [
+        ("bad-one", {"description": DROP, "source": ""}),
+        ("bad-two", {"type": "note"}),
+    ],
+    "beta": [("fine", {})],
+    "delta": [("fine", {})],
+}
+
+
+@pytest.fixture
+def status_run(tmp_path, side_channels, monkeypatch, capsys):
+    repos, projects = tmp_path / "repos", tmp_path / "projects"
+    for name, notes in STATUS_NOTES.items():
+        for slug, overrides in notes:
+            write_memory(memory_dir(repos / name), slug, **overrides)
+        write_index(memory_dir(repos / name), [f"- [{s}]({s}.md)" for s, _ in notes])
+    for name in ("alpha", "alpha-2", "delta", "gamma"):
+        write_notes(legacy_dir(projects, repos / name), "old.md")
+    monkeypatch.setattr("engram.cli.symbols.count_excluded", lambda: 0)
+    monkeypatch.setattr(
+        "engram.cli.symbols.count_skipped",
+        lambda *a, **k: 0,
+        raising=False,
+    )
+    monkeypatch.setattr(transcripts, "enumerate", lambda *a, **k: iter([]))
+    report = StatusReport(per_corpus={})
+    monkeypatch.setattr(
+        "engram.cli.open_store",
+        lambda *a, **k: _FakeStoreForStatus(report),
+    )
+    seen = []
+
+    def run(scope, names=(*STATUS_NOTES, "gamma"), rows=None):
+        rows = [(repos / n, n) for n in names] if rows is None else rows
+        registry = write_registry(tmp_path / "repos.csv", rows)
+        monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", registry)
+        monkeypatch.setattr("engram.cli._resolve_repo_name", lambda: scope)
+
+        def recording_enumerate(*args, **kwargs):
+            for corpus_file in enumerate_corpora(registry, projects):
+                seen.append(corpus_file)
+                yield corpus_file
+
+        monkeypatch.setattr("engram.cli.enumerate_corpora", recording_enumerate)
+        exit_code = main(["status", "--scope", "repo" if scope else "portfolio"])
+        out = capsys.readouterr().out.splitlines()
+        return exit_code, [line for line in out if line.startswith("memory\t")]
+
+    return run, repos, seen
+
+
+def test_status_portfolio_counts_distinct_invalid_files_and_lists_shadowed(status_run):
+    run, repos, seen = status_run
+
+    result = run(None)
+
+    broken = memory_dir(repos / "alpha") / "broken.md"
+    assert CorpusFile("memory", "alpha", broken) in seen
+    assert result == (
+        1,
+        [
+            "memory\tinvalid=3",
+            "memory\tlegacy-shadowed=alpha",
+            "memory\tlegacy-shadowed=alpha-2",
+            "memory\tlegacy-shadowed=delta",
+        ],
+    )
+
+
+@pytest.mark.parametrize(
+    ("scope", "expected"),
+    [
+        ("alpha", (1, ["memory\tinvalid=1", "memory\tlegacy-shadowed=alpha"])),
+        ("alpha-2", (1, ["memory\tinvalid=2", "memory\tlegacy-shadowed=alpha-2"])),
+        ("beta", (0, [])),
+        ("gamma", (0, [])),
+    ],
+)
+def test_status_repo_scope_reports_only_that_repos_memory_lines(
+    status_run,
+    scope,
+    expected,
+):
+    run, _, _ = status_run
+
+    assert run(scope) == expected
+
+
+def test_status_legacy_shadowed_alone_prints_line_and_keeps_exit_zero(status_run):
+    run, _, _ = status_run
+
+    assert run("delta") == (0, ["memory\tlegacy-shadowed=delta"])
+    assert run(None, names=("beta", "delta")) == (
+        0,
+        ["memory\tlegacy-shadowed=delta"],
+    )
+    assert run(None, names=()) == (0, [])
+
+
+def test_status_duplicate_registry_rows_count_shared_invalid_file_once(status_run):
+    run, repos, _ = status_run
+    alpha = repos / "alpha"
+
+    exit_code, lines = run(None, rows=[(alpha, "alpha"), (alpha, "alpha")])
+
+    assert corpora.repo_memory_dirs.count(("alpha", memory_dir(alpha))) == 2
+    assert exit_code == 1
+    assert [line for line in lines if "invalid" in line] == ["memory\tinvalid=1"]
