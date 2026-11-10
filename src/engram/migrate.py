@@ -278,7 +278,9 @@ def _check_destination(dest: Path, src: Path, repo_root: Path) -> None:
     if not inside or overlaps_src:
         name = existing.relative_to(repo_root)
         raise MigrationError(
-            redact(f"{name}: symlink resolves outside the repository or into the source"),
+            redact(
+                f"{name}: symlink resolves outside the repository or into the source"
+            ),
         )
 
 
@@ -337,7 +339,9 @@ def _plan(
         for c in migrated
     }
     writes[target_dir / "MEMORY.md"] = index.encode("utf-8")
-    lines = [r if isinstance(r, MigrationLine) else finished[r.file][0] for r in results]
+    lines = [
+        r if isinstance(r, MigrationLine) else finished[r.file][0] for r in results
+    ]
     return lines, writes
 
 
@@ -460,9 +464,7 @@ def apply_migration(src: Path, repo_root: Path) -> list[MigrationLine]:
     journal: list[tuple[Path, bytes | None]] = [
         (d, None) for d in (*dirs, repo / ".claude") if not d.exists()
     ]
-    journal += [
-        (p, p.read_bytes() if p.exists() else None) for p in (*writes, *wiring)
-    ]
+    journal += [(p, p.read_bytes() if p.exists() else None) for p in (*writes, *wiring)]
     try:
         target_dir.mkdir(parents=True, exist_ok=True)
         for path, data in (*writes.items(), *wiring.items()):
@@ -470,7 +472,9 @@ def apply_migration(src: Path, repo_root: Path) -> list[MigrationLine]:
             _write_if_changed(path, data)
         problems = check_directory(target_dir)
         if problems:
-            raise MigrationError("postcondition failed: " + "; ".join(map(str, problems)))
+            raise MigrationError(
+                "postcondition failed: " + "; ".join(map(str, problems))
+            )
     except (OSError, MigrationError) as error:
         failed = _restore(journal)
         message = f"apply failed, repository restored: {error}"
