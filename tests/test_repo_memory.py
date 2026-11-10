@@ -1,7 +1,13 @@
+import re
+from functools import partial
 from pathlib import Path
 
 import pytest
 import yaml
+from engram import corpora
+from engram.client import EmbeddingEntry, EngramConfig, Vector
+from engram.corpora import CorpusFile, enumerate_corpora
+from engram.indexer import index as run_index
 from engram.memory import (
     CREDENTIAL_PATTERNS,
     MEMORY_SUBDIR,
@@ -12,6 +18,7 @@ from engram.memory import (
     parse_memory,
     redact,
 )
+from engram.store import Scope, open_store
 
 DROP = object()
 
@@ -742,3 +749,254 @@ def test_credential_in_file_name_is_redacted_in_file_column_and_detail(tmp_path)
         f"{redacted_path}\tindex-missing-entry\t[redacted:sk-key].md",
     ]
     assert not any(slug in line for line in output)
+
+
+# --- corpora: repository memory enumeration and legacy shadowing ---
+
+SIDE_CHANNELS = ("missing_dirs", "repo_memory_dirs", "legacy_shadowed")
+
+
+def legacy_dir(projects, repo_path):
+    return projects / re.sub(r"[^a-zA-Z0-9]", "-", str(repo_path)) / "memory"
+
+
+def write_notes(directory, *names, text="# Note\nmarker\n"):
+    directory.mkdir(parents=True, exist_ok=True)
+    for name in names:
+        (directory / name).write_text(text, encoding="utf-8")
+    return [directory / name for name in names]
+
+
+def write_registry(path, rows):
+    path.write_text("".join(f"{root},{name}\n" for root, name in rows), "utf-8")
+    return path
+
+
+def files_of(files, repo):
+    return [f for f in files if f.repo == repo]
+
+
+def legacy_file(projects, repo_path, name):
+    return legacy_dir(projects, repo_path).resolve() / name
+
+
+@pytest.fixture
+def side_channels(monkeypatch):
+    for name in SIDE_CHANNELS:
+        monkeypatch.setattr(corpora, name, [])
+
+
+@pytest.fixture
+def portfolio(tmp_path, side_channels):
+    repos, projects = tmp_path / "repos", tmp_path / "projects"
+    repos.mkdir()
+    (tmp_path / "real-alpha").mkdir()
+    (repos / "alpha").symlink_to(tmp_path / "real-alpha")
+    paths = {n: repos / n for n in ("alpha", "beta", "gamma", "delta", "omega")}
+    paths["first"], paths["second"] = tmp_path / "c/a/b", tmp_path / "c/a-b"
+    write_notes(memory_dir(paths["alpha"]), "zeta-note.md", "alpha-note.md")
+    write_notes(memory_dir(paths["alpha"]), "broken.md", text="no frontmatter\n")
+    write_notes(memory_dir(paths["alpha"]), "MEMORY.md", text="- [Z](zeta-note.md)\n")
+    write_notes(memory_dir(paths["beta"]), "beta-note.md")
+    write_notes(memory_dir(paths["gamma"]), "MEMORY.md")
+    paths["delta"].mkdir()
+    memory_dir(paths["omega"]).parent.mkdir(parents=True)
+    memory_dir(paths["omega"]).write_text("not a directory\n", encoding="utf-8")
+    write_notes(memory_dir(paths["first"]), "first.md")
+    write_notes(legacy_dir(projects, paths["alpha"]), "old.md")
+    write_notes(legacy_dir(projects, paths["beta"]), "MEMORY.md")
+    for repo in ("gamma", "delta", "omega"):
+        write_notes(legacy_dir(projects, paths[repo]), f"{repo}-old.md")
+    write_notes(legacy_dir(projects, paths["first"]), "shared.md")
+    write_notes(legacy_dir(projects, f"{paths['alpha']}-old"), "kept.md")
+    registry = write_registry(tmp_path / "repos.csv", [(paths[n], n) for n in paths])
+    return registry, projects, paths
+
+
+def test_enumerate_yields_repo_memory_per_repo_unresolved_without_memory_index(
+    portfolio,
+):
+    registry, projects, paths = portfolio
+
+    files = list(enumerate_corpora(registry, projects))
+
+    alpha = memory_dir(paths["alpha"])
+    assert files_of(files, "alpha") == [
+        CorpusFile("memory", "alpha", alpha / name)
+        for name in ("alpha-note.md", "broken.md", "zeta-note.md")
+    ]
+    assert files_of(files, "beta") == [
+        CorpusFile("memory", "beta", memory_dir(paths["beta"]) / "beta-note.md")
+    ]
+    assert files_of(files, "first") == [
+        CorpusFile("memory", "first", memory_dir(paths["first"]) / "first.md")
+    ]
+    assert files_of(files, "second") == []
+    assert not any(f.path.name == "MEMORY.md" for f in files)
+
+
+def test_enumerate_legacy_skips_shadowed_slugs_and_keeps_others(portfolio):
+    registry, projects, paths = portfolio
+
+    files = list(enumerate_corpora(registry, projects))
+
+    for repo in ("gamma", "delta", "omega"):
+        assert files_of(files, repo) == [
+            CorpusFile(
+                "memory", repo, legacy_file(projects, paths[repo], f"{repo}-old.md")
+            )
+        ]
+    assert sorted(f.path for f in files_of(files, "_unmapped")) == sorted(
+        [
+            legacy_file(projects, paths["first"], "shared.md"),
+            legacy_file(projects, f"{paths['alpha']}-old", "kept.md"),
+        ]
+    )
+    shadowed = {
+        legacy_dir(projects, paths[repo]).resolve() for repo in ("alpha", "beta")
+    }
+    assert not any(f.path.parent in shadowed for f in files)
+    assert len(files) == 10
+    is_legacy = [f.path.is_relative_to(projects.resolve()) for f in files]
+    assert is_legacy == sorted(is_legacy, reverse=True)
+
+
+def test_enumerate_records_repo_memory_dirs_and_legacy_shadowed(portfolio):
+    registry, projects, paths = portfolio
+
+    list(enumerate_corpora(registry, projects))
+
+    assert sorted(corpora.repo_memory_dirs) == [
+        (name, memory_dir(paths[name])) for name in ("alpha", "beta", "first", "gamma")
+    ]
+    assert corpora.legacy_shadowed == ["alpha", "beta"]
+
+
+def test_enumerate_legacy_shadowed_is_sorted_deduped_and_needs_a_legacy_md_file(
+    tmp_path, side_channels
+):
+    root, projects = tmp_path / "r", tmp_path / "projects"
+    rows = [
+        (root / "one", "zulu"),
+        (root / "two", "dup"),
+        (root / "three", "dup"),
+        (root / "four", "able"),
+        (root / "five", "bravo"),
+        (root / "six", "alpha"),
+        (root / "seven", "charlie"),
+    ]
+    for path, _ in rows[:5]:
+        write_notes(memory_dir(path), "note.md")
+    write_notes(memory_dir(root / "seven"), "MEMORY.md")
+    for path in (root / "one", root / "two", root / "six", root / "seven"):
+        write_notes(legacy_dir(projects, path), "legacy.md")
+    write_notes(legacy_dir(projects, root / "three"), "MEMORY.md")
+    write_notes(legacy_dir(projects, root / "four"), "notes.txt", "notes.mdx")
+    registry = write_registry(tmp_path / "repos.csv", rows)
+
+    files = list(enumerate_corpora(registry, projects))
+
+    assert corpora.legacy_shadowed == ["dup", "zulu"]
+    legacy_repos = sorted(
+        f.repo for f in files if f.path.is_relative_to(projects.resolve())
+    )
+    assert legacy_repos == ["alpha", "charlie"]
+
+
+def test_enumerate_absent_repo_memory_dir_adds_no_missing_dirs_entry(
+    tmp_path, side_channels
+):
+    root, projects = tmp_path / "repo", tmp_path / "projects"
+    root.mkdir()
+    projects.mkdir()
+    registry = write_registry(tmp_path / "repos.csv", [(root, "solo")])
+
+    assert list(enumerate_corpora(registry, projects)) == []
+    absent = list(corpora.missing_dirs)
+    assert corpora.repo_memory_dirs == []
+
+    write_notes(memory_dir(root), "note.md")
+    files = list(enumerate_corpora(registry, projects))
+
+    assert files == [CorpusFile("memory", "solo", memory_dir(root) / "note.md")]
+    assert corpora.missing_dirs == absent
+    assert corpora.repo_memory_dirs == [("solo", memory_dir(root))]
+
+
+def test_enumerate_clears_side_channels_in_place_on_each_run(tmp_path, monkeypatch):
+    stale = {name: [f"stale-{name}"] for name in SIDE_CHANNELS}
+    for name, value in stale.items():
+        monkeypatch.setattr(corpora, name, value)
+    root, projects = tmp_path / "repo", tmp_path / "projects"
+    write_notes(memory_dir(root), "note.md")
+    (legacy,) = write_notes(legacy_dir(projects, root), "legacy.md")
+    registry = write_registry(tmp_path / "repos.csv", [(root, "solo")])
+
+    list(enumerate_corpora(registry, projects))
+    list(enumerate_corpora(registry, projects))
+
+    assert stale["repo_memory_dirs"] == [("solo", memory_dir(root))]
+    assert stale["legacy_shadowed"] == ["solo"]
+    assert "stale-missing_dirs" not in stale["missing_dirs"]
+
+    registry.write_text("", encoding="utf-8")
+    files = list(enumerate_corpora(registry, projects))
+
+    assert files == [CorpusFile("memory", "_unmapped", legacy.resolve())]
+    assert stale["repo_memory_dirs"] == []
+    assert stale["legacy_shadowed"] == []
+
+
+@pytest.fixture
+def index_store(tmp_path):
+    db = open_store(tmp_path / "engram.db")
+    yield db
+    db.conn.close()
+
+
+def fake_embed(texts, entry):
+    return [Vector([1.0, 0.0], entry.id, 2) for _ in texts]
+
+
+def test_enumerate_incremental_index_replaces_shadowed_legacy_rows_with_repo_memory(
+    tmp_path, side_channels, index_store, monkeypatch
+):
+    projects = tmp_path / "projects"
+    alpha, beta = tmp_path / "repos" / "alpha", tmp_path / "repos" / "beta"
+    registry = write_registry(
+        tmp_path / "repos.csv", [(alpha, "alpha"), (beta, "beta")]
+    )
+    write_notes(memory_dir(beta), "MEMORY.md")
+    (old,) = write_notes(
+        legacy_dir(projects, alpha), "old.md", text="# Old\nlegacymarker\n"
+    )
+    (kept,) = write_notes(
+        legacy_dir(projects, beta), "kept.md", text="# Kept\nlegacymarker\n"
+    )
+    monkeypatch.setattr(
+        "engram.indexer.enumerate_corpora",
+        partial(enumerate_corpora, registry, projects),
+    )
+    monkeypatch.setattr("engram.indexer.embed", fake_embed)
+    config = EngramConfig(
+        embeddings=[EmbeddingEntry("test-model", "http://127.0.0.1:8081/v1")],
+        pinned_id="test-model",
+        config_path=tmp_path / "config.toml",
+    )
+    portfolio_scope = Scope("portfolio", None)
+
+    run_index(index_store, config, portfolio_scope, corpus="memory")
+    rows = {(c.repo, c.path) for c in index_store.chunks_for_corpus("memory")}
+    assert rows == {("alpha", str(old.resolve())), ("beta", str(kept.resolve()))}
+
+    (note,) = write_notes(memory_dir(alpha), "note.md", text="# Note\nrepomarker\n")
+    report = run_index(index_store, config, portfolio_scope, corpus="memory")
+
+    assert (report.chunks_added, report.chunks_pruned) == (1, 1)
+    rows = {(c.repo, c.path) for c in index_store.chunks_for_corpus("memory")}
+    assert rows == {("alpha", str(note)), ("beta", str(kept.resolve()))}
+    alpha_scope = Scope("repo", "alpha")
+    assert index_store.search_bm25("legacymarker", alpha_scope, "memory", 10) == []
+    hits = index_store.search_bm25("repomarker", alpha_scope, "memory", 10)
+    assert [h.chunk.path for h in hits] == [str(note)]
+    assert corpora.legacy_shadowed == ["alpha"]
