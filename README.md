@@ -22,7 +22,7 @@ download the first time an embedding server starts.
 | `prd` | `docs/dev/project-management/prds/**/*.md` in every registered repo | heading |
 | `decision` | `docs/dev/project-management/meta/decisions.md` | heading |
 | `discovery` | `docs/dev/project-management/discovery/*.md` | heading |
-| `memory` | `~/.claude/projects/*/memory/*.md` | heading |
+| `memory` | Claude auto-memory `~/.claude/projects/<slug>/memory/*.md` and repository memory `docs/dev/project-management/memory/*.md` | heading |
 | `findings` | reviews and decision audit logs ingested by `engram harvest` | record |
 | `transcripts` | session JSONL, one turn per chunk | JSONL line |
 | `code` | every git-tracked file, one chunk per function or class | line span |
@@ -30,6 +30,41 @@ download the first time an embedding server starts.
 `findings` is the only corpus whose hits carry their text, because a harvested
 finding has to survive the review file being trashed. Every other corpus is
 pointer-only.
+
+## Repository memory
+
+A repo can keep its own memory in `docs/dev/project-management/memory/`, one
+fact per `<slug>.md` file, with YAML frontmatter and a Markdown body.
+
+Required keys:
+
+- `name`: equals the file stem and matches `^[a-z0-9][a-z0-9-]*$`.
+- `description`: non-empty, one line.
+- `type`: `project`, `feedback`, or `reference`. Claude's nested
+  `metadata.type` counts when top-level `type` is absent. `type: user` is a
+  violation.
+- `source`: non-empty string.
+- `evidence`: non-empty list of non-empty strings.
+
+Any `author` or `date` key is a violation, because Git carries both. Other
+extra keys are allowed.
+
+`MEMORY.md` in the same directory lists every memory once, as
+`- [<title>](<slug>.md)` lines sorted by slug, in at most 200 lines and 25,000
+bytes.
+
+Repository memory must be public-safe. Keep host-private, personal, and secret
+facts in host-global memory. The credential check is a guard, not proof of
+public safety.
+
+Commit each change as `docs(memory): <verb> <slug>`.
+
+`engram memory check [PATH]` checks the directory. It exits 0 when clean and 1
+on any violation or when the directory is absent. Each violation prints as
+`<file><TAB><rule><TAB><detail>`. `engram status` adds `memory<TAB>invalid=<n>`
+(exit 1) and `memory<TAB>legacy-shadowed=<repo>` (informational). Once a repo
+has at least one repository memory file, engram stops indexing its Claude
+auto-memory.
 
 ## Install
 
