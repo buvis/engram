@@ -1,6 +1,9 @@
-"""Plan the migration of Claude auto-memory files into repository memory."""
+"""Plan and apply the migration of Claude auto-memory files into repository memory."""
 
+import json
+import os
 import re
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -15,6 +18,7 @@ from engram.memory import (
     MEMORY_SUBDIR,
     NAME_RE,
     _split_frontmatter,
+    check_directory,
     memory_dir,
     memory_files,
     parse_memory,
@@ -35,8 +39,28 @@ SOURCE_PREFIX = "migrated:claude-auto-memory/"
 GITATTRIBUTES_LINE = "docs/dev/project-management/memory/MEMORY.md merge=union"
 CLAUDE_IMPORT_LINE = "@docs/dev/project-management/memory/MEMORY.md"
 AGENTS_HEADING = "## Project memory"
+AGENTS_SECTION = f"""{AGENTS_HEADING}
+
+Durable project facts live in `docs/dev/project-management/memory/`, one
+`<slug>.md` file per fact. Frontmatter fields:
+
+- `name`: equals the file stem.
+- `description`: one line.
+- `type`: `project`, `feedback`, or `reference`.
+- `source`: where the fact came from.
+- `evidence`: a non-empty list.
+
+Leave out `author` and `date`; git records them. `MEMORY.md` is the sorted
+index of every memory file.
+
+Memory must be public-safe: no secrets, personal facts, or host-private
+facts. Those belong in host-global memory.
+
+Read `MEMORY.md` before starting work. Make one `docs(memory): <verb> <slug>`
+commit per change. Validate with `engram memory check`.
+"""
 HOST_PATH_RE = re.compile(
-    r"(?<![\w.:/~-])/(?:Users|home|root|private|tmp|var|opt|Volumes|mnt|srv|etc)/"
+    r"(?<![\w.:/~-])/(?:Users|home|root|private|tmp|var|opt|Volumes|mnt|srv|etc)/",
 )
 USER_DETAIL = "user memory stays in host-global memory"
 HOST_DETAIL = "contains an absolute host path"
@@ -57,7 +81,7 @@ class MigrationLine:
 
 
 class MigrationError(Exception):
-    """Refusal before any write."""
+    """Refusal before any write, or a failed apply after rollback."""
 
 
 @dataclass(frozen=True)
@@ -94,7 +118,11 @@ def _memory_type(front: dict) -> object:
 
 
 def _field_problem(
-    front: dict, kind: object, slug: str, body: str, src: Path
+    front: dict,
+    kind: object,
+    slug: str,
+    body: str,
+    src: Path,
 ) -> str | None:
     name = front.get("name")
     description = front.get("description")
@@ -190,8 +218,11 @@ def _render_index(entries: list[tuple[str, str, str]]) -> str:
 
 
 def _finish(
-    candidate: _Candidate, renames: dict[str, str], target_dir: Path, src: Path
-) -> MigrationLine:
+    candidate: _Candidate,
+    renames: dict[str, str],
+    target_dir: Path,
+    src: Path,
+) -> tuple[MigrationLine, str]:
     """Pass B: render with link rewriting, re-scan, compare against the target."""
     body = candidate.body
     for stem, slug in renames.items():
@@ -201,15 +232,16 @@ def _finish(
     final = text + _render_index([(c.slug, c.slug, c.description)])
     labels = _credential_labels(final)
     if labels:
-        return MigrationLine(c.file, "skip-credential", ",".join(labels))
+        return MigrationLine(c.file, "skip-credential", ",".join(labels)), text
     if contains_host_path(final, src):
-        return MigrationLine(c.file, "skip-invalid", HOST_DETAIL)
+        return MigrationLine(c.file, "skip-invalid", HOST_DETAIL), text
     target = target_dir / f"{c.slug}.md"
     detail = TARGET_PREFIX + target.name
     if not target.exists():
-        return MigrationLine(c.file, "migrate", detail)
+        return MigrationLine(c.file, "migrate", detail), text
     same = target.read_bytes() == text.encode("utf-8")
-    return MigrationLine(c.file, "skip-identical" if same else "skip-exists", detail)
+    action = "skip-identical" if same else "skip-exists"
+    return MigrationLine(c.file, action, detail), text
 
 
 def _check_paths(src: Path, repo_root: Path) -> None:
@@ -228,7 +260,7 @@ def _check_paths(src: Path, repo_root: Path) -> None:
     ]
     if aliased:
         raise MigrationError(
-            redact("source files resolve inside the repository: " + ", ".join(aliased))
+            redact("source files resolve inside the repository: " + ", ".join(aliased)),
         )
 
 
@@ -255,6 +287,14 @@ def _existing_entries(target_dir: Path, src: Path) -> list[tuple[str, str, str]]
 
 def plan_migration(src: Path, repo_root: Path) -> list[MigrationLine]:
     """Classify every source memory file; write nothing."""
+    return _plan(src, repo_root)[0]
+
+
+def _plan(
+    src: Path,
+    repo_root: Path,
+) -> tuple[list[MigrationLine], dict[Path, bytes]]:
+    """Plan lines plus the bytes of every migrated file and MEMORY.md, in order."""
     root, repo = src.resolve(), repo_root.resolve()
     _check_paths(root, repo)
     target_dir = memory_dir(repo)
@@ -265,16 +305,151 @@ def plan_migration(src: Path, repo_root: Path) -> list[MigrationLine]:
         Path(c.file).stem: c.slug for c in candidates if Path(c.file).stem != c.slug
     }
     finished = {c.file: _finish(c, renames, target_dir, src) for c in candidates}
-    new = [
-        (c.slug, c.slug, c.description)
-        for c in candidates
-        if finished[c.file].action == "migrate"
-    ]
+    migrated = [c for c in candidates if finished[c.file][0].action == "migrate"]
+    new = [(c.slug, c.slug, c.description) for c in migrated]
     index = _render_index(existing + new)
     lines, size = len(index.splitlines()), len(index.encode("utf-8"))
     if lines > INDEX_MAX_LINES or size > INDEX_MAX_BYTES:
         raise MigrationError(
             f"MEMORY.md would have {lines} lines and {size} bytes, limits are "
-            f"{INDEX_MAX_LINES} lines and {INDEX_MAX_BYTES} bytes"
+            f"{INDEX_MAX_LINES} lines and {INDEX_MAX_BYTES} bytes",
         )
-    return [r if isinstance(r, MigrationLine) else finished[r.file] for r in results]
+    writes = {
+        target_dir / f"{c.slug}.md": finished[c.file][1].encode("utf-8")
+        for c in migrated
+    }
+    writes[target_dir / "MEMORY.md"] = index.encode("utf-8")
+    lines = [r if isinstance(r, MigrationLine) else finished[r.file][0] for r in results]
+    return lines, writes
+
+
+def _write_if_changed(path: Path, data: bytes) -> None:
+    """Atomically replace path with data through a unique temporary file."""
+    if path.exists() and path.read_bytes() == data:
+        return
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(data)
+        os.replace(tmp, path)
+    except BaseException:
+        Path(tmp).unlink(missing_ok=True)
+        raise
+
+
+def _read_wiring(path: Path) -> str | None:
+    if not path.exists():
+        return None
+    try:
+        return path.read_bytes().decode("utf-8")
+    except UnicodeDecodeError as error:
+        raise MigrationError(redact(f"{path}: not UTF-8 text")) from error
+
+
+def _appended(text: str | None, line: str, addition: str, fresh: str) -> str:
+    """text with addition appended unless a line already equals line."""
+    if text is None:
+        return fresh
+    if any(old.rstrip("\r\n").strip() == line for old in text.splitlines()):
+        return text
+    if text and not text.endswith("\n"):
+        text += "\n"
+    return text + addition
+
+
+def _settings_text(path: Path) -> str:
+    text = _read_wiring(path)
+    obj: object = {}
+    if text is not None:
+        try:
+            obj = json.loads(text)
+        except json.JSONDecodeError:
+            obj = None
+        if not isinstance(obj, dict):
+            raise MigrationError(redact(f"{path}: not a JSON object"))
+        if obj.get("autoMemoryEnabled") is False:
+            return text
+    settings = {**obj, "autoMemoryEnabled": False}
+    return json.dumps(settings, indent=2, ensure_ascii=False) + "\n"
+
+
+def _plan_wiring(repo_root: Path) -> dict[Path, bytes]:
+    """New bytes for every wiring file that must change; write nothing."""
+    attrs, agents, claude = (
+        repo_root / name for name in (".gitattributes", "AGENTS.md", "CLAUDE.md")
+    )
+    settings = repo_root / ".claude" / "settings.json"
+    agents_text = _read_wiring(agents)
+    new = {
+        attrs: _appended(
+            _read_wiring(attrs),
+            GITATTRIBUTES_LINE,
+            GITATTRIBUTES_LINE + "\n",
+            GITATTRIBUTES_LINE + "\n",
+        ),
+        agents: _appended(
+            agents_text,
+            AGENTS_HEADING,
+            "\n" + AGENTS_SECTION if agents_text else AGENTS_SECTION,
+            AGENTS_SECTION,
+        ),
+        claude: _appended(
+            _read_wiring(claude),
+            CLAUDE_IMPORT_LINE,
+            CLAUDE_IMPORT_LINE + "\n",
+            "@AGENTS.md\n" + CLAUDE_IMPORT_LINE + "\n",
+        ),
+        settings: _settings_text(settings),
+    }
+    return {
+        path: text.encode("utf-8")
+        for path, text in new.items()
+        if _read_wiring(path) != text
+    }
+
+
+def _restore(journal: list[tuple[Path, bytes | None]]) -> list[str]:
+    """Undo journaled writes in reverse order; return the paths left unrestored."""
+    failed: list[str] = []
+    for path, original in reversed(journal):
+        try:
+            if original is not None:
+                _write_if_changed(path, original)
+            elif path.is_dir():
+                path.rmdir()
+            else:
+                path.unlink(missing_ok=True)
+        except OSError:
+            failed.append(str(path))
+    return failed
+
+
+def apply_migration(src: Path, repo_root: Path) -> list[MigrationLine]:
+    """Write the planned memory files, MEMORY.md and wiring; roll back on failure."""
+    lines, writes = _plan(src, repo_root)
+    repo = repo_root.resolve()
+    wiring = _plan_wiring(repo)
+    target_dir = memory_dir(repo)
+    rel = target_dir.relative_to(repo).parts
+    dirs = [repo.joinpath(*rel[:i]) for i in range(1, len(rel) + 1)]
+    journal: list[tuple[Path, bytes | None]] = [
+        (d, None) for d in (*dirs, repo / ".claude") if not d.exists()
+    ]
+    journal += [
+        (p, p.read_bytes() if p.exists() else None) for p in (*writes, *wiring)
+    ]
+    try:
+        target_dir.mkdir(parents=True, exist_ok=True)
+        for path, data in (*writes.items(), *wiring.items()):
+            path.parent.mkdir(exist_ok=True)
+            _write_if_changed(path, data)
+        problems = check_directory(target_dir)
+        if problems:
+            raise MigrationError("postcondition failed: " + "; ".join(map(str, problems)))
+    except (OSError, MigrationError) as error:
+        failed = _restore(journal)
+        message = f"apply failed, repository restored: {error}"
+        if failed:
+            message += "; could not restore: " + ", ".join(failed)
+        raise MigrationError(redact(message)) from error
+    return lines
