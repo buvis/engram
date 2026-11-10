@@ -29,17 +29,28 @@ Updated: 2026-11-10, after Session 6 shared-memory specification.
 
 ## Active Work
 
-PRDs 00001–00004 are in `done/`; no PRD or plan is active. Backlog 00005–00007
-requires a new user request.
+**Autopilot batch 202611100725 (2026-11-10):** PRD
+`00010-repo-memory-corpus-v1` in `wip/` (full lane, design then plan). PRD
+00011 stays in backlog until 00010 is done. The PRD only adds code and tests;
+test fixtures live under `tmp_path`, so the `enforce_prd_location.py` block on
+real `docs/dev/project-management/memory/` writes does not affect it.
+
+Earlier: PRDs 00001–00007 are in `done/`. Symbol
+lookup, audit harvesting, and meaningful status shipped and the installed CLI
+was verified against the checkout. The speculative anonymous-symbol percentage
+target was replaced with user-approved behavioral criteria. See
+`reviews/2026-11-09-backlog-delivery.md`; do not reopen its resolved installation
+or acceptance items.
 
 PRD 00002's historical gate used 52 entries: all candidates scored 0.962 versus
 rg 0.519. bge-m3 scored transcripts 1.000 and code 0.800. The unchanged portfolio
 index took 12.6 seconds. Catchup integration shipped in git-ferry 0.3.0.
 See the done PRD's Completion section and review 3 for evidence and limitations.
 
-The gold set now has 55 entries, including three decision queries. These were
-validated by `load_goldset`; the expensive live harness was not rerun for them.
-Its historical gate score must not be presented as a score for the enlarged set.
+The gold set has 55 entries, including three decision queries. The November 9
+closeout replaced one unavailable transcript under a pre-scoring sampling policy.
+Historical scores apply to their original labels, not the revised set. The fresh
+assessment found another missing transcript; see Project Health below.
 
 Completion review fixed a regression that cached parser/read failures as empty.
 The next normal index invalidates old empty-code markers once and reparses those
@@ -67,35 +78,92 @@ retrieval code; production changes and rebuilds require the user's authorization
 
 ## Project Health
 
-Local `master`; no remote or CI. Run the main and eval suites separately:
+`master` tracks `origin/master` at `ba912d5`, initially clean. Run the main and
+eval suites separately:
 `.venv/bin/python -m pytest -q --ignore=eval` and
 `PYTHONPATH=src:. .venv/bin/python -m pytest -q eval`.
-The installed implementation matches the checkout after the approved warrant
-installation of the production fixes; later evaluation tools remain in the repo.
-Verification on 2026-11-05: main suite 467 passed, 1 failed; eval suite 30 passed.
-`test_real_goldset_loads_clean_and_covers_transcripts_and_code` fails because a
-live transcript target is missing:
-`/Users/bob/git/src/github.com/buvis/cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-agent-skills/5a656567-eccb-474e-833a-8ca6a7601e5a.jsonl`.
-Cellar commit `ba64775dd` deleted this transcript on November 3; no relocation
-was found. The new probe uses frozen sources, without replacing historical labels.
-Resolve source availability before a new live-source evaluation; preserve the
-historical development labels and frozen campaign results when investigating.
-Both stashes were inspected: formatting/import cleanup only, no unfinished logic.
-Both were dropped with user authorization after a verified recovery bundle was saved.
-Exact hashes and the archive path are in the follow-up note.
-No extra worktree or executed plan belongs to this session.
+Fresh verification: **501 main tests passed, one failed; 30 eval tests passed**.
+`test_real_goldset_loads_clean_and_covers_transcripts_and_code` now fails on
+`cellar/.claude/projects/-Users-bob-git-src-github-com-buvis-gems/c0e70656-a139-4b1b-8407-f8989807631e.jsonl`.
+This is a different source from the repaired closeout anchor. Cellar still tracks
+the blob in HEAD, but its worktree reports a deletion; this assessment did not
+restore or otherwise change it. Exactly one of the 55 current gold paths is
+missing. Stabilize evaluation-source availability rather
+than repeatedly relabeling disappearing transcripts; preserve historical freezes.
 
-The completion review's context-pack command could not resolve engram in the
-installed registry. This is already recorded in the PRD 00004 review; no registry
-configuration was changed here.
+Current memory enumeration maps **all 295 files to `_unmapped`**. In
+`corpora.py`, registry paths replace `/` but retain `.`, whereas actual Claude
+project directory names use `github-com`. This old deferred defect still affects
+repo-scoped memory recall and should be fixed before memory-source expansion.
+
+Portfolio status exits 1: **7,072 dead rows** (6,597 transcript, 168 PRD,
+7 discovery, 300 code), plus 11 stale memory files, 6 stale transcripts,
+3 stale code files, and missing required `code:herdr-plugins`. Its registered
+directory does not exist. Reconcile that registry entry/source before an ordinary
+incremental portfolio refresh; a model switch or full rebuild is unnecessary.
+Engram itself is now registered, so the historical own-repo pack blocker is stale.
+
+Review-pack correctness debt remains visible in current source: unreadable PRDs
+still trigger filename-based memory queries; omission notices can exceed the
+hard cap after all section items are removed; an empty `--diff` head is passed
+as an empty source ref; reuse filtering occurs after top-five retrieval. Triage
+the retained PRD 00003/00004 findings against current code rather than treating
+every historical finding as unresolved. The catchup harvest succeeded for 14
+supported review/audit files and rejected 13 ordinary reports for missing
+frontmatter; the broad review glob still mixes supported and unsupported inputs.
+
+No extra worktree or executed plan belongs to this assessment. The prior stash
+archive and intentional database rollback backups remain retained.
 
 The requested redacted index audit found fixtures/examples and prose among the
 checked credential patterns, with no plausible live credential identified.
 See the follow-up note for scope, evidence, and the unchanged `0644` file mode.
 
-## User Decisions Still Open
+## Next Work
 
-- Resolve the unrelated merge conflict in `buvis/home`.
+1. Fix memory repo attribution and stabilize the missing gold-source fixture.
+2. Reconcile the missing registered source and refresh the stale portfolio index.
+3. Verify and fix the remaining review-pack correctness findings; review dependency
+   PR #2 with parser/index regression checks. Add repeatable CI coverage.
+4. Collect independent retrieval questions using
+   `reviews/2026-11-05-independent-evaluation-protocol.md` (20–30 total; start
+   with 5–10 actual questions). Freeze labels before comparing fusion variants
+   and the 0.6B reranker; measure persistent latency/fallback only if gains hold.
+5. Specify intake 00010's repository-owned shared memory contract, including
+   path/format, evidence, migration, scope, and host integration. This work can
+   proceed while independent questions accumulate. Intakes 00008/00009 remain
+   evidence-gated; no embedding migration is justified by current measurements.
+
+## Related context
+
+Topic (2026-11-10 batch): "Repository memory corpus and validator".
+
+- `src/engram/corpora.py:41-67` (`_enumerate_repo_corpora`) — the function PRD 00010 extends.
+- `tests/test_memory_attribution.py:65-116` — repo-scope memory isolation; must stay green.
+- `prds/done/00001-engram-core-v1.md:80-87` — original corpus enumerator contract.
+- Portfolio: `agent-skills/skills/distil-memory/scripts/test_proposal.py:477-494` — another
+  memory-file validator (distil-memory); keep the schemas compatible.
+
+Repo index not refreshed this run; portfolio staleness not re-stamped (Session 3
+status stands).
+
+## GitHub State
+
+Remote: `https://github.com/buvis/engram`. One open PR:
+[#2](https://github.com/buvis/engram/pull/2), Renovate's
+`tree-sitter-language-pack` 1.14.0 → 1.25.0 update; no status checks reported.
+The only open issue is Dependency Dashboard #3. No releases or workflow runs
+were returned, and the checkout has no `.github` workflow configuration.
+
+## Project Memories
+
+Engram remains a standalone CLI, not a plugin. It owns embedding configuration
+and bare llama-server lifecycle; host chat model registries are separate.
+
+## Historical External Follow-up
+
+- The earlier capsule records an unrelated merge conflict in `buvis/home`;
+  its current status was not checked in this assessment.
 
 ## Session 1 complete: memory attribution (2026-11-09)
 

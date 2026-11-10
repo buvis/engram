@@ -117,7 +117,7 @@
     Blocker: the installed autopilot hook rejects `docs/dev/project-management/memory/` until intake 00065 ships.
     The rollout is attended: run the migration, review it, commit it, and push only after the user approves.
 
-11. **Session 7: collect independent retrieval evidence.**
+11. **Session 7: collect independent retrieval evidence. (IN PROGRESS, parallel to autopilot on PRD 00010)**
     Follow `docs/dev/project-management/reviews/2026-11-05-independent-evaluation-protocol.md`.
     Start with five to ten genuine user questions collected before answer search.
     Accumulate twenty to thirty questions without manufacturing missing coverage.
