@@ -31,6 +31,7 @@ from _migrate_helpers import (
 )
 
 from engram import migrate
+from engram.cli import main
 from engram.memory import (
     INDEX_MAX_BYTES,
     INDEX_MAX_LINES,
@@ -1070,3 +1071,229 @@ def test_wiring_agents_section_is_short_canonical_and_public_safe(src: Path) -> 
         assert inverted not in plain
     assert contains_host_path(AGENTS_SECTION, src) is False
     assert redact(AGENTS_SECTION) == AGENTS_SECTION
+
+
+def run_cli(src: Path, repo: Path, *extra: str) -> int:
+    return main(["memory", "migrate", "--from", str(src), "--to", str(repo), *extra])
+
+
+def test_cli_dry_run_prints_plan_tsv_exits_zero_and_writes_nothing(
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write(src, "Alpha_Note.md", valid())
+    write(src, "same.md", valid(description="Existing fact", body="Kept.\n"))
+    write_target(repo, "same")
+    before = snapshot(tmp_path)
+
+    assert run_cli(src, repo) == 0
+
+    out, err = capsys.readouterr()
+    assert out == (
+        f"Alpha_Note.md\tmigrate\t{DEST}alpha-note.md\n"
+        f"same.md\tskip-identical\t{DEST}same.md\n"
+    )
+    assert err == ""
+    assert snapshot(tmp_path) == before
+
+
+GOOD_LINE = f"zz_good.md\tmigrate\t{DEST}zz-good.md\n"
+# source file -> (content, expected TSV action and detail)
+CLI_SKIPS = {
+    "user_role.md": (valid(kind="user"), f"skip-user\t{USER_SKIP}"),
+    "token.md": (valid(body=f"{TOKEN}\n"), "skip-credential\tgithub-token"),
+    "nofront.md": ("just text\n", "skip-invalid\tfrontmatter missing"),
+    "kept.md": (valid(description="Changed"), f"skip-exists\t{DEST}kept.md"),
+}
+
+
+@pytest.mark.parametrize(
+    ("skip", "code"),
+    [(None, 0), *((name, 1) for name in CLI_SKIPS)],
+    ids=["all-ok", "skip-user", "skip-credential", "skip-invalid", "skip-exists"],
+)
+@pytest.mark.parametrize("empty", [False, True], ids=["with-good", "without-good"])
+def test_cli_dry_run_exits_one_iff_any_line_is_not_ok(
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+    skip: str | None,
+    code: int,
+    empty: bool,
+) -> None:
+    line = ""
+    if skip is not None:
+        content, tail = CLI_SKIPS[skip]
+        write(src, skip, content)
+        line = f"{skip}\t{tail}\n"
+    if not empty:
+        write(src, "zz_good.md", valid())
+    write_target(repo, "kept")
+    before = snapshot(tmp_path)
+
+    assert run_cli(src, repo) == code
+
+    out, err = capsys.readouterr()
+    assert out == line + ("" if empty else GOOD_LINE)
+    assert err == ""
+    assert TOKEN not in out
+    assert snapshot(tmp_path) == before
+
+
+def test_cli_apply_writes_memories_and_wiring_then_reruns_identical(
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write(src, "Feedback_Foo.md", valid(kind="feedback", body="B.\n"))
+    write(src, "note.md", valid(description="Other fact"))
+
+    assert run_cli(src, repo, "--apply") == 0
+
+    assert capsys.readouterr().out == (
+        f"Feedback_Foo.md\tmigrate\t{DEST}feedback-foo.md\n"
+        f"note.md\tmigrate\t{DEST}note.md\n"
+    )
+    target = memory_dir(repo)
+    feedback = rendered("feedback-foo", "A fact", "feedback", "Feedback_Foo.md", "B.\n")
+    assert (target / "feedback-foo.md").read_bytes() == feedback
+    note = rendered("note", "Other fact", "project", "note.md", "Body.\n")
+    assert (target / "note.md").read_bytes() == note
+    assert (target / "MEMORY.md").read_bytes() == index_bytes(
+        ("feedback-foo", "A fact"),
+        ("note", "Other fact"),
+    )
+    assert (repo / ".gitattributes").read_text() == GITATTRS
+    assert (repo / "AGENTS.md").read_text() == "# Agents\n\n" + AGENTS_SECTION
+    assert (repo / "CLAUDE.md").read_text() == "@AGENTS.md\n" + IMPORT
+    settings = (repo / ".claude" / "settings.json").read_text()
+    assert json.loads(settings) == {"autoMemoryEnabled": False}
+    before = snapshot(tmp_path)
+
+    assert run_cli(src, repo, "--apply") == 0
+
+    out, err = capsys.readouterr()
+    assert out == (
+        f"Feedback_Foo.md\tskip-identical\t{DEST}feedback-foo.md\n"
+        f"note.md\tskip-identical\t{DEST}note.md\n"
+    )
+    assert err == ""
+    assert snapshot(tmp_path) == before
+
+
+def test_cli_apply_exits_one_on_skip_but_still_writes_migrated_memory(
+    src: Path,
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write(src, "note.md", valid())
+    write(src, "user_role.md", valid(kind="user"))
+
+    assert run_cli(src, repo, "--apply") == 1
+
+    assert capsys.readouterr().out == (
+        f"note.md\tmigrate\t{DEST}note.md\nuser_role.md\tskip-user\t{USER_SKIP}\n"
+    )
+    names = sorted(p.name for p in memory_dir(repo).iterdir())
+    assert names == ["MEMORY.md", "note.md"]
+    assert (repo / "CLAUDE.md").read_text() == "@AGENTS.md\n" + IMPORT
+
+
+def test_cli_resolves_relative_paths_against_cwd(
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    write(src, "rel_note.md", valid())
+    argv = ["memory", "migrate", "--from", src.name, "--to", repo.name, "--apply"]
+    monkeypatch.chdir(tmp_path)
+
+    assert main(argv) == 0
+
+    assert capsys.readouterr().out == f"rel_note.md\tmigrate\t{DEST}rel-note.md\n"
+    assert (memory_dir(repo) / "rel-note.md").is_file()
+    monkeypatch.chdir(repo)
+    before = snapshot(tmp_path)
+
+    assert main(argv) == 1
+
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err.startswith("engram memory migrate: ")
+    assert snapshot(tmp_path) == before
+
+
+def test_cli_apply_refuses_settings_json_array_with_one_stderr_line(
+    tmp_path: Path,
+    src: Path,
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    write(src, "note.md", valid())
+    (repo / ".claude").mkdir()
+    write(repo / ".claude", "settings.json", b"[]\n")
+    before = snapshot(tmp_path)
+
+    assert run_cli(src, repo, "--apply") == 1
+
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err.startswith("engram memory migrate: ")
+    assert "settings.json" in err
+    assert err.endswith("\n")
+    assert err.count("\n") == 1
+    assert snapshot(tmp_path) == before
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root can list an unreadable directory")
+def test_cli_reports_os_error_redacted_and_without_traceback(
+    tmp_path: Path,
+    repo: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    secret = tmp_path / f"mem-{TOKEN}"
+    secret.mkdir()
+    write(secret, "note.md", valid())
+    secret.chmod(0)
+    try:
+        code = run_cli(secret, repo)
+    finally:
+        secret.chmod(0o755)
+
+    out, err = capsys.readouterr()
+    assert code == 1
+    assert out == ""
+    assert err.startswith("engram memory migrate: ")
+    assert len(err.strip()) > len("engram memory migrate:")
+    assert TOKEN not in err
+    assert not memory_dir(repo).exists()
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [["--to", "repo"], ["--from", "src"], ["--from", "src", "--apply"]],
+    ids=["missing-from", "missing-to", "apply-missing-to"],
+)
+def test_cli_requires_from_and_to(argv: list[str]) -> None:
+    with pytest.raises(SystemExit) as raised:
+        main(["memory", "migrate", *argv])
+    assert raised.value.code == 2
+
+
+def test_cli_memory_check_still_validates_repository_after_apply(
+    src: Path,
+    repo: Path,
+) -> None:
+    write(src, "note.md", valid())
+    assert run_cli(src, repo, "--apply") == 0
+
+    assert main(["memory", "check", str(repo)]) == 0
+
+    write(memory_dir(repo), "broken.md", "just text\n")
+    assert main(["memory", "check", str(repo)]) != 0
