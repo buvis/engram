@@ -158,3 +158,52 @@ Per the decision rule: do not start PRD 00012. Retrieval work goes to intakes
 00008 (reranking) and 00009 (fusion). The earlier campaign found OR-lexical
 fusion and the Qwen3 reranker helped on gold questions; rerun this frozen set
 with those variants before choosing, since the questions and pool are now fixed.
+
+## Variant results (2026-11-10)
+
+Result: **no variant clears the bar**. The adoption decision stays `fix
+retrieval first`. The best variant, production fusion plus the Qwen3 Reranker
+0.6B Q8, got 11 of 24 in the top 3 (45.8%, Wilson 28% to 65%). The bar needs
+17 of 24.
+
+| Variant | Top-3 | Top-5 | MRR | Median / p95 latency |
+|---|---|---|---|---|
+| production (AND-BM25 + dense, RRF) | 10 (41.7%, 24-61%) | 11 | 0.310 | 0.19 / 0.20 s |
+| OR-BM25 + dense x1 | 10 (41.7%, 24-61%) | 11 | 0.286 | 0.26 / 0.29 s |
+| OR-BM25 + dense x2 | 10 (41.7%, 24-61%) | 11 | 0.310 | 0.26 / 0.29 s |
+| production + rerank 0.6B | 11 (45.8%, 28-65%) | 12 | 0.404 | 0.61 / 0.80 s |
+| OR x1 + rerank 0.6B | 11 (45.8%, 28-65%) | 11 | 0.398 | 0.97 / 1.16 s |
+| OR x2 + rerank 0.6B | 11 (45.8%, 28-65%) | 11 | 0.398 | 1.02 / 1.23 s |
+
+Top-3 brackets give the hit rate and 95% Wilson interval. Latency covers query
+embedding, search and reranking per question; server startup is excluded.
+
+- The runner reproduced the baseline first: production `query()` and the reused
+  `rrf_prod_order_20_20` fusion gave the same chunk order for all 24
+  questions, and the score matched the earlier run (10/24, MRR 0.310, same 14
+  misses).
+- OR-lexical fusion recovered none of the 11 questions with no label in the
+  candidates (Q1, Q2, Q6, Q13, Q16, Q17, S2, S4, S7, S8, S9). It lost Q11 from
+  the top 3 and gained S1. The reranker cannot help where no label is in the
+  candidates, so 13 of 24 is the ceiling for any reranker over these pools.
+- On production fusion the reranker moved S1 from rank 5 to 2, Q15 from 10 to
+  4 and Q11 from 2 to 1. It moved S6 from 2 to 3 and Q10 from 7 to 9 (16 on
+  OR). Production plus reranker misses: Q1, Q2, Q6, Q10,
+  Q13, Q15, Q16, Q17, S2, S4, S7, S8, S9.
+- Six variants on 24 questions is a multiple comparison. The one-question gain
+  from the reranker is a lead, not proof; its interval overlaps the baseline.
+- The candidate pool is at most 40 chunks (20 per leg, `RRF_POOL` in
+  `engram.query`), not 60. The Results section's "top 60 chunks" means the
+  `k=60` request; production caps it at 40.
+
+The bottleneck is recall, not order: 11 of 24 questions have no label among
+the candidates under any fusion tested. The coverage gap above (468 of 604
+settled bursts outside the index) is the larger limit, and no ranking variant
+touches it. Transcript, memory and decision corpora stay untested here.
+
+Method: `eval/agent_session_variants.py`. Same questions, labels, pool copy,
+leakage exclusion (`file_ranks`) and metrics as the baseline. Query vectors
+come from the pinned bge-m3 Q8 server on port 8083; the reranker ran on port
+18181 with 8000-character documents and passed a relevance smoke check.
+Inputs, runner and git head are frozen in the private `freeze_variants.json`.
+Per-question ranks by id: `eval/results-agent-session-variants.json`.
