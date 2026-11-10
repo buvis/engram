@@ -2,7 +2,6 @@ from pathlib import Path
 
 import pytest
 import yaml
-
 from engram.memory import (
     CREDENTIAL_PATTERNS,
     MEMORY_SUBDIR,
@@ -27,6 +26,9 @@ PRIVATE_KEY = "-----BEGIN " + "RSA PRIVATE KEY-----"
 TOKENS = [
     ("private-key", PRIVATE_KEY),
     ("private-key", "-----BEGIN " + "OPENSSH PRIVATE KEY-----"),
+    ("private-key", "-----BEGIN " + "PRIVATE KEY-----"),
+    ("private-key", "-----BEGIN " + "EC PRIVATE KEY-----"),
+    ("private-key", "-----BEGIN " + "DSA PRIVATE KEY-----"),
     ("github-token", GITHUB_TOKEN),
     ("github-token", "ghp_" + "Z" * 36),
     ("github-pat", GITHUB_PAT),
@@ -37,6 +39,9 @@ TOKENS = [
     ("aws-access-key", "AKIA" + "Z9Y8X7W6V5U4T3S2"),
     ("slack-token", SLACK_TOKEN),
     ("slack-token", "xoxp-" + "abcdefghijkl"),
+    ("slack-token", "xoxa-" + "2-abcdefghij"),
+    ("slack-token", "xoxr-" + "abcdefghij12"),
+    ("slack-token", "xoxs-" + "0123456789ab"),
 ]
 
 NEAR_MISSES = [
@@ -90,8 +95,12 @@ def violations_of(path):
 
 def test_index_memory_dir_joins_repo_root_with_memory_subdir_without_existence_check():
     assert MEMORY_SUBDIR == ("docs", "dev", "project-management", "memory")
-    assert memory_dir(Path("/repos/alpha")) == Path("/repos/alpha/docs/dev/project-management/memory")
-    assert memory_dir(Path("/srv/beta")) == Path("/srv/beta/docs/dev/project-management/memory")
+    assert memory_dir(Path("/repos/alpha")) == Path(
+        "/repos/alpha/docs/dev/project-management/memory"
+    )
+    assert memory_dir(Path("/srv/beta")) == Path(
+        "/srv/beta/docs/dev/project-management/memory"
+    )
 
 
 def test_credential_patterns_expose_six_labels_in_contract_order():
@@ -111,7 +120,14 @@ def test_credential_patterns_expose_six_labels_in_contract_order():
 
 
 def test_index_memory_files_lists_sorted_md_files_excluding_memory_index(tmp_path):
-    for name in ["beta.md", "alpha.md", "MEMORY.md", "MEMORY-notes.md", "notes.txt", "notes.mdx"]:
+    for name in [
+        "beta.md",
+        "alpha.md",
+        "MEMORY.md",
+        "MEMORY-notes.md",
+        "notes.txt",
+        "notes.mdx",
+    ]:
         (tmp_path / name).write_text("x\n", encoding="utf-8")
     (tmp_path / "folder.md").mkdir()
     (tmp_path / "nested").mkdir()
@@ -142,7 +158,8 @@ def test_schema_valid_file_returns_record_with_every_field(tmp_path):
     path = write_memory(
         tmp_path,
         "alpha-note",
-        body="First paragraph.\n\nSecond paragraph.\n",
+        body="First paragraph.\n---\nSecond paragraph.\n",
+        description="a --- b",
         evidence=["src/engram/memory.py", "tests/test_repo_memory.py"],
     )
 
@@ -152,13 +169,14 @@ def test_schema_valid_file_returns_record_with_every_field(tmp_path):
     assert record == MemoryFile(
         slug="alpha-note",
         name="alpha-note",
-        description="One line about alpha-note.",
+        description="a --- b",
         type="project",
         source="PRD 00010",
         evidence=("src/engram/memory.py", "tests/test_repo_memory.py"),
         body=record.body,
     )
-    assert record.body.strip() == "First paragraph.\n\nSecond paragraph."
+    assert record.body.strip() == "First paragraph.\n---\nSecond paragraph."
+    assert "---" in record.body.splitlines()
 
 
 def test_schema_accepts_claude_metadata_type_when_top_level_type_absent(tmp_path):
@@ -226,7 +244,9 @@ def test_schema_unreadable_file_reports_read_violation_with_exception_class(tmp_
 
     assert violations_of(bad_utf8) == ["read\tunreadable: UnicodeDecodeError"]
     assert violations_of(as_dir) == ["read\tunreadable: IsADirectoryError"]
-    assert violations_of(tmp_path / "gone.md") == ["read\tunreadable: FileNotFoundError"]
+    assert violations_of(tmp_path / "gone.md") == [
+        "read\tunreadable: FileNotFoundError"
+    ]
 
 
 @pytest.mark.parametrize(
@@ -264,12 +284,24 @@ def test_schema_frontmatter_violation_suppresses_field_checks(tmp_path, text, de
         ("alpha", {"description": 42}, "description\tmissing"),
         ("alpha", {"description": ""}, "description\tempty"),
         ("alpha", {"description": "   "}, "description\tempty"),
-        ("alpha", {"description": "line one\nline two"}, "description\tmust be one line"),
+        (
+            "alpha",
+            {"description": "line one\nline two"},
+            "description\tmust be one line",
+        ),
         ("alpha", {"type": DROP}, "type\tmissing"),
         ("alpha", {"type": DROP, "metadata": {"kind": "project"}}, "type\tmissing"),
         ("alpha", {"type": DROP, "metadata": "project"}, "type\tmissing"),
-        ("alpha", {"type": "note"}, "type\tmust be one of feedback, project, reference"),
-        ("alpha", {"type": "projects"}, "type\tmust be one of feedback, project, reference"),
+        (
+            "alpha",
+            {"type": "note"},
+            "type\tmust be one of feedback, project, reference",
+        ),
+        (
+            "alpha",
+            {"type": "projects"},
+            "type\tmust be one of feedback, project, reference",
+        ),
         (
             "alpha",
             {"type": "note", "metadata": {"type": "project"}},
@@ -288,8 +320,16 @@ def test_schema_frontmatter_violation_suppresses_field_checks(tmp_path, text, de
         ("alpha", {"evidence": DROP}, "evidence\tmissing"),
         ("alpha", {"evidence": "src/engram/memory.py"}, "evidence\tmust be a list"),
         ("alpha", {"evidence": []}, "evidence\tempty"),
-        ("alpha", {"evidence": ["src/a.py", "  "]}, "evidence\titem 1 empty or not a string"),
-        ("alpha", {"evidence": [5, "src/a.py"]}, "evidence\titem 0 empty or not a string"),
+        (
+            "alpha",
+            {"evidence": ["src/a.py", "  "]},
+            "evidence\titem 1 empty or not a string",
+        ),
+        (
+            "alpha",
+            {"evidence": [5, "src/a.py"]},
+            "evidence\titem 0 empty or not a string",
+        ),
     ],
 )
 def test_schema_field_rule_reports_exact_violation(tmp_path, slug, overrides, expected):
@@ -320,14 +360,17 @@ def test_schema_forbidden_keys_reported_at_every_depth_with_dotted_path(tmp_path
         "alpha",
         author="someone",
         metadata={"type": "project", "date": "2026-11-10"},
-        extra=[{"note": "n"}, {"inner": {"author": "x"}}],
+        extra=[[{"author": "x"}], {"inner": {"author": "x"}}],
     )
 
-    assert sorted(violations_of(path)) == sorted([
-        "forbidden-key\tauthor: Git records it",
-        "forbidden-key\tmetadata.date: Git records it",
-        "forbidden-key\textra.1.inner.author: Git records it",
-    ])
+    assert sorted(violations_of(path)) == sorted(
+        [
+            "forbidden-key\tauthor: Git records it",
+            "forbidden-key\tmetadata.date: Git records it",
+            "forbidden-key\textra.0.0.author: Git records it",
+            "forbidden-key\textra.1.inner.author: Git records it",
+        ]
+    )
 
 
 def test_schema_forbidden_key_inside_list_item_uses_zero_based_index(tmp_path):
@@ -391,6 +434,9 @@ def test_credential_sk_key_matches_at_line_start_and_after_separators():
     assert redact(SK_KEY + " tail") == "[redacted:sk-key] tail"
     assert redact("key=" + SK_KEY) == "key=[redacted:sk-key]"
     assert redact("risk-" + "a" * 25) == "risk-" + "a" * 25
+    assert redact('"' + SK_KEY + '"') == '"[redacted:sk-key]"'
+    assert redact("key:" + SK_KEY) == "key:[redacted:sk-key]"
+    assert redact("(" + SK_KEY) == "([redacted:sk-key]"
 
 
 # --- credential: parse_memory scan ---
@@ -448,7 +494,9 @@ def test_index_check_directory_reports_missing_directory(tmp_path):
     regular = tmp_path / "file.md"
     regular.write_text("x\n", encoding="utf-8")
 
-    assert check_directory(tmp_path / "absent") == [f"{tmp_path / 'absent'}\tdirectory\tnot found"]
+    assert check_directory(tmp_path / "absent") == [
+        f"{tmp_path / 'absent'}\tdirectory\tnot found"
+    ]
     assert check_directory(regular) == [f"{regular}\tdirectory\tnot found"]
 
 
@@ -456,17 +504,20 @@ def test_index_check_directory_clean_when_every_file_indexed_and_valid(tmp_path)
     directory = tmp_path / "elsewhere"
     write_memory(directory, "alpha")
     write_memory(directory, "beta")
-    write_index(directory, [
-        "# Memory index",
-        "",
-        "Prose about these memories.",
-        "- [Alpha note](alpha.md) — trailing hook text",
-        "- [Beta](beta.md)",
-        "* [Star bullet](ghost.md)",
-        "-[No space](ghost.md)",
-        "  - [Indented](ghost.md)",
-        "- [Nested](sub/ghost.md)",
-    ])
+    write_index(
+        directory,
+        [
+            "# Memory index",
+            "",
+            "Prose about these memories.",
+            "- [Alpha note](alpha.md) — trailing hook text",
+            "- [Beta](beta.md)",
+            "* [Star bullet](ghost.md)",
+            "-[No space](ghost.md)",
+            "  - [Indented](ghost.md)",
+            "- [Nested](sub/ghost.md)",
+        ],
+    )
 
     assert check_directory(directory) == []
 
@@ -492,9 +543,9 @@ def test_index_check_directory_prefixes_per_file_violations_with_passed_path(tmp
 
 def test_index_missing_file_reported_for_entry_without_memory_file(tmp_path):
     write_memory(tmp_path, "alpha")
-    index = write_index(tmp_path, ["- [Alpha](alpha.md)", "- [Alph](alph.md)"])
+    index = write_index(tmp_path, ["- [Alpha](alpha.md)", "- [Alpha X](alpha-x.md)"])
 
-    assert check_directory(tmp_path) == [f"{index}\tindex-missing-file\talph.md"]
+    assert check_directory(tmp_path) == [f"{index}\tindex-missing-file\talpha-x.md"]
 
 
 def test_index_missing_entry_reported_on_the_memory_file_path(tmp_path):
@@ -502,7 +553,9 @@ def test_index_missing_entry_reported_on_the_memory_file_path(tmp_path):
     write_memory(tmp_path, "alpha-2")
     write_index(tmp_path, ["- [Alpha](alpha.md)"])
 
-    assert check_directory(tmp_path) == [f"{tmp_path / 'alpha-2.md'}\tindex-missing-entry\talpha-2.md"]
+    assert check_directory(tmp_path) == [
+        f"{tmp_path / 'alpha-2.md'}\tindex-missing-entry\talpha-2.md"
+    ]
 
 
 def test_index_absent_reports_only_missing_entry_for_every_file(tmp_path):
@@ -519,14 +572,17 @@ def test_index_duplicate_reported_once_per_duplicated_slug(tmp_path):
     write_memory(tmp_path, "alpha")
     write_memory(tmp_path, "beta")
     write_memory(tmp_path, "gamma")
-    index = write_index(tmp_path, [
-        "- [A](alpha.md)",
-        "- [A again](alpha.md)",
-        "- [A third](alpha.md)",
-        "- [B](beta.md)",
-        "- [B again](beta.md)",
-        "- [G](gamma.md)",
-    ])
+    index = write_index(
+        tmp_path,
+        [
+            "- [A](alpha.md)",
+            "- [A again](alpha.md)",
+            "- [A third](alpha.md)",
+            "- [B](beta.md)",
+            "- [B again](beta.md)",
+            "- [G](gamma.md)",
+        ],
+    )
 
     assert check_directory(tmp_path) == [
         f"{index}\tindex-duplicate\talpha.md",
@@ -539,13 +595,17 @@ def test_index_unsorted_reported_when_entries_out_of_slug_order(tmp_path):
     write_memory(tmp_path, "beta")
     index = write_index(tmp_path, ["- [Zed title](beta.md)", "- [Aaa title](alpha.md)"])
 
-    assert check_directory(tmp_path) == [f"{index}\tindex-unsorted\tentries must be sorted by slug"]
+    assert check_directory(tmp_path) == [
+        f"{index}\tindex-unsorted\tentries must be sorted by slug"
+    ]
 
 
 def test_index_unsorted_counts_duplicates_in_file_order(tmp_path):
     write_memory(tmp_path, "alpha")
     write_memory(tmp_path, "beta")
-    index = write_index(tmp_path, ["- [A](alpha.md)", "- [B](beta.md)", "- [A](alpha.md)"])
+    index = write_index(
+        tmp_path, ["- [A](alpha.md)", "- [B](beta.md)", "- [A](alpha.md)"]
+    )
 
     assert check_directory(tmp_path) == [
         f"{index}\tindex-duplicate\talpha.md",
@@ -554,19 +614,35 @@ def test_index_unsorted_counts_duplicates_in_file_order(tmp_path):
 
 
 @pytest.mark.parametrize(
-    ("total_lines", "expected"),
-    [(200, []), (201, ["201 lines > 200"]), (250, ["250 lines > 200"])],
+    ("total_lines", "final_newline", "expected"),
+    [
+        (200, True, []),
+        (201, True, ["201 lines > 200"]),
+        (250, True, ["250 lines > 200"]),
+        (200, False, []),
+        (201, False, ["201 lines > 200"]),
+    ],
 )
-def test_index_too_long_flags_more_than_200_lines(tmp_path, total_lines, expected):
+def test_index_too_long_flags_more_than_200_lines(
+    tmp_path, total_lines, final_newline, expected
+):
     write_memory(tmp_path, "alpha")
     lines = ["# Memory", "- [Alpha](alpha.md)"] + ["prose"] * (total_lines - 2)
-    index = write_index(tmp_path, lines)
+    index = tmp_path / "MEMORY.md"
+    text = "\n".join(lines) + ("\n" if final_newline else "")
+    index.write_text(text, encoding="utf-8")
 
-    assert check_directory(tmp_path) == [f"{index}\tindex-too-long\t{d}" for d in expected]
+    assert check_directory(tmp_path) == [
+        f"{index}\tindex-too-long\t{d}" for d in expected
+    ]
 
 
-@pytest.mark.parametrize(("total_bytes", "flagged"), [(25_000, False), (25_001, True), (25_900, True)])
-def test_index_too_large_counts_raw_bytes_not_characters(tmp_path, total_bytes, flagged):
+@pytest.mark.parametrize(
+    ("total_bytes", "flagged"), [(25_000, False), (25_001, True), (25_900, True)]
+)
+def test_index_too_large_counts_raw_bytes_not_characters(
+    tmp_path, total_bytes, flagged
+):
     write_memory(tmp_path, "alpha")
     base = "# Memory\n- [Alpha](alpha.md)\n"
     fill = total_bytes - len(base.encode("utf-8")) - 1
@@ -575,7 +651,9 @@ def test_index_too_large_counts_raw_bytes_not_characters(tmp_path, total_bytes, 
     index = tmp_path / "MEMORY.md"
     index.write_text(text, encoding="utf-8")
 
-    expected = [f"{index}\tindex-too-large\t{total_bytes} bytes > 25000"] if flagged else []
+    expected = (
+        [f"{index}\tindex-too-large\t{total_bytes} bytes > 25000"] if flagged else []
+    )
     assert check_directory(tmp_path) == expected
 
 
@@ -591,23 +669,40 @@ def test_index_too_long_precedes_too_large(tmp_path):
     ]
 
 
-def test_index_unreadable_memory_index_reports_read_only(tmp_path):
-    write_memory(tmp_path, "alpha")
+@pytest.mark.parametrize(
+    ("as_directory", "error"),
+    [(False, "UnicodeDecodeError"), (True, "IsADirectoryError")],
+)
+def test_index_unreadable_memory_index_reports_read_only(
+    tmp_path, as_directory, error
+):
+    write_memory(tmp_path, "alpha", description=DROP)
     index = tmp_path / "MEMORY.md"
-    index.write_bytes(b"# Memory\n\xff\x80\n- [Ghost](ghost.md)\n")
+    if as_directory:
+        index.mkdir()
+    else:
+        index.write_bytes(b"# Memory\n\xff\x80\n- [Ghost](ghost.md)\n")
 
-    assert check_directory(tmp_path) == [f"{index}\tread\tunreadable: UnicodeDecodeError"]
+    assert check_directory(tmp_path) == [
+        f"{tmp_path / 'alpha.md'}\tdescription\tmissing",
+        f"{index}\tread\tunreadable: {error}",
+    ]
 
 
-def test_index_violation_order_is_files_then_index_credential_then_index_rules(tmp_path):
+def test_index_violation_order_is_files_then_index_credential_then_index_rules(
+    tmp_path,
+):
     write_memory(tmp_path, "alpha", description=DROP, body=f"{SK_KEY}\n")
     write_memory(tmp_path, "beta")
-    index = write_index(tmp_path, [
-        f"Leaked {GITHUB_TOKEN} here.",
-        "- [Ghost](ghost.md)",
-        "- [Alpha](alpha.md)",
-        "- [Alpha again](alpha.md)",
-    ])
+    index = write_index(
+        tmp_path,
+        [
+            f"Leaked {GITHUB_TOKEN} here.",
+            "- [Ghost](ghost.md)",
+            "- [Alpha](alpha.md)",
+            "- [Alpha again](alpha.md)",
+        ],
+    )
 
     assert check_directory(tmp_path) == [
         f"{tmp_path / 'alpha.md'}\tdescription\tmissing",
