@@ -29,11 +29,17 @@ Updated: 2026-11-10, after Session 7 was redefined around agent sessions.
 
 ## Active Work
 
-**Autopilot batch 202611100725 (2026-11-10):** PRD
-`00010-repo-memory-corpus-v1` in `wip/` (full lane, design then plan). PRD
-00011 stays in backlog until 00010 is done. The PRD only adds code and tests;
-test fixtures live under `tmp_path`, so the `enforce_prd_location.py` block on
-real `docs/dev/project-management/memory/` writes does not affect it.
+### Batch 202611100725
+- [x] 00010-repo-memory-corpus-v1 (2 cycles)
+- [ ] 00011-memory-migrate-command-v1
+
+Observations: 00010 shipped `src/engram/memory.py`, repo memory enumeration and
+legacy skip in `corpora.py`, `engram memory check`, and status lines. Cycle 1
+fixed a `yaml.safe_load` `ValueError` crash on invalid dates. The `sk-`
+credential pattern is left-anchored (measured false positives in legacy
+memory). `tests/test_repo_memory.py` exceeds 800 lines on purpose: PRD
+acceptance commands pin that one file. The `enforce_prd_location.py` hook blocks
+real `docs/dev/project-management/memory/` writes, which 00011 must account for.
 
 Earlier: PRDs 00001–00007 are in `done/`. Symbol
 lookup, audit harvesting, and meaningful status shipped and the installed CLI

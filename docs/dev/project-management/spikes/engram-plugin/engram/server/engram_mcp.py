@@ -17,7 +17,11 @@ TOOL = {
         "type": "object",
         "properties": {
             "query": {"type": "string", "description": "Question in plain words"},
-            "scope": {"type": "string", "enum": ["repo", "portfolio"], "default": "portfolio"},
+            "scope": {
+                "type": "string",
+                "enum": ["repo", "portfolio"],
+                "default": "portfolio",
+            },
             "k": {"type": "integer", "minimum": 1, "maximum": 20, "default": 5},
         },
         "required": ["query"],
@@ -28,14 +32,24 @@ TOOL = {
 def run_query_tool(args: dict) -> dict:
     scope = args.get("scope", "portfolio")
     if scope not in ("repo", "portfolio") or not isinstance(args.get("query"), str):
-        return {"content": [{"type": "text", "text": "invalid arguments"}], "isError": True}
+        return {
+            "content": [{"type": "text", "text": "invalid arguments"}],
+            "isError": True,
+        }
     k = str(min(max(int(args.get("k", 5)), 1), 20))
     done = subprocess.run(
         ["engram", "query", "--scope", scope, args["query"], "-k", k],
-        capture_output=True, text=True, timeout=30,
+        capture_output=True,
+        text=True,
+        timeout=30,
     )
-    text = done.stdout if done.returncode == 0 else f"engram failed: {done.stderr.strip()}"
-    return {"content": [{"type": "text", "text": text or "no hits"}], "isError": done.returncode != 0}
+    text = (
+        done.stdout if done.returncode == 0 else f"engram failed: {done.stderr.strip()}"
+    )
+    return {
+        "content": [{"type": "text", "text": text or "no hits"}],
+        "isError": done.returncode != 0,
+    }
 
 
 def handle(msg: dict) -> dict | None:
@@ -64,5 +78,9 @@ for line in sys.stdin:
         continue
     result = handle(msg)
     reply = {"jsonrpc": "2.0", "id": msg["id"]}
-    reply |= {"result": result} if result is not None else {"error": {"code": -32601, "message": "method not found"}}
+    reply |= (
+        {"result": result}
+        if result is not None
+        else {"error": {"code": -32601, "message": "method not found"}}
+    )
     print(json.dumps(reply), flush=True)

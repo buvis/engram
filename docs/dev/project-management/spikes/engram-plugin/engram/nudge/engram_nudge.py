@@ -48,7 +48,7 @@ def parse_search(command: str, cwd: str) -> str | None:
                 if tok == flag and i + 1 < len(tokens):
                     return tokens[i + 1]
                 if tok.startswith(flag) and len(tok) > len(flag):
-                    return tok[len(flag):].lstrip("=")
+                    return tok[len(flag) :].lstrip("=")
         return None
     if tool not in SEARCHERS:
         return None
@@ -78,7 +78,10 @@ def run_engram(query: str) -> list[str]:
     try:
         done = subprocess.run(
             ["engram", "query", "--scope", "portfolio", query, "-k", "3"],
-            capture_output=True, text=True, timeout=10, check=True,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=True,
         )
     except (OSError, subprocess.SubprocessError) as error:
         print(f"engram-nudge: query failed: {error}", file=sys.stderr)
@@ -102,7 +105,16 @@ def emit(host: str, text: str) -> None:
         print(json.dumps({"additionalContext": text}))
     else:
         name = "AfterTool" if host == "gemini" else "PostToolUse"
-        print(json.dumps({"hookSpecificOutput": {"hookEventName": name, "additionalContext": text}}))
+        print(
+            json.dumps(
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": name,
+                        "additionalContext": text,
+                    }
+                }
+            )
+        )
 
 
 def main() -> int:
@@ -124,9 +136,14 @@ def main() -> int:
         return 0
     hits = drop_packed(run_engram(query))
     if hits:
-        lines = "\n".join(f"- {h.split(chr(9))[2]}  ({h.split(chr(9))[3]})" for h in hits)
-        emit(host, f'engram recall for "{query}" (prior sessions, PRDs, memory, code):\n{lines}\n'
-                   "Read a cited range if it is relevant; ignore it if not.")
+        lines = "\n".join(
+            f"- {h.split(chr(9))[2]}  ({h.split(chr(9))[3]})" for h in hits
+        )
+        emit(
+            host,
+            f'engram recall for "{query}" (prior sessions, PRDs, memory, code):\n{lines}\n'
+            "Read a cited range if it is relevant; ignore it if not.",
+        )
     return 0
 
 
