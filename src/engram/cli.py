@@ -365,6 +365,23 @@ def _run_status(args: argparse.Namespace) -> int:
     if excluded > 0:
         print(f"code\texcluded={excluded}")
 
+    if _print_memory_status(scope):
+        exit_code = 1
+
+    _print_missing(corpora.missing_dirs, scope)
+    if any(
+        item.startswith("code:")
+        and (scope.kind == "portfolio" or item == f"code:{scope.repo}")
+        for item in corpora.missing_dirs
+    ):
+        exit_code = 1
+
+    return exit_code
+
+
+def _print_memory_status(scope: Scope) -> bool:
+    """Print memory status lines; return True when any memory file is invalid."""
+
     def in_scope(name: str) -> bool:
         return scope.kind == "portfolio" or name == scope.repo
 
@@ -377,20 +394,10 @@ def _run_status(args: argparse.Namespace) -> int:
     )
     if invalid > 0:
         print(f"memory\tinvalid={invalid}")
-        exit_code = 1
     for name in corpora.legacy_shadowed:
         if in_scope(name):
             print(f"memory\tlegacy-shadowed={name}")
-
-    _print_missing(corpora.missing_dirs, scope)
-    if any(
-        item.startswith("code:")
-        and (scope.kind == "portfolio" or item == f"code:{scope.repo}")
-        for item in corpora.missing_dirs
-    ):
-        exit_code = 1
-
-    return exit_code
+    return invalid > 0
 
 
 def _resolve_pack_repo() -> tuple[str, Path] | None:
