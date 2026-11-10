@@ -85,3 +85,17 @@ Contract changes from round 2:
 - Existing user hooks run beside the nudge (gateguard blocked first). The nudge
   must stay post-tool and never block, so it cannot fight a gate.
 - Claude, Pi, Codex-as-plugin, and Kiro need a run outside the sandbox.
+
+## Round 3 (2026-11-10)
+
+- **Codex 0.167.0: verified end to end** when the hook comes from config
+  (`-c hooks.PostToolUse=[…]`, the same table `~/.codex/config.toml` holds).
+  The model quoted the recall lines. Real payload: `tool_name: "Bash"`,
+  `tool_input.command`, `cwd`, `session_id`, `turn_id`, `hook_event_name`,
+  `permission_mode`. So Codex delivery is user-level config or a plugin install,
+  not a repo file. A hook shipped by an installed Codex plugin is still untested.
+- **Claude and Pi: awaiting a run outside the sandbox.** `live_check.py` sets up
+  scratch repositories, runs both hosts, and writes
+  `docs/dev/tmp/engram-plugin-live.json`. Inside the sandbox it ran and reported
+  both hosts unauthenticated, as expected.
+- Kiro stays untested: no CLI in the sandbox and the hook file schema is unread.
