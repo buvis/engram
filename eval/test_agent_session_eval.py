@@ -1,4 +1,16 @@
 from eval.agent_session_eval import file_ranks, wilson
+from eval.agent_session_recall import identifier_tokens
+
+
+def test_identifier_leg_keeps_code_like_tokens_and_drops_prose():
+    text = "where are KNOWN_TIERS and settings.py, PRD 00058: the setup-python pin"
+    assert identifier_tokens(text) == [
+        "KNOWN_TIERS",
+        "settings.py",
+        "PRD",
+        "00058",
+        "setup-python",
+    ]
 
 
 def test_excludes_the_question_s_own_session_from_ranking():
