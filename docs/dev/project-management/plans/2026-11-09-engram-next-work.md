@@ -137,7 +137,10 @@
     Both PRDs wait: 00012 until the protocol reads `Adoption decision: proceed`; 00067 until `engram nudge` is installed.
     When scoring is reported, set the `Adoption decision:` line in the protocol.
 
-12. **Session 8: evaluate retrieval changes.**
+12. **Session 8: evaluate retrieval changes. (COMPLETE — 2026-11-10)**
+    Session 7 scored 10 of 24 in the top 3 (41.7%); the bar is 17. Decision: fix retrieval first.
+    No fusion or rerank variant cleared the bar (best 11 of 24, `384ae1f`). PRD 00012 stays gated.
+    Follow-up: recall probe and intake 00013 (2026-11-12).
     Proceed only after the Session 7 agent-session set is frozen.
     Compare existing fusion against dense-first AND and OR variants using the established protocol.
     Evaluate Qwen3 Reranker 0.6B without changing production retrieval.

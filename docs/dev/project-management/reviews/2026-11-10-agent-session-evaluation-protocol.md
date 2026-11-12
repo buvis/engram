@@ -207,3 +207,54 @@ come from the pinned bge-m3 Q8 server on port 8083; the reranker ran on port
 18181 with 8000-character documents and passed a relevance smoke check.
 Inputs, runner and git head are frozen in the private `freeze_variants.json`.
 Per-question ranks by id: `eval/results-agent-session-variants.json`.
+
+## Recall probe (2026-11-12)
+
+Result: **no recall lever clears the bar**. The adoption decision stays `fix
+retrieval first`. Best: 12 of 24 (50.0%, Wilson 31% to 69%), from a pool without
+transcripts and findings plus the 0.6B reranker. The bar needs 17.
+
+| Pool (RRF) | Chunks, median | Label in pool | Top-3 fused | Top-3 reranked | Reranked median / p95 |
+|---|---|---|---|---|---|
+| production: AND 20 + dense 20 | 20 | 13 | 10 | - | - |
+| OR 20 + dense 20 | 35 | 13 | 10 | 11 | 1.07 / 1.28 s |
+| OR 100 + dense 100 | 182 | 18 | 10 | 11 | 4.27 / 5.65 s |
+| OR 100 + dense 100 + identifiers 20 | 188.5 | 19 | 10 | 11 | 4.37 / 5.70 s |
+| quiet: OR 20 + dense 20 | 36 | 13 | 9 | 12 | 1.08 / 1.30 s |
+| quiet: OR 20 + dense 20 + identifiers 20 | 45 | 14 | 10 | 12 | 1.27 / 1.48 s |
+| quiet: OR 50 + dense 50 + identifiers 20 | 96.5 | 18 | 10 | 11 | 2.22 / 2.71 s |
+| quiet: OR 100 + dense 100 + identifiers 20 | 186.5 | 19 | 10 | 11 | 3.92 / 4.72 s |
+
+"Quiet" drops transcript and findings chunks from every leg. "Identifiers" is a
+lexical OR leg over the question's code-like tokens only. Fused retrieval took
+0.36 s median. The production row reproduces the baseline (10 of 24, MRR 0.310,
+same 14 misses).
+
+- A wider pool raises the label count in the pool from 13 to 18 or 19, but the
+  reranker does not lift those labels into the top 3.
+- Production's lexical leg returned no rows for 18 of 24 questions and never
+  returned a label. It needs every token of the question in one chunk.
+- Transcripts and findings fill up to 19 of the 20 dense slots. No label lives
+  there, by construction: a label is a file the agent read.
+- Q1, Q6, Q17, S7 and S8 have no label in the widest pool. Q17, S7 and S8 have
+  none within 500 chunks of any leg.
+- Two causes sit outside ranking. Code chunks cover functions and classes only,
+  so module-level text (imports, constants) is not indexed: 7% to 24% of four
+  label files. And for Q17 and S7 the label files do not contain the
+  identifiers the question names (live files, 2026-11-12), so the "file read
+  next" label rule marks some good answers as misses.
+- Coverage: of about 469 bursts settled outside the index, about 145 ended on
+  throwaway files, about 133 on worktree or plugin-cache copies of indexed
+  sources, and the rest on real gaps (unindexed project-management folders,
+  `~/.config/herdr-app`, `~/.claude`, the notes vault, other repository files).
+  This tally takes the first settled file of each burst and is approximate.
+
+Limits: fifteen variants on 24 questions is a multiple comparison; one or two
+questions separate them. The set is development data from here on. Nothing
+tuned on it may set the adoption decision; that needs a fresh mined set.
+
+Method: `eval/agent_session_recall.py`. Same questions, labels, pool copy,
+leakage exclusion and metrics. Question, pool and config hashes were checked
+against `freeze.json`. Per-question ranks by id:
+`eval/results-agent-session-recall.json`. Follow-up: intake
+`00013-engram-agent-question-recall`.

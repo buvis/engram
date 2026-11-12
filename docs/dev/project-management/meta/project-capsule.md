@@ -625,3 +625,28 @@ untouched; no servers were started beyond Engram's own on-demand query serving.
 Next: execute redefined **Session 7** (build the miner under `eval/`, freeze,
 score). Then set the protocol's `Adoption decision:` line from the hit rate;
 that line releases PRD 00012, and intake 00066 is decided from the same result.
+
+## Sessions 7 and 8 complete; recall probe (2026-11-12)
+
+- **Session 7 (2026-11-10).** 24 agent-session questions scored: top-3 file hit
+  rate 10 of 24 (41.7%). The bar is 17. `Adoption decision: fix retrieval
+  first`; PRD 00012 stays gated (`b792356`).
+- **Session 8 (2026-11-10).** OR fusion and the 0.6B reranker: best 11 of 24
+  (`384ae1f`).
+- **Recall probe (2026-11-12).** Wider pools, an identifier leg, and a pool
+  without transcripts and findings: best 12 of 24. Wider pools find the label
+  (13 to 19 of 24) but the reranker does not rank it. Found outside ranking:
+  module-level code is not indexed (`symbols.chunk` emits functions and classes
+  only); production's AND lexical leg is inert on natural-language questions;
+  the "file read next" label rule marks some good answers as misses. Details in
+  the protocol's "Recall probe" section; runner `eval/agent_session_recall.py`.
+- **Backlog state.** PRD 00012 is the only backlog PRD and is ineligible.
+  Autopilot is idle. Intakes 00008, 00009 and 00013 are unprocessed.
+
+Verification: 51 evaluation tests passed; production code, model,
+configuration and index were not changed (the pool copy was opened read-only).
+
+Next: the user decides the measure (intake 00013, question 1: relevance
+judging against exact-file match). Then run discovery on 00013; the first build
+candidates are module-level code chunks and OR lexical matching. The 24
+questions are development data now, so a fresh mined set must set the decision.
