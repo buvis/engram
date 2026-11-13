@@ -268,7 +268,7 @@ sets the adoption decision. The first set stays as development data.
 - **Source.** Tool calls made from 2026-10-01 to 2026-10-31 (UTC) in Claude
   sessions that the first set did not use. Only 5 sessions since the first
   sample hold a usable burst, too few for a set. Miner:
-   (the first miner was never committed; this one
+  `eval/agent_session_mine.py` (the first miner was never committed; this one
   follows the same burst rule and may differ in detail).
 - **Collection.** Steps 2 to 7 above, unchanged: a settled file inside the
   pool is required, one question per session, no project above a third.
@@ -278,18 +278,18 @@ sets the adoption decision. The first set stays as development data.
   Drop the question's own transcript, and every transcript that started after
   the burst or whose start cannot be read. PRDs, findings, memory and code
   cannot be dated per chunk; that leak is a stated limit.
-- **System.** Production , portfolio scope, , chunks
+- **System.** Production `query()`, portfolio scope, `k=60`, chunks
   deduplicated to files, top 3 after the time rule.
 - **Judge.** A model judge in a separate context sees the question, the
   agent's stated intent, the settled files, and each hit's path, heading and
-  chunk text. It does not see ranks from other runs. A hit is  when
+  chunk text. It does not see ranks from other runs. A hit is `useful` when
   reading it would have answered the question or pointed straight at the file
-  that does; otherwise . A hit on a settled file is  without
-  judging. A question passes when at least one of its top 3 is .
+  that does; otherwise `not`. A hit on a settled file is `useful` without
+  judging. A question passes when at least one of its top 3 is `useful`.
 - **Spot check.** The user reviews 10 judged questions drawn with seed
   20261112. More than 2 disagreements voids the judged result.
 - **Threshold.** Unchanged: pass rate of at least 60% with the 95% Wilson
-  lower bound above 50%. The  line changes only after the
+  lower bound above 50%. The `Adoption decision:` line changes only after the
   spot check.
 - **No tuning.** Retrieval fixes (intake 00013) are chosen from the first set
   only. If production fails here, the built fixes are scored on this set once.
