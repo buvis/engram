@@ -293,3 +293,45 @@ sets the adoption decision. The first set stays as development data.
   spot check.
 - **No tuning.** Retrieval fixes (intake 00013) are chosen from the first set
   only. If production fails here, the built fixes are scored on this set once.
+
+## Second set results (2026-11-13)
+
+Result: **production passes the judged measure, pending the user's spot
+check**. 36 of 44 questions have a useful hit in the top 3 (81.8%, 95% Wilson
+interval 68% to 90%). The bar is 60% with a lower bound above 50%. The
+`Adoption decision:` line is unchanged until the spot check is done.
+
+| Metric | Value |
+|---|---|
+| Scored questions | 44 (11 project directories; largest 11) |
+| Questions with a useful hit in the top 3 | 36 / 44 = 81.8% (Wilson 68% to 90%) |
+| Questions with a settled file in the top 3 (old measure) | 10 / 44 = 22.7% |
+| Useful hits of hits shown | 63 / 131 |
+| By class (passed / questions) | identifier 23/27, cross-repo 11/15, decision 2/2 |
+| Failed | R5, R7, R11, R13, R29, R31, R34, R36 |
+
+- **Sample.** 850 bursts in 1,055 scanned sessions; 224 bursts in 126 sessions
+  settled on an indexed file. Writers kept 44 sessions and dropped 82 (74
+  `known-file`, 8 too thin to state). The project cap dropped none. No
+  `history` question came out, so that class is untested here.
+- **Time rule.** 149 transcript hits were dropped. Useful hits by corpus, per
+  question: code 28, PRD 8, findings 6, transcripts 3, memory 2.
+- **Leak sensitivity.** Six passes rest only on PRD or findings hits, which
+  cannot be dated (R1, R16, R20, R23, R26, R33). If all six were leaks, the
+  result would be 30 of 44 (68.2%, Wilson 53% to 80%), which still passes.
+- **The two measures differ widely.** Exact match gives 23% on this set and the
+  judge gives 82%. Either the label rule understates relevance a great deal, or
+  the judge is lenient. The spot check decides which.
+- **Judge.** Three isolated contexts of the session model (Claude Fable 5.2),
+  one per third of the set, with the rubric above. One model family; no second
+  family judged. Writers flagged three kept questions as borderline (intent was
+  boilerplate); they were kept, since removing them after the fact would be
+  selection by hand.
+- **Spot check.** `eval.agent_session_relevance spot` writes the 10 seeded
+  questions to the private `spot-check.md`. All 10 drawn are judged passes, so
+  the check tests leniency, not strictness.
+
+Method: `eval/agent_session_mine.py` (bursts), `eval/agent_session_relevance.py`
+(assemble, hits, score, spot). Question, pool and config hashes are in the
+private `freeze.json`. Per-question counts by id:
+`eval/results-agent-session-relevance.json`.

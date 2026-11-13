@@ -1,6 +1,16 @@
 from eval.agent_session_eval import file_ranks, wilson
 from eval.agent_session_mine import find_bursts
 from eval.agent_session_recall import identifier_tokens
+from eval.agent_session_relevance import keep_hit
+
+
+def test_time_rule_drops_own_and_later_transcripts_but_keeps_other_corpora():
+    asked = "2026-10-05T10:00:00Z"
+    assert keep_hit("/t/old.jsonl", "transcripts", "own", asked, "2026-10-01T09:00:00Z")
+    assert not keep_hit("/t/own.jsonl", "transcripts", "own", asked, "2026-10-01")
+    assert not keep_hit("/t/new.jsonl", "transcripts", "own", asked, "2026-10-06")
+    assert not keep_hit("/t/unreadable.jsonl", "transcripts", "own", asked, None)
+    assert keep_hit("/repo/a.py", "code", "own", asked, None)
 
 
 def test_burst_needs_three_searches_close_together_and_keeps_settled_files():

@@ -650,3 +650,24 @@ Next: the user decides the measure (intake 00013, question 1: relevance
 judging against exact-file match). Then run discovery on 00013; the first build
 candidates are module-level code chunks and OR lexical matching. The 24
 questions are development data now, so a fresh mined set must set the decision.
+
+## Second set: judged relevance (2026-11-13)
+
+- **User decision (2026-11-12).** Judge the top 3 for relevance on a fresh
+  mined set, with a human spot check; the 60% bar stays.
+- **Result.** 44 questions mined from October sessions. Production: 36 of 44
+  with a useful hit in the top 3 (81.8%, Wilson 68% to 90%); the old exact-file
+  measure gives 10 of 44. Worst case for undatable PRD and findings hits: 30 of
+  44, still a pass. Details in the protocol, "Second set results".
+- **Gate.** `Adoption decision:` still reads `fix retrieval first`. It changes
+  to `proceed` only after the user's spot check of
+  `~/.cache/engram/compare/agent-sessions-v2/spot-check.md` (at most 2
+  disagreements in 10). PRD 00012 then becomes eligible.
+- **Tools.** `eval/agent_session_mine.py`, `eval/agent_session_relevance.py`.
+
+Verification: 53 evaluation tests passed. Production code, model,
+configuration and index were not changed.
+
+Next: user spot check. On a pass, set the adoption line and run PRD 00012
+through autopilot. Intake 00013 fixes (module-level chunks, OR lexical) stay
+worthwhile but no longer block adoption.

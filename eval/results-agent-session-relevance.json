@@ -1,0 +1,525 @@
+{
+  "n": 44,
+  "passed": 36,
+  "pass_rate": 0.8181818181818182,
+  "wilson95": [
+    0.6803916324485767,
+    0.9048730744174145
+  ],
+  "pass": true,
+  "exact_settled_file_in_top3": 10,
+  "useful_hits_of_shown": [
+    63,
+    131
+  ],
+  "by_class": {
+    "cross-repo": {
+      "n": 15,
+      "passed": 11
+    },
+    "decision": {
+      "n": 2,
+      "passed": 2
+    },
+    "identifier": {
+      "n": 27,
+      "passed": 23
+    }
+  },
+  "failed": [
+    "R5",
+    "R7",
+    "R11",
+    "R13",
+    "R29",
+    "R31",
+    "R34",
+    "R36"
+  ],
+  "freeze": {
+    "questions.json": "c325c29d85e97e6222ff897295206ea748ac69fffd8343871a4b0bd132378349",
+    "pool.db": "4f8783975d1fa288827290d47728f6c2efc7adf0f3ce2032f205314715875222",
+    "config.toml": "8fd46026a7685604e6ff9d881458fecdd550d7ee15ea2b3d5e93823db034b3df"
+  },
+  "rows": [
+    {
+      "q": "R1",
+      "class": "identifier",
+      "calls": 3,
+      "hits_shown": 3,
+      "useful": 1,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "findings"
+      ]
+    },
+    {
+      "q": "R2",
+      "class": "cross-repo",
+      "calls": 3,
+      "hits_shown": 3,
+      "useful": 1,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R3",
+      "class": "cross-repo",
+      "calls": 32,
+      "hits_shown": 3,
+      "useful": 2,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code",
+        "prd"
+      ]
+    },
+    {
+      "q": "R4",
+      "class": "cross-repo",
+      "calls": 8,
+      "hits_shown": 3,
+      "useful": 2,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code",
+        "memory"
+      ]
+    },
+    {
+      "q": "R5",
+      "class": "cross-repo",
+      "calls": 5,
+      "hits_shown": 3,
+      "useful": 0,
+      "settled_file_in_top3": false,
+      "useful_corpora": []
+    },
+    {
+      "q": "R6",
+      "class": "identifier",
+      "calls": 23,
+      "hits_shown": 3,
+      "useful": 2,
+      "settled_file_in_top3": true,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R7",
+      "class": "identifier",
+      "calls": 3,
+      "hits_shown": 3,
+      "useful": 0,
+      "settled_file_in_top3": false,
+      "useful_corpora": []
+    },
+    {
+      "q": "R8",
+      "class": "cross-repo",
+      "calls": 3,
+      "hits_shown": 3,
+      "useful": 1,
+      "settled_file_in_top3": true,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R9",
+      "class": "identifier",
+      "calls": 31,
+      "hits_shown": 3,
+      "useful": 2,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code",
+        "prd"
+      ]
+    },
+    {
+      "q": "R10",
+      "class": "cross-repo",
+      "calls": 5,
+      "hits_shown": 2,
+      "useful": 1,
+      "settled_file_in_top3": true,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R11",
+      "class": "cross-repo",
+      "calls": 4,
+      "hits_shown": 3,
+      "useful": 0,
+      "settled_file_in_top3": false,
+      "useful_corpora": []
+    },
+    {
+      "q": "R12",
+      "class": "identifier",
+      "calls": 11,
+      "hits_shown": 3,
+      "useful": 1,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "transcripts"
+      ]
+    },
+    {
+      "q": "R13",
+      "class": "identifier",
+      "calls": 3,
+      "hits_shown": 3,
+      "useful": 0,
+      "settled_file_in_top3": false,
+      "useful_corpora": []
+    },
+    {
+      "q": "R14",
+      "class": "identifier",
+      "calls": 4,
+      "hits_shown": 3,
+      "useful": 1,
+      "settled_file_in_top3": true,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R15",
+      "class": "decision",
+      "calls": 17,
+      "hits_shown": 3,
+      "useful": 1,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R16",
+      "class": "decision",
+      "calls": 20,
+      "hits_shown": 3,
+      "useful": 3,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "findings",
+        "prd"
+      ]
+    },
+    {
+      "q": "R17",
+      "class": "identifier",
+      "calls": 4,
+      "hits_shown": 3,
+      "useful": 2,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code",
+        "transcripts"
+      ]
+    },
+    {
+      "q": "R18",
+      "class": "identifier",
+      "calls": 3,
+      "hits_shown": 3,
+      "useful": 1,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R19",
+      "class": "identifier",
+      "calls": 7,
+      "hits_shown": 3,
+      "useful": 2,
+      "settled_file_in_top3": true,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R20",
+      "class": "identifier",
+      "calls": 3,
+      "hits_shown": 3,
+      "useful": 1,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "prd"
+      ]
+    },
+    {
+      "q": "R21",
+      "class": "identifier",
+      "calls": 4,
+      "hits_shown": 3,
+      "useful": 1,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R22",
+      "class": "identifier",
+      "calls": 14,
+      "hits_shown": 3,
+      "useful": 2,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code",
+        "findings"
+      ]
+    },
+    {
+      "q": "R23",
+      "class": "cross-repo",
+      "calls": 13,
+      "hits_shown": 3,
+      "useful": 1,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "prd"
+      ]
+    },
+    {
+      "q": "R24",
+      "class": "identifier",
+      "calls": 4,
+      "hits_shown": 3,
+      "useful": 2,
+      "settled_file_in_top3": true,
+      "useful_corpora": [
+        "code",
+        "findings"
+      ]
+    },
+    {
+      "q": "R25",
+      "class": "cross-repo",
+      "calls": 5,
+      "hits_shown": 3,
+      "useful": 2,
+      "settled_file_in_top3": true,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R26",
+      "class": "cross-repo",
+      "calls": 3,
+      "hits_shown": 3,
+      "useful": 2,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "prd"
+      ]
+    },
+    {
+      "q": "R27",
+      "class": "cross-repo",
+      "calls": 6,
+      "hits_shown": 3,
+      "useful": 1,
+      "settled_file_in_top3": true,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R28",
+      "class": "identifier",
+      "calls": 16,
+      "hits_shown": 3,
+      "useful": 3,
+      "settled_file_in_top3": true,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R29",
+      "class": "identifier",
+      "calls": 4,
+      "hits_shown": 3,
+      "useful": 0,
+      "settled_file_in_top3": false,
+      "useful_corpora": []
+    },
+    {
+      "q": "R30",
+      "class": "cross-repo",
+      "calls": 5,
+      "hits_shown": 3,
+      "useful": 2,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "memory",
+        "transcripts"
+      ]
+    },
+    {
+      "q": "R31",
+      "class": "cross-repo",
+      "calls": 17,
+      "hits_shown": 3,
+      "useful": 0,
+      "settled_file_in_top3": false,
+      "useful_corpora": []
+    },
+    {
+      "q": "R32",
+      "class": "identifier",
+      "calls": 16,
+      "hits_shown": 3,
+      "useful": 3,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code",
+        "prd"
+      ]
+    },
+    {
+      "q": "R33",
+      "class": "cross-repo",
+      "calls": 14,
+      "hits_shown": 3,
+      "useful": 1,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "findings"
+      ]
+    },
+    {
+      "q": "R34",
+      "class": "identifier",
+      "calls": 5,
+      "hits_shown": 3,
+      "useful": 0,
+      "settled_file_in_top3": false,
+      "useful_corpora": []
+    },
+    {
+      "q": "R35",
+      "class": "identifier",
+      "calls": 6,
+      "hits_shown": 3,
+      "useful": 2,
+      "settled_file_in_top3": true,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R36",
+      "class": "cross-repo",
+      "calls": 11,
+      "hits_shown": 3,
+      "useful": 0,
+      "settled_file_in_top3": false,
+      "useful_corpora": []
+    },
+    {
+      "q": "R37",
+      "class": "identifier",
+      "calls": 3,
+      "hits_shown": 3,
+      "useful": 3,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code",
+        "findings"
+      ]
+    },
+    {
+      "q": "R38",
+      "class": "identifier",
+      "calls": 5,
+      "hits_shown": 3,
+      "useful": 3,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R39",
+      "class": "identifier",
+      "calls": 9,
+      "hits_shown": 3,
+      "useful": 2,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R40",
+      "class": "identifier",
+      "calls": 8,
+      "hits_shown": 3,
+      "useful": 2,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R41",
+      "class": "identifier",
+      "calls": 9,
+      "hits_shown": 3,
+      "useful": 3,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code",
+        "prd"
+      ]
+    },
+    {
+      "q": "R42",
+      "class": "identifier",
+      "calls": 5,
+      "hits_shown": 3,
+      "useful": 1,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R43",
+      "class": "identifier",
+      "calls": 4,
+      "hits_shown": 3,
+      "useful": 1,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code"
+      ]
+    },
+    {
+      "q": "R44",
+      "class": "identifier",
+      "calls": 27,
+      "hits_shown": 3,
+      "useful": 2,
+      "settled_file_in_top3": false,
+      "useful_corpora": [
+        "code"
+      ]
+    }
+  ]
+}
