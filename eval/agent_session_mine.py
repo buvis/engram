@@ -31,7 +31,9 @@ def is_search(name: str, tool_input: dict) -> bool:
 
 
 def read_events(
-    path: Path, since: str, until: str
+    path: Path,
+    since: str,
+    until: str,
 ) -> Iterator[tuple[str, str, dict, str]]:
     """Yield ("text", words, {}, time) and ("tool", name, input, time) in order."""
     with path.open() as stream:
@@ -97,7 +99,9 @@ def main() -> None:
             sessions += 1
             for burst in found:
                 row = {"project": path.parent.name, "session": path.stem, **burst}
-                stream.write(json.dumps({"id": bursts, "path": str(path), **row}) + "\n")
+                stream.write(
+                    json.dumps({"id": bursts, "path": str(path), **row}) + "\n"
+                )
                 bursts += 1
     print(f"{sessions} sessions scanned, {bursts} bursts")
 
