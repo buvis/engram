@@ -57,12 +57,11 @@ levers do not close it either, and shows why.
 
 ## Questions for discovery
 
-1. The measure. Exact match against the next file read caps the score near 19
-   of 24 and marks useful hits as misses. Options: judge the top 3 for
-   relevance (model judge plus a human spot check), or keep exact match and
-   lower the bar. This is the user's call; the bar was fixed on 2026-11-10.
-2. The 24 questions are now development data. Any variant chosen here needs a
-   fresh mined set before it can set the adoption decision.
+1. Resolved 2026-11-12 (user): judge the top 3 for relevance on a fresh mined
+   set, with a human spot check; the 60% bar stays. Rules are in the
+   protocol, section "Second set: relevance measure".
+2. The 24 questions are development data. The second set (October sessions)
+   sets the adoption decision; fixes are not tuned on it.
 3. Does a file-seeking scope belong in `query()`, or only in `engram nudge`?
 4. Does a module-level chunk need a full rebuild of the code corpus, or can it
    land incrementally? A complete rebuild needs explicit authorization.
