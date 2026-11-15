@@ -13,7 +13,11 @@ FOOTER_TEXT = "Read a cited range if it is relevant; ignore it if not."
 
 
 def make_pointer(
-    rank: int, path: str, line_start: int, line_end: int, heading: str
+    rank: int,
+    path: str,
+    line_start: int,
+    line_end: int,
+    heading: str,
 ) -> Pointer:
     return Pointer(
         rank=rank,
@@ -99,7 +103,9 @@ def search(monkeypatch):
 
 
 def run(
-    host: str, payload: str, environ: dict[str, str] | None = None
+    host: str,
+    payload: str,
+    environ: dict[str, str] | None = None,
 ) -> tuple[int, str, str]:
     stdout, stderr = io.StringIO(), io.StringIO()
     code = nudge.run_nudge(
@@ -199,7 +205,11 @@ def test_stays_silent_when_nudge_is_off(search) -> None:
     stdout, stderr = io.StringIO(), io.StringIO()
 
     code = nudge.run_nudge(
-        "claude", UnreadableStdin(), stdout, stderr, {"ENGRAM_NUDGE": "off"}
+        "claude",
+        UnreadableStdin(),
+        stdout,
+        stderr,
+        {"ENGRAM_NUDGE": "off"},
     )
 
     assert code == 0
@@ -212,7 +222,9 @@ def test_stays_silent_when_nudge_is_off(search) -> None:
 def test_runs_unless_nudge_is_exactly_off(repos, search, flag) -> None:
     repo, other = repos
     code, out, err = run(
-        "plain", codex_payload(f"rg foo {q(other)}", repo), {"ENGRAM_NUDGE": flag}
+        "plain",
+        codex_payload(f"rg foo {q(other)}", repo),
+        {"ENGRAM_NUDGE": flag},
     )
 
     assert (code, err) == (0, "")
@@ -347,7 +359,7 @@ def test_accepts_copilot_tool_args_as_object_and_string(repos, search) -> None:
     assert nudge.read_hook_event(json.dumps(as_string)) == ("grep -r beta /y", "/w/b")
 
     payload = json.dumps(
-        {"toolArgs": json.dumps({"command": f"rg foo {q(other)}"}), "cwd": str(repo)}
+        {"toolArgs": json.dumps({"command": f"rg foo {q(other)}"}), "cwd": str(repo)},
     )
     code, out, err = run("copilot", payload)
     assert (code, err) == (0, "")
@@ -699,7 +711,7 @@ TWO_HIT_TEXT = (
                     "hookSpecificOutput": {
                         "hookEventName": "PostToolUse",
                         "additionalContext": TWO_HIT_TEXT,
-                    }
+                    },
                 },
             ),
         ),
@@ -710,7 +722,7 @@ TWO_HIT_TEXT = (
                     "hookSpecificOutput": {
                         "hookEventName": "PostToolUse",
                         "additionalContext": TWO_HIT_TEXT,
-                    }
+                    },
                 },
             ),
         ),
