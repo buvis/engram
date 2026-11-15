@@ -683,3 +683,23 @@ def test_cli_mcp_returns_zero_on_empty_input(monkeypatch):
     monkeypatch.setattr("sys.stdout", empty_out)
     assert cli.main(["mcp"]) == 0
     assert empty_out.getvalue() == ""
+
+
+def test_cli_mcp_recovers_from_invalid_utf8_line(monkeypatch):
+    monkeypatch.setattr("engram.mcp_server.search_pointers", _refuse_search)
+    ping_line = json.dumps(_request("ping", request_id=1)).encode("utf-8") + b"\n"
+    bad_line = b"\xff\xfe not valid utf-8\n"
+    stdin = io.TextIOWrapper(io.BytesIO(ping_line + bad_line), encoding="utf-8")
+    stdout = io.StringIO()
+    monkeypatch.setattr("sys.stdin", stdin)
+    monkeypatch.setattr("sys.stdout", stdout)
+
+    assert cli.main(["mcp"]) == 0
+
+    replies = _replies(stdout.getvalue())
+    assert replies[0] == {"jsonrpc": "2.0", "id": 1, "result": {}}
+    assert replies[1] == {
+        "jsonrpc": "2.0",
+        "id": None,
+        "error": {"code": -32700, "message": "parse error"},
+    }
