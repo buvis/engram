@@ -171,11 +171,11 @@ indexed as `Module context` chunks. They appear when a file is first indexed or
 its content changes. The index keeps the old chunks of unchanged files,
 including files cached as empty. There is no automatic migration, and
 `--reembed-code` only refreshes vectors of existing chunks, so it does not find
-missing spans. A backfill is a separate, explicit operation. The one exception is the
-`None`-heading migration: it re-chunks an unchanged file once and so adds its
-context then. `engram lookup --name` returns symbols only; `lookup --file` and
-`query` include context. Data and doc files with no symbols (Markdown, JSON,
-YAML, TOML and the like) stay out of the code corpus.
+missing spans. A backfill is a separate, explicit operation. The one exception
+is the `None`-heading migration: it re-chunks an unchanged file once and so
+adds its context then. `engram lookup --name` returns symbols only;
+`lookup --file` and `query` include context. Data and doc files with no symbols
+(Markdown, JSON, YAML, TOML and the like) stay out of the code corpus.
 
 `status` exits 1 for degraded stale files, dead rows, or unavailable required
 sources. Recently modified stale transcripts are reported as `in-flight` and

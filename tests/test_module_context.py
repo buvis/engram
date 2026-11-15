@@ -795,4 +795,3 @@ def test_index_retains_rows_when_changed_file_fails_then_retries(db, idx, monkey
     retried = idx.run()
     assert db.lookup_by_path(str(idx.path)) == new
     assert (retried.chunks_added, retried.chunks_pruned, len(idx.calls)) == (2, 2, 2)
-
