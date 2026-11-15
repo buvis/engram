@@ -23,7 +23,15 @@ def _ctx(path, body, line_start, line_end, ordinal, repo="widget", content_hash=
 
 
 def _sym(
-    path, doc_type, heading, body, line_start, line_end, ordinal, repo, content_hash
+    path,
+    doc_type,
+    heading,
+    body,
+    line_start,
+    line_end,
+    ordinal,
+    repo,
+    content_hash,
 ):
     return Chunk(
         corpus="code",
@@ -535,9 +543,19 @@ def db(tmp_path):
     opened.conn.close()
 
 
-def _put(db, path, doc_type, heading, body, ordinal, repo="a", content_hash="h1"):
+def _put(
+    db,
+    path,
+    doc_type,
+    heading,
+    body,
+    ordinal,
+    repo="a",
+    content_hash="h1",
+    corpus="code",
+):
     row = Chunk(
-        corpus="code",
+        corpus=corpus,
         repo=repo,
         doc_type=doc_type,
         path=path,
@@ -559,6 +577,8 @@ def _context(db, path, body, ordinal, repo="a"):
 def test_lookup_by_name_never_returns_context_rows(db):
     _context(db, "a.py", "import os", 3)
     _context(db, "b.py", "LIMIT = 10", 2, repo="b")
+    _context(db, "c.py", "print(context)", 2)
+    _put(db, "d.py", "function", "Function Context", "def Context(): ...", 1)
 
     assert db.lookup_by_name("context", PORTFOLIO) == []
     assert db.lookup_by_name("cont", PORTFOLIO, prefix=True) == []
@@ -577,21 +597,24 @@ def test_lookup_by_name_never_returns_context_rows(db):
 
 
 def test_lookup_by_name_falls_back_past_context_rows_to_prefix_symbols(db):
-    _context(db, "a.py", "import os", 2)
-    contexts = _put(db, "d.py", "class", "Class contexts", "class contexts: ...", 4)
+    _context(db, "a.py", "print(os.sep)", 2)
+    contexts = _put(db, "d.py", "class", "Class contexts", "class contexts: n = 1", 4)
 
     assert db.lookup_by_name("context", PORTFOLIO) == [contexts]
     assert db.lookup_by_name("context", PORTFOLIO, prefix=True) == [contexts]
 
 
 def test_lookup_by_name_keeps_function_and_module_symbols_named_context(db):
-    _context(db, "b.py", "import sys", 3)
-    late = _put(db, "a.py", "function", "Function context", "def context(): ...", 5)
-    func = _put(db, "b.py", "function", "Function context", "def context(): ...", 1)
+    _context(db, "b.py", "print(context)", 3)
+    late = _put(db, "a.py", "function", "Function context", "import os\nx = 1", 5)
+    func = _put(db, "b.py", "function", "Function context", "def context(): x = 1", 1)
     _context(db, "a.py", "import os", 2)
     module = _put(db, "a.py", "module", "Module context", "mod context {}", 1)
+    klass = _put(db, "c.py", "class", "Class context", "class context: ...", 1)
+    _put(db, "a.py", "function", "Function Context", "def Context(): ...", 3)
+    _put(db, "context.md", "prd", "Function context", "notes", 1, corpus="prd")
 
-    expected = [module, late, func]
+    expected = [module, late, func, klass]
     assert db.lookup_by_name("context", PORTFOLIO) == expected
     assert db.lookup_by_name("cont", PORTFOLIO, prefix=True) == expected
     assert db.lookup_by_name("cont", PORTFOLIO) == expected
@@ -599,28 +622,34 @@ def test_lookup_by_name_keeps_function_and_module_symbols_named_context(db):
 
 
 def test_lookup_by_path_returns_context_rows_with_file_symbols(db):
-    ctx_tail = _context(db, "svc.py", "print(beta())", 4)
-    beta = _put(db, "svc.py", "function", "Function beta", "def beta(): ...", 2)
-    ctx_head = _context(db, "svc.py", "import os", 3)
-    alpha = _put(db, "svc.py", "function", "Function alpha", "def alpha(): ...", 1)
+    ctx_tail = _context(db, "svc.py", "print(beta())", 5)
+    beta = _put(db, "svc.py", "function", "Function beta", "def beta(): ...", 4)
+    ctx_mid = _context(db, "svc.py", "LIMIT = 10", 3)
+    alpha = _put(db, "svc.py", "function", "Function alpha", "def alpha(): ...", 2)
+    ctx_head = _context(db, "svc.py", "import os", 1)
+    _put(db, "svc.py", "prd", "Section svc", "svc notes", 6, corpus="prd")
     _context(db, "svc.py.bak", "import sys", 1)
     _context(db, "pkg/svc.py", "import re", 2)
 
-    assert db.lookup_by_path("svc.py") == [alpha, beta, ctx_head, ctx_tail]
+    expected = [ctx_head, alpha, ctx_mid, beta, ctx_tail]
+    assert db.lookup_by_path("svc.py") == expected
     assert db.lookup_by_path("pkg/svc.py")[0].doc_type == "module_context"
     assert db.lookup_by_path("missing.py") == []
 
 
 def test_lookup_leaves_context_row_body_searchable_by_bm25(db):
-    _put(db, "svc.py", "function", "Function alpha", "def alpha(): return 1", 1)
+    alpha = _put(db, "svc.py", "function", "Function alpha", "def alpha(): 1", 1)
     zanzibar = _context(db, "svc.py", "import zanzibar", 2)
     quokka = _context(db, "util.py", "RETRIES = quokka", 1)
 
+    assert [hit.chunk for hit in db.search_bm25("alpha", PORTFOLIO, "code", 5)] == [
+        alpha,
+    ]
     assert [hit.chunk for hit in db.search_bm25("zanzibar", PORTFOLIO, "code", 5)] == [
-        zanzibar
+        zanzibar,
     ]
     assert [hit.chunk for hit in db.search_bm25("quokka", PORTFOLIO, "code", 5)] == [
-        quokka
+        quokka,
     ]
     assert db.search_bm25("pangolin", PORTFOLIO, "code", 5) == []
 
@@ -628,12 +657,21 @@ def test_lookup_leaves_context_row_body_searchable_by_bm25(db):
 def test_lookup_respects_repository_scope_for_symbols_and_context(db):
     a_build = _put(db, "a/app.py", "function", "Function build", "def build(): 1", 1)
     b_build = _put(
-        db, "b/app.py", "function", "Function build", "def build(): 2", 1, repo="b"
+        db,
+        "b/app.py",
+        "function",
+        "Function build",
+        "def build(): 2",
+        1,
+        repo="b",
     )
-    a_ctx = _context(db, "a/app.py", "import wombat", 2)
-    b_ctx = _context(db, "b/app.py", "import wombat", 2, repo="b")
+    a_ctx = _context(db, "a/app.py", "wombat.run()", 2)
+    b_ctx = _context(db, "b/app.py", "wombat.run()", 2, repo="b")
     repo_a, repo_b = Scope("repo", "a"), Scope("repo", "b")
 
+    assert db.lookup_by_name("bui", repo_a, prefix=True) == [a_build]
+    assert db.lookup_by_name("bui", repo_b, prefix=True) == [b_build]
+    assert db.lookup_by_name("bui", repo_a) == [a_build]
     assert db.lookup_by_name("build", repo_a) == [a_build]
     assert db.lookup_by_name("build", repo_b) == [b_build]
     assert db.lookup_by_name("build", PORTFOLIO) == [a_build, b_build]
@@ -642,6 +680,7 @@ def test_lookup_respects_repository_scope_for_symbols_and_context(db):
         assert db.lookup_by_name("context", scope) == []
         assert db.lookup_by_name("cont", scope, prefix=True) == []
 
+    assert [h.chunk for h in db.search_bm25("build", repo_a, "code", 10)] == [a_build]
     assert [h.chunk for h in db.search_bm25("wombat", repo_a, "code", 10)] == [a_ctx]
     assert [h.chunk for h in db.search_bm25("wombat", repo_b, "code", 10)] == [b_ctx]
     both = db.search_bm25("wombat", PORTFOLIO, "code", 10)
