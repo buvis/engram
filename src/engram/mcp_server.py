@@ -57,10 +57,10 @@ def search_pointers(text: str, scope: str, k: int) -> list[Pointer]:
         if name is None:
             if not GITA_REPOS_CSV.exists():
                 raise RepoScopeError(
-                    f"{GITA_REPOS_CSV} not found; register repos with gita first"
+                    f"{GITA_REPOS_CSV} not found; register repos with gita first",
                 )
             raise RepoScopeError(
-                "not inside a registered repo; use scope portfolio instead"
+                "not inside a registered repo; use scope portfolio instead",
             )
         scope_obj = Scope("repo", name)
     else:
@@ -77,7 +77,7 @@ def format_pointer_lines(pointers: list[Pointer]) -> list[str]:
     lines = []
     for p in pointers:
         lines.append(
-            f"{p.rank}\t{p.score:.4f}\t{p.path}:{p.line_start}-{p.line_end}\t{p.heading}"
+            f"{p.rank}\t{p.score:.4f}\t{p.path}:{p.line_start}-{p.line_end}\t{p.heading}",
         )
         if p.body is not None:
             lines.append(p.body)
@@ -119,7 +119,8 @@ def run_query_tool(arguments: object, search: Search | None = None) -> dict:
         )
     except StoreModelMismatchError as e:
         return _tool_result(
-            f"{e}; run `engram index --rebuild` to rebuild the store", True
+            f"{e}; run `engram index --rebuild` to rebuild the store",
+            True,
         )
     except (
         EmbeddingServerError,
@@ -143,7 +144,9 @@ def _server_version() -> str:
 
 
 def _dispatch(
-    method: object, params: dict, search: Search | None
+    method: object,
+    params: dict,
+    search: Search | None,
 ) -> tuple[str, object]:
     if method == "initialize":
         version = params.get("protocolVersion")

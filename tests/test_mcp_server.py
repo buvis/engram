@@ -200,7 +200,7 @@ def test_tools_call_returns_query_lines():
         "id": 11,
         "result": {
             "content": [
-                {"type": "text", "text": "\n".join([LINE_A, LINE_B, POINTER_B.body])}
+                {"type": "text", "text": "\n".join([LINE_A, LINE_B, POINTER_B.body])},
             ],
             "isError": False,
         },
@@ -346,7 +346,7 @@ def test_run_query_tool_accepts_k_at_range_bounds(k):
     "error",
     [
         mcp_server.RepoScopeError(
-            "not inside a registered repo; use scope portfolio instead"
+            "not inside a registered repo; use scope portfolio instead",
         ),
         EmbeddingServerError("embedding server unreachable"),
         EmbeddingPreflightError("llama-server binary missing"),
@@ -358,7 +358,8 @@ def test_run_query_tool_accepts_k_at_range_bounds(k):
 )
 def test_run_query_tool_reports_search_failure_as_is_error(error):
     result = mcp_server.run_query_tool(
-        {"query": "boom"}, search=_RecordingSearch([error])
+        {"query": "boom"},
+        search=_RecordingSearch([error]),
     )
 
     assert result == {
@@ -371,7 +372,8 @@ def test_store_model_mismatch_error_text_names_rebuild_command():
     error = StoreModelMismatchError("store built with model-a, config uses model-b")
 
     result = mcp_server.run_query_tool(
-        {"query": "boom"}, search=_RecordingSearch([error])
+        {"query": "boom"},
+        search=_RecordingSearch([error]),
     )
 
     assert result == {
@@ -415,14 +417,14 @@ def test_unexpected_search_exception_returns_32603_internal_error(error):
 
 def test_query_failure_sets_is_error_and_keeps_serving():
     search = _RecordingSearch(
-        [EmbeddingServerError("embedding server down"), [POINTER_A]]
+        [EmbeddingServerError("embedding server down"), [POINTER_A]],
     )
 
     exit_code, output = _serve(
         [
             json.dumps(_call({"query": "first try"}, request_id=1)),
             json.dumps(
-                _call({"query": "second try", "scope": "repo", "k": 4}, request_id=2)
+                _call({"query": "second try", "scope": "repo", "k": 4}, request_id=2),
             ),
         ],
         search=search,
@@ -455,7 +457,9 @@ def test_query_failure_sets_is_error_and_keeps_serving():
 def test_unknown_tool_returns_32602_naming_the_tool(name):
     reply = mcp_server.handle_mcp_message(
         _request(
-            "tools/call", {"name": name, "arguments": {"query": "x"}}, request_id=8
+            "tools/call",
+            {"name": name, "arguments": {"query": "x"}},
+            request_id=8,
         ),
         search=_refuse_search,
     )
@@ -504,7 +508,8 @@ def test_notification_gets_no_reply():
     assert mcp_server.handle_mcp_message(call_without_id, search=_refuse_search) is None
     assert (
         mcp_server.handle_mcp_message(
-            {"jsonrpc": "2.0", "method": "ping"}, search=_refuse_search
+            {"jsonrpc": "2.0", "method": "ping"},
+            search=_refuse_search,
         )
         is None
     )
@@ -565,7 +570,7 @@ def test_malformed_request_gets_error_reply_and_serving_continues():
         [
             json.dumps({"jsonrpc": "2.0", "id": 1}),
             json.dumps(
-                {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": []}
+                {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": []},
             ),
             json.dumps(_request("ping", request_id=3)),
         ],
