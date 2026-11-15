@@ -121,15 +121,17 @@ def broad(template: str, repos) -> str | None:
 # run_nudge: pinned behaviors
 
 
-def test_nudges_for_search_outside_repo(repos, search) -> None:
+@pytest.mark.parametrize("host", ["codex", "claude"])
+def test_nudges_for_search_outside_repo(repos, search, host) -> None:
     repo, other = repos
-    code, out, err = run("codex", codex_payload(f"rg -l foo {q(other)}", repo))
+    code, out, err = run(host, codex_payload(f"rg -l foo {q(other)}", repo))
 
     assert code == 0
     assert err == ""
     assert search.calls == [("foo", "portfolio", 3)]
     assert out.endswith("\n")
     assert out.count("\n") == 1
+    assert json.loads(out)["hookSpecificOutput"]["hookEventName"] == "PostToolUse"
     context = json.loads(out)["hookSpecificOutput"]["additionalContext"]
     assert context.split("\n") == [
         'engram recall for "foo" (prior sessions, PRDs, memory, code):',
@@ -232,6 +234,8 @@ def test_exits_zero_when_query_fails(repos, search, error) -> None:
     lines = err.splitlines()
     assert len(lines) == 1
     assert lines[0].startswith("engram nudge: query failed:")
+    assert type(error).__name__ in lines[0]
+    assert str(error) in lines[0]
     assert search.calls == [("foo", "portfolio", 3)]
 
 
@@ -277,7 +281,21 @@ def test_reports_unexpected_error_on_stderr_and_exits_zero(repos, search) -> Non
 
     assert code == 0
     assert out == ""
-    assert len(err.splitlines()) == 1
+    lines = err.splitlines()
+    assert len(lines) == 1
+    assert lines[0].startswith("engram nudge: ")
+    assert "ValueError" in lines[0]
+
+
+def test_reads_whole_pretty_printed_payload(repos, search) -> None:
+    repo, other = repos
+    event = {"tool_input": {"command": f"rg foo {q(other)}"}, "cwd": str(repo)}
+
+    code, out, err = run("plain", json.dumps(event, indent=2))
+
+    assert (code, err) == (0, "")
+    assert out == expected_text("foo", POINTERS) + "\n"
+    assert search.calls == [("foo", "portfolio", 3)]
 
 
 def test_treats_git_log_pickaxe_as_broad_end_to_end(repos, search) -> None:
@@ -514,6 +532,7 @@ def test_tolerates_overlong_path_token(repos) -> None:
         ("find -H -P {other} -name x.py", "x.py"),
         ("find {other} -name a.md -o -name b.md", "a.md"),
         ("find {other} ! -path '*/.git/*' -name keep.md", "keep.md"),
+        ("find src {other} -name x.md", "x.md"),
         ("find src -name '*.py'", None),
         ("find . -name '*.py'", None),
         ("find {other} -type f", None),
@@ -576,9 +595,11 @@ def test_ignores_git_without_log_pickaxe(repos, command) -> None:
         ("rg foo src/../../other", "foo"),
         ("rg foo {repo}-old", "foo"),
         ("rg foo vendor/lib/src", "foo"),
+        ("rg foo vendor/lib/src/deep/x", "foo"),
         ("rg foo src {other}", "foo"),
         ("rg foo {other} src", "foo"),
         ("rg foo src vendor/lib", "foo"),
+        ("rg foo .claude/projects", "foo"),
         ("rg foo .claude/projects/-Users-x", "foo"),
         ("rg foo {repo}/.claude/projects/abc/s.jsonl", "foo"),
         ("rg foo .claude/projects-old/x", None),
@@ -613,6 +634,16 @@ def test_judges_breadth_from_cwd_outside_repo(tmp_path, template, expected) -> N
     assert nudge.find_broad_search(command, str(scratch)) == expected
 
 
+def test_judges_breadth_from_repo_subdirectory_cwd(repos) -> None:
+    repo, _ = repos
+    (repo / "docs").mkdir()
+    cwd = str(repo / "src")
+
+    assert nudge.find_broad_search("rg foo ../docs", cwd) is None
+    assert nudge.find_broad_search("rg foo ..", cwd) is None
+    assert nudge.find_broad_search("rg foo ../../other", cwd) == "foo"
+
+
 def test_expands_home_and_variables_in_paths(repos, monkeypatch) -> None:
     repo, other = repos
     monkeypatch.setenv("HOME", str(other))
@@ -637,6 +668,7 @@ def test_expands_home_and_variables_in_paths(repos, monkeypatch) -> None:
         ("", ""),
         ("abc", "abc"),
         ("EmbeddingServerError|retry", "EmbeddingServerError retry"),
+        ("alpha|beta|gamma.delta", "alpha beta gamma delta"),
         ("my_func-name", "my_func-name"),
         ("issue#12", "issue"),
         ("  spaced   out  ", "spaced out"),
