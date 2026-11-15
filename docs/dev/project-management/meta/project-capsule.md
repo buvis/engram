@@ -29,10 +29,17 @@ Updated: 2026-11-10, after Session 7 was redefined around agent sessions.
 
 ## Active Work
 
-### Batch 202611100725
+### Batch 202611151147
+- [ ] 00012-agent-recall-surfaces-v1 (wip, build: catchup done 2026-11-15)
+
+00012 adds `engram mcp` (stdlib JSON-RPC stdio server, `engram_query` tool)
+and `engram nudge <host>` (post-tool hook: broad-search detection, top-3
+recall). Reference spike: `spikes/engram-plugin/` (delete when 00012 lands).
+Consumer: agent-plugins PRD 00067, eligible once `engram nudge --help` works.
+
+### Batch 202611100725 (closed)
 - [x] 00010-repo-memory-corpus-v1 (2 cycles)
 - [x] 00011-memory-migrate-command-v1 (3 cycles)
-- [ ] 00012-agent-recall-surfaces-v1 (backlog, skipped: needs "Adoption decision: proceed" in the agent-session evaluation review)
 
 Observations: 00010 shipped `src/engram/memory.py`, repo memory enumeration and
 legacy skip in `corpora.py`, `engram memory check`, and status lines. Cycle 1
@@ -143,22 +150,22 @@ See the follow-up note for scope, evidence, and the unchanged `0644` file mode.
 
 ## Related context
 
-Topic (2026-11-10, PRD 00011): "Memory migrate command". Repo and portfolio
-queries both returned only the PRD itself
-(`prds/wip/00011-memory-migrate-command-v1.md`: 7-10, 153-162, 183-187, 28-34,
-114-122; top score 0.0328); no prior related work indexed. Reuse targets are
-known directly: `src/engram/memory.py` (`parse_memory`, `check_directory`,
-`memory_dir`, credential guard) from PRD 00010.
+Topic (2026-11-15, PRD 00012): "Agent recall surfaces engram mcp and engram
+nudge". Repo hits are only the PRD itself (`prds/wip/00012-...md` 7-12,
+140-153, 178-185, 29-41, 118-137; top 0.0328). Portfolio adds
+`agent-plugins/.../prds/backlog/00067-engram-plugin-v1.md:7-15` (0.0161), the
+consumer PRD whose hook files call these commands. Reuse targets known
+directly: `spikes/engram-plugin/` (MCP loop, nudge core) and the `query()`
+call shape in `src/engram/cli.py`.
 
-Staleness (`engram status --scope portfolio`, exit 1, 2026-11-10): memory
-stale=7, transcripts stale=3 dead=859, prd stale=1 dead=68, code stale=33
-dead=133. Harvest: 18 review files upserted, 14 missing frontmatter (known).
+Staleness (`engram status --scope portfolio`, exit 1, 2026-11-15): memory
+stale=4, transcripts stale=3 dead=8305, prd stale=6 dead=725, code stale=47.
+Harvest: 21 review files upserted, 14 missing frontmatter (known).
 
 ## GitHub State
 
-Remote: `https://github.com/buvis/engram`. No open PRs (PR #2 closed). Only open
-issue: Dependency Dashboard #3. No releases. Workflow "Test" on master: last 5
-runs success (2026-11-10), so `c220c4d` CI did reach GitHub.
+Remote: `https://github.com/buvis/engram` (2026-11-15). No open issues or PRs.
+No releases. Workflow "Test" on master: last 5 runs success (latest 2026-11-15).
 
 ## Project Memories
 
