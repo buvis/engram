@@ -1,0 +1,150 @@
+{
+  "fixture": "engram",
+  "authorization": {"route": "invocation", "source": "autoclaude-drain"},
+  "target_integrity": {
+    "status": "unchanged",
+    "violations": [],
+    "touched": ["docs/dev/project-management/plans/2026-11-09-engram-next-work.md"]
+  },
+  "findings": [
+    {
+      "domain": "journey",
+      "severity": "MEDIUM",
+      "paths": ["README.md", "src/engram/client.py"],
+      "status": "verified",
+      "title": "The embedding server engram starts keeps running after every CLI command exits, although the README says engram stops it",
+      "lanes": ["walter", "wendy"],
+      "symbols": ["ensure_served", "stop_served"]
+    },
+    {
+      "domain": "integration",
+      "severity": "MEDIUM",
+      "paths": ["src/engram/symbols.py", "src/engram/indexer.py", "CHANGELOG.md"],
+      "status": "verified",
+      "title": "Existing indexes keep wrong symbol bodies for files with form feeds or Unicode line separators; index and --reembed-code do not repair them",
+      "lanes": ["heidi", "wendy"]
+    },
+    {
+      "domain": "security",
+      "severity": "MEDIUM",
+      "paths": ["src/engram/symbols.py", "src/engram/pack.py", "src/engram/memory.py"],
+      "status": "verified",
+      "title": "engram pack copies hard-coded secrets from unrelated files' module context into the review pack word for word",
+      "lanes": ["trudy"],
+      "symbols": ["CREDENTIAL_PATTERNS"]
+    },
+    {
+      "domain": "integration",
+      "severity": "MEDIUM",
+      "paths": ["src/engram/harvest.py", "src/engram/cli.py"],
+      "status": "verified",
+      "title": "A repo registered under a symlinked path is reported as not registered by repo-scoped commands run inside it",
+      "lanes": ["heidi"],
+      "symbols": ["_resolve_repo_for_path"]
+    },
+    {
+      "domain": "integration",
+      "severity": "MEDIUM",
+      "paths": ["src/engram/cli.py", "src/engram/store.py"],
+      "status": "verified",
+      "title": "engram status exits 0 and looks healthy while the configured embedding model does not match the store",
+      "lanes": ["heidi"],
+      "symbols": ["assert_configured_model"]
+    },
+    {
+      "domain": "release",
+      "severity": "MEDIUM",
+      "paths": ["README.md"],
+      "status": "verified",
+      "title": "First index on a new machine downloads 27 MB of tree-sitter grammars, but the README says the only off-machine call is the model download",
+      "lanes": ["wendy"]
+    },
+    {
+      "domain": "performance",
+      "severity": "MEDIUM",
+      "paths": ["src/engram/symbols.py", "src/engram/indexer.py"],
+      "status": "verified",
+      "title": "A full index or rebuild takes about 2.1x as long since module context was added",
+      "lanes": ["peggy"]
+    },
+    {
+      "domain": "security",
+      "severity": "LOW",
+      "paths": ["src/engram/pack.py"],
+      "status": "verified",
+      "title": "Pack code excerpts lose indentation after the first line, so file text can forge Markdown headings and findings in the review pack",
+      "lanes": ["walter", "trudy"],
+      "symbols": ["_render_pointer"]
+    },
+    {
+      "domain": "integration",
+      "severity": "LOW",
+      "paths": ["src/engram/query.py", "src/engram/client.py"],
+      "status": "verified",
+      "title": "With a mismatched model configured, query starts a llama-server for the wrong model, fails, and leaves it running",
+      "lanes": ["heidi"]
+    },
+    {
+      "domain": "integration",
+      "severity": "LOW",
+      "paths": ["src/engram/symbols.py", "README.md"],
+      "status": "verified",
+      "title": "Top-level-only scripts in Ruby, PHP, Perl, R, Elixir, Scala, C#, Dart and zsh get no module context and are left out of the code corpus",
+      "lanes": ["heidi"],
+      "symbols": ["CONTEXT_LANGUAGES"]
+    },
+    {
+      "domain": "release",
+      "severity": "LOW",
+      "paths": ["README.md"],
+      "status": "verified",
+      "title": "The README Corpora table still says code is one chunk per function or class, omitting module context",
+      "lanes": ["wendy"]
+    },
+    {
+      "domain": "ux",
+      "severity": "LOW",
+      "paths": ["src/engram/cli.py"],
+      "status": "verified",
+      "title": "index and status print an unlabeled discovery:<repo> line on stdout",
+      "lanes": ["walter"],
+      "symbols": ["_print_missing"]
+    },
+    {
+      "domain": "performance",
+      "severity": "LOW",
+      "paths": ["src/engram/client.py", "src/engram/indexer.py", "src/engram/mcp_server.py"],
+      "status": "verified",
+      "title": "Every indexed file and every MCP call sends an extra ping embedding request",
+      "lanes": ["peggy"],
+      "symbols": ["ensure_served", "preflight"]
+    },
+    {
+      "domain": "performance",
+      "severity": "LOW",
+      "paths": ["src/engram/store.py"],
+      "status": "verified",
+      "title": "A lookup --name that finds nothing does about 69% more work because the prefix fallback scans module-context rows",
+      "lanes": ["peggy"],
+      "symbols": ["lookup_by_name"]
+    },
+    {
+      "domain": "release",
+      "severity": "LOW",
+      "paths": ["CHANGELOG.md"],
+      "status": "unverified",
+      "downgraded": "claimed verified; evidence quoted file headings and named no command run",
+      "title": "CHANGELOG has a second Added/Fixed pair under one [Unreleased] heading with no version heading between",
+      "lanes": ["wendy"]
+    },
+    {
+      "domain": "performance",
+      "severity": "LOW",
+      "paths": ["src/engram/store.py"],
+      "status": "verified",
+      "title": "The vector table reserves about 4 MiB per repo and corpus, so the store grows about 12.8 MB per registered repo regardless of content",
+      "lanes": ["peggy"],
+      "symbols": ["chunks_vec"]
+    }
+  ]
+}
