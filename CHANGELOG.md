@@ -21,6 +21,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 - **mcp**: `engram mcp` serves an `engram_query` tool over MCP stdio, so agent
   hosts can search prior sessions, PRDs, memory, and code in-process.
+- **nudge**: `engram nudge <claude|codex|copilot|plain>` reads a post-tool hook
+  payload and, after a broad search (outside the current repo, across repos,
+  in agent transcripts, or `git log -S/-G/--grep`), adds the top 3 Engram hits
+  to the agent's context. It always exits 0; `ENGRAM_NUDGE=off` disables it
+  and `ENGRAM_PACK_FILE` drops hits already injected.
 - **memory**: `engram memory migrate --from <claude-memory-dir> --to <repo>`
   prints a TSV plan for moving Claude auto-memory into repository memory;
   `--apply` writes the converted files, regenerates `MEMORY.md`, and wires
