@@ -7,7 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from engram import corpora, symbols, transcripts
+from engram import corpora, mcp_server, nudge, symbols, transcripts
 from engram.client import (
     EmbeddingModelIdentityError,
     EmbeddingPreflightError,
@@ -21,6 +21,7 @@ from engram.corpora import GITA_REPOS_CSV, enumerate_corpora
 from engram.findings import FINDINGS_CORPUS
 from engram.harvest import _resolve_repo_for_path, harvest
 from engram.indexer import index, reembed_code
+from engram.mcp_server import format_pointer_lines
 from engram.memory import MEMORY_SUBDIR, check_directory, memory_dir, redact
 from engram.migrate import OK_ACTIONS, MigrationError, apply_migration, plan_migration
 from engram.pack import build
@@ -108,6 +109,13 @@ def _build_parser() -> argparse.ArgumentParser:
     pack_parser.add_argument("--capsule", default=None)
 
     _add_memory_parser(subparsers)
+
+    subparsers.add_parser("mcp", help="serve engram_query over MCP stdio")
+
+    nudge_parser = subparsers.add_parser(
+        "nudge", help="post-tool hook: recall prior work after a broad search"
+    )
+    nudge_parser.add_argument("host", choices=list(nudge.HOSTS))
 
     return parser
 
@@ -221,12 +229,8 @@ def _run_query(args: argparse.Namespace) -> int:
         print(str(e), file=sys.stderr)
         return 1
 
-    for p in pointers:
-        print(
-            f"{p.rank}\t{p.score:.4f}\t{p.path}:{p.line_start}-{p.line_end}\t{p.heading}",
-        )
-        if p.body is not None:
-            print(p.body)
+    for line in format_pointer_lines(pointers):
+        print(line)
     return 0
 
 
@@ -590,4 +594,14 @@ def main(argv: list[str] | None = None) -> int:
         if args.memory_command == "migrate":
             return _run_memory_migrate(args)
         return _run_memory_check(args)
+    if args.command == "mcp":
+        if hasattr(sys.stdin, "reconfigure"):
+            sys.stdin.reconfigure(errors="replace")
+        return mcp_server.serve_mcp(sys.stdin, sys.stdout)
+    if args.command == "nudge":
+        return nudge.run_nudge(args.host, sys.stdin, sys.stdout, sys.stderr, os.environ)
     return _run_status(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())
