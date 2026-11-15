@@ -184,6 +184,19 @@ def test_other_kind_symbols_use_their_plain_kind_name(tmp_path):
     assert [(c.doc_type, c.heading) for c in chunks] == [("constant", "Constant LIMIT")]
 
 
+def test_chunk_counts_lines_at_newline_only_despite_form_feed(tmp_path):
+    path = tmp_path / "paged.py"
+    path.write_text("import os\n\x0c\nX = 1\n\ndef f():\n    return 2\n\nTAIL = 3\n")
+
+    chunks = symbols.chunk(path, "widget", "h1")
+
+    assert [(c.doc_type, c.body, c.line_start, c.line_end) for c in chunks] == [
+        ("function", "def f():\n    return 2", 5, 6),
+        ("module_context", "import os\n\x0c\nX = 1", 1, 3),
+        ("module_context", "TAIL = 3", 8, 8),
+    ]
+
+
 # --- count_skipped(): cheap re-scan counts only tracked files with no grammar ---
 
 

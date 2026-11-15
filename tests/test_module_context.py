@@ -420,29 +420,6 @@ def test_chunk_keeps_line_numbers_and_bodies_for_non_ascii_lines(tmp_path):
     ]
 
 
-def test_chunk_counts_lines_at_newline_only_despite_form_feed(tmp_path):
-    path = tmp_path / "paged.py"
-    path.write_text("import os\n\x0c\nX = 1\n\ndef f():\n    return 2\n\nTAIL = 3\n")
-
-    chunks = symbols.chunk(path, "widget", "h1")
-
-    assert chunks == [
-        _sym(
-            path,
-            "function",
-            "Function f",
-            "def f():\n    return 2",
-            5,
-            6,
-            1,
-            "widget",
-            "h1",
-        ),
-        _ctx(path, "import os\n\x0c\nX = 1", 1, 3, 2),
-        _ctx(path, "TAIL = 3", 8, 8, 3),
-    ]
-
-
 # --- chunk(): every uncovered nonblank line lands in exactly one context chunk ---
 
 INVENTORY = '''"""Inventory tools."""

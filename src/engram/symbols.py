@@ -111,9 +111,7 @@ def chunk(path: Path, repo: str, content_hash: str) -> list[Chunk]:
         return []
 
     result = process(source, ProcessConfig(language, structure=True))
-    # Tree-sitter rows break at "\n" only; splitlines() also breaks at form
-    # feeds and Unicode separators, which would skew every span after them.
-    lines = source.split("\n")
+    lines = source.split("\n")  # tree-sitter rows; splitlines() also splits \f
 
     chunks: list[Chunk] = []
     chunk_ordinal = 1
