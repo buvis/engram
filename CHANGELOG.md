@@ -19,6 +19,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- **mcp**: `engram mcp` serves an `engram_query` tool over MCP stdio, so agent
+  hosts can search prior sessions, PRDs, memory, and code in-process.
 - **memory**: `engram memory migrate --from <claude-memory-dir> --to <repo>`
   prints a TSV plan for moving Claude auto-memory into repository memory;
   `--apply` writes the converted files, regenerates `MEMORY.md`, and wires
