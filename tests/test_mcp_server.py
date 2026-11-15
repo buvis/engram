@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from engram import mcp_server
+from engram import cli, mcp_server
 from engram.client import (
     EmbeddingModelIdentityError,
     EmbeddingPreflightError,
@@ -729,3 +729,52 @@ def test_unresolvable_repo_scope_returns_is_error_through_run_query_tool(
     with pytest.raises(mcp_server.RepoScopeError):
         mcp_server.search_pointers("where", "repo", 5)
     assert all(store.conn.closed == 1 for store in backend.stores)
+
+
+# --- cli ---
+
+
+def test_cli_mcp_serves_until_eof(monkeypatch):
+    calls = []
+
+    def fake_search_pointers(text, scope, k):
+        calls.append((text, scope, k))
+        return [POINTER_A, POINTER_B]
+
+    monkeypatch.setattr("engram.mcp_server.search_pointers", fake_search_pointers)
+    lines = [
+        _request("initialize", {"protocolVersion": "2025-03-26"}, request_id="init"),
+        _call({"query": "cli seam", "scope": "repo", "k": 2}, request_id=2),
+    ]
+    stdin = io.StringIO("".join(f"{json.dumps(line)}\n" for line in lines))
+    stdout = io.StringIO()
+    monkeypatch.setattr("sys.stdin", stdin)
+    monkeypatch.setattr("sys.stdout", stdout)
+
+    assert cli.main(["mcp"]) == 0
+
+    output = stdout.getvalue()
+    assert output.endswith("\n")
+    replies = _replies(output)
+    assert len(replies) == 2
+    assert replies[0]["id"] == "init"
+    assert replies[0]["result"]["serverInfo"]["name"] == "engram"
+    assert replies[0]["result"]["protocolVersion"] == "2025-03-26"
+    assert replies[1] == {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "result": {
+            "content": [
+                {"type": "text", "text": "\n".join([LINE_A, LINE_B, POINTER_B.body])},
+            ],
+            "isError": False,
+        },
+    }
+    assert calls == [("cli seam", "repo", 2)]
+
+    empty_out = io.StringIO()
+    monkeypatch.setattr("sys.stdin", io.StringIO(""))
+    monkeypatch.setattr("sys.stdout", empty_out)
+    assert cli.main(["mcp"]) == 0
+    assert empty_out.getvalue() == ""
+    assert calls == [("cli seam", "repo", 2)]

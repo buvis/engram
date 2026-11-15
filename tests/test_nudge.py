@@ -5,7 +5,7 @@ import shlex
 
 import pytest
 
-from engram import nudge
+from engram import cli, nudge
 from engram.client import EmbeddingServerError
 from engram.query import Pointer
 
@@ -752,3 +752,48 @@ def test_rejects_unknown_host(host) -> None:
     assert nudge.HOSTS == ("claude", "codex", "copilot", "plain")
     with pytest.raises(ValueError):
         nudge.format_nudge(host, "foo", POINTERS)
+
+
+# cli
+
+
+def test_cli_nudge_dispatches_with_host(repos, search, monkeypatch) -> None:
+    repo, other = repos
+    monkeypatch.delenv("ENGRAM_NUDGE", raising=False)
+    monkeypatch.delenv("ENGRAM_PACK_FILE", raising=False)
+    payload = json.dumps(
+        {"toolArgs": {"command": f"rg foo {q(other)}"}, "cwd": str(repo)},
+    )
+
+    def call(host: str) -> tuple[int, str, str]:
+        stdout, stderr = io.StringIO(), io.StringIO()
+        monkeypatch.setattr("sys.stdin", io.StringIO(payload))
+        monkeypatch.setattr("sys.stdout", stdout)
+        monkeypatch.setattr("sys.stderr", stderr)
+        return cli.main(["nudge", host]), stdout.getvalue(), stderr.getvalue()
+
+    code, out, err = call("copilot")
+    assert (code, err) == (0, "")
+    assert out.endswith("\n")
+    assert out.count("\n") == 1
+    assert json.loads(out) == {"additionalContext": expected_text("foo", POINTERS)}
+    assert search.calls == [("foo", "portfolio", 3)]
+
+    assert call("plain") == (0, expected_text("foo", POINTERS) + "\n", "")
+    assert len(search.calls) == 2
+
+    search.error = EmbeddingServerError("embedding unavailable")
+    code, out, err = call("copilot")
+    assert (code, out) == (0, "")
+    assert err.startswith("engram nudge: query failed:")
+    assert "embedding unavailable" in err
+    search.error = None
+
+    monkeypatch.setenv("ENGRAM_NUDGE", "off")
+    assert call("copilot") == (0, "", "")
+    assert len(search.calls) == 3
+
+    with pytest.raises(SystemExit) as excinfo:
+        call("copilots")
+    assert excinfo.value.code == 2
+    assert len(search.calls) == 3
