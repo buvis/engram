@@ -28,7 +28,11 @@ EXPECTED_TOOL = {
         "type": "object",
         "properties": {
             "query": {"type": "string", "description": "Question in plain words"},
-            "scope": {"type": "string", "enum": ["repo", "portfolio"], "default": "portfolio"},
+            "scope": {
+                "type": "string",
+                "enum": ["repo", "portfolio"],
+                "default": "portfolio",
+            },
             "k": {"type": "integer", "minimum": 1, "maximum": 20, "default": 5},
         },
         "required": ["query"],
@@ -40,7 +44,7 @@ POINTER_A = Pointer(
     score=0.98765,
     path="notes/alpha.md",
     line_start=10,
-    line_end=14,
+    line_end=11,
     heading="Alpha Section",
     corpus="docs",
     repo="repoA",
@@ -56,7 +60,7 @@ POINTER_B = Pointer(
     repo="repoB",
     body="stored finding body text",
 )
-LINE_A = "1\t0.9877\tnotes/alpha.md:10-14\tAlpha Section"
+LINE_A = "1\t0.9877\tnotes/alpha.md:10-11\tAlpha Section"
 LINE_B = "2\t0.5000\tfindings/finding-2.md:1-5\tBeta Finding"
 
 
@@ -176,9 +180,10 @@ def test_tools_list_returns_the_engram_query_tool():
 
 def test_tools_call_returns_query_lines():
     search = _RecordingSearch([[POINTER_A, POINTER_B], [POINTER_B], []])
+    long_query = "  Why SQLite? " + "x" * 60
 
     first = mcp_server.handle_mcp_message(
-        _call({"query": "why sqlite", "scope": "repo", "k": 3}, request_id=11),
+        _call({"query": long_query, "scope": "repo", "k": 3}, request_id=11),
         search=search,
     )
     second = mcp_server.handle_mcp_message(
@@ -194,7 +199,9 @@ def test_tools_call_returns_query_lines():
         "jsonrpc": "2.0",
         "id": 11,
         "result": {
-            "content": [{"type": "text", "text": "\n".join([LINE_A, LINE_B, POINTER_B.body])}],
+            "content": [
+                {"type": "text", "text": "\n".join([LINE_A, LINE_B, POINTER_B.body])}
+            ],
             "isError": False,
         },
     }
@@ -208,7 +215,7 @@ def test_tools_call_returns_query_lines():
         "isError": False,
     }
     assert search.calls == [
-        ("why sqlite", "repo", 3),
+        (long_query, "repo", 3),
         ("where is the indexer", "portfolio", 5),
         ("nothing matches", "portfolio", 20),
     ]
@@ -226,6 +233,21 @@ def test_format_pointer_lines_adds_body_line_only_when_body_present():
         LINE_A,
     ]
     assert mcp_server.format_pointer_lines([]) == []
+    empty_body = Pointer(
+        rank=3,
+        score=0.25,
+        path="notes/gamma.md",
+        line_start=7,
+        line_end=7,
+        heading="Gamma",
+        corpus="docs",
+        repo="repoC",
+        body="",
+    )
+    assert mcp_server.format_pointer_lines([empty_body]) == [
+        "3\t0.2500\tnotes/gamma.md:7-7\tGamma",
+        "",
+    ]
 
 
 def test_run_query_tool_ignores_unknown_extra_keys():
@@ -307,7 +329,7 @@ def test_run_query_tool_rejects_non_object_arguments_without_searching(arguments
     assert result["content"][0]["text"].startswith("invalid arguments: ")
 
 
-@pytest.mark.parametrize("k", [1, 20])
+@pytest.mark.parametrize("k", range(1, 21))
 def test_run_query_tool_accepts_k_at_range_bounds(k):
     search = _RecordingSearch([[POINTER_A]])
 
@@ -323,7 +345,9 @@ def test_run_query_tool_accepts_k_at_range_bounds(k):
 @pytest.mark.parametrize(
     "error",
     [
-        mcp_server.RepoScopeError("not inside a registered repo; use scope portfolio instead"),
+        mcp_server.RepoScopeError(
+            "not inside a registered repo; use scope portfolio instead"
+        ),
         EmbeddingServerError("embedding server unreachable"),
         EmbeddingPreflightError("llama-server binary missing"),
         EmbeddingModelIdentityError("model id mismatch"),
@@ -333,15 +357,22 @@ def test_run_query_tool_accepts_k_at_range_bounds(k):
     ],
 )
 def test_run_query_tool_reports_search_failure_as_is_error(error):
-    result = mcp_server.run_query_tool({"query": "boom"}, search=_RecordingSearch([error]))
+    result = mcp_server.run_query_tool(
+        {"query": "boom"}, search=_RecordingSearch([error])
+    )
 
-    assert result == {"content": [{"type": "text", "text": str(error)}], "isError": True}
+    assert result == {
+        "content": [{"type": "text", "text": str(error)}],
+        "isError": True,
+    }
 
 
 def test_store_model_mismatch_error_text_names_rebuild_command():
     error = StoreModelMismatchError("store built with model-a, config uses model-b")
 
-    result = mcp_server.run_query_tool({"query": "boom"}, search=_RecordingSearch([error]))
+    result = mcp_server.run_query_tool(
+        {"query": "boom"}, search=_RecordingSearch([error])
+    )
 
     assert result == {
         "content": [
@@ -357,26 +388,42 @@ def test_store_model_mismatch_error_text_names_rebuild_command():
     }
 
 
-def test_unexpected_search_exception_returns_32603_internal_error():
+@pytest.mark.parametrize(
+    "error",
+    [
+        RuntimeError("unexpected crash"),
+        TypeError("bad operand"),
+        KeyError("missing_key"),
+        AttributeError("no attribute 'vec'"),
+    ],
+)
+def test_unexpected_search_exception_returns_32603_internal_error(error):
     reply = mcp_server.handle_mcp_message(
         _call({"query": "boom"}, request_id=4),
-        search=_RecordingSearch([RuntimeError("unexpected crash")]),
+        search=_RecordingSearch([error]),
     )
 
-    assert reply["jsonrpc"] == "2.0"
-    assert reply["id"] == 4
-    assert "result" not in reply
-    assert reply["error"]["code"] == -32603
-    assert reply["error"]["message"].startswith("internal error: ")
+    assert reply == {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "error": {
+            "code": -32603,
+            "message": f"internal error: {type(error).__name__}: {error}",
+        },
+    }
 
 
 def test_query_failure_sets_is_error_and_keeps_serving():
-    search = _RecordingSearch([EmbeddingServerError("embedding server down"), [POINTER_A]])
+    search = _RecordingSearch(
+        [EmbeddingServerError("embedding server down"), [POINTER_A]]
+    )
 
     exit_code, output = _serve(
         [
             json.dumps(_call({"query": "first try"}, request_id=1)),
-            json.dumps(_call({"query": "second try", "scope": "repo", "k": 4}, request_id=2)),
+            json.dumps(
+                _call({"query": "second try", "scope": "repo", "k": 4}, request_id=2)
+            ),
         ],
         search=search,
     )
@@ -407,7 +454,9 @@ def test_query_failure_sets_is_error_and_keeps_serving():
 @pytest.mark.parametrize("name", ["engram_querys", "other_tool"])
 def test_unknown_tool_returns_32602_naming_the_tool(name):
     reply = mcp_server.handle_mcp_message(
-        _request("tools/call", {"name": name, "arguments": {"query": "x"}}, request_id=8),
+        _request(
+            "tools/call", {"name": name, "arguments": {"query": "x"}}, request_id=8
+        ),
         search=_refuse_search,
     )
 
@@ -454,7 +503,9 @@ def test_notification_gets_no_reply():
     assert mcp_server.handle_mcp_message(initialized, search=_refuse_search) is None
     assert mcp_server.handle_mcp_message(call_without_id, search=_refuse_search) is None
     assert (
-        mcp_server.handle_mcp_message({"jsonrpc": "2.0", "method": "ping"}, search=_refuse_search)
+        mcp_server.handle_mcp_message(
+            {"jsonrpc": "2.0", "method": "ping"}, search=_refuse_search
+        )
         is None
     )
 
@@ -468,7 +519,11 @@ def test_notification_gets_no_reply():
 
 
 def test_invalid_json_returns_32700():
-    parse_error = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "parse error"}}
+    parse_error = {
+        "jsonrpc": "2.0",
+        "id": None,
+        "error": {"code": -32700, "message": "parse error"},
+    }
     deeply_nested = "[" * 200000 + "]" * 200000
 
     exit_code, output = _serve(
@@ -505,6 +560,34 @@ def test_serve_mcp_replies_once_per_request_in_input_order():
     assert [reply["id"] for reply in _replies(output)] == ["b", "a", 3]
 
 
+def test_malformed_request_gets_error_reply_and_serving_continues():
+    exit_code, output = _serve(
+        [
+            json.dumps({"jsonrpc": "2.0", "id": 1}),
+            json.dumps(
+                {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": []}
+            ),
+            json.dumps(_request("ping", request_id=3)),
+        ],
+        search=_refuse_search,
+    )
+
+    assert exit_code == 0
+    assert _replies(output) == [
+        {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "error": {"code": -32601, "message": "method not found"},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 2,
+            "error": {"code": -32602, "message": "unknown tool: None"},
+        },
+        {"jsonrpc": "2.0", "id": 3, "result": {}},
+    ]
+
+
 def test_serve_mcp_returns_zero_on_empty_input():
     stdout = io.StringIO()
 
@@ -528,27 +611,39 @@ class _FakeStore:
         self.conn = _FakeConn()
 
 
+class _Backend:
+    def __init__(self, repos_csv):
+        self.config = object()
+        self.stores = []
+        self.resolve_calls = []
+        self.load_config_calls = []
+        self.open_store_calls = []
+        self.repos_csv = repos_csv
+
+
 def _patch_backend(monkeypatch, tmp_path, query_impl, repo_name):
-    config = object()
-    stores = []
-    resolve_calls = []
-    repos_csv = tmp_path / "gita" / "repos.csv"
+    backend = _Backend(tmp_path / "gita" / "repos.csv")
+
+    def fake_load_config(*args, **kwargs):
+        backend.load_config_calls.append((args, kwargs))
+        return backend.config
 
     def fake_open_store(*args, **kwargs):
+        backend.open_store_calls.append((args, kwargs))
         store = _FakeStore()
-        stores.append(store)
+        backend.stores.append(store)
         return store
 
     def fake_resolve(path, repos_csv=None):
-        resolve_calls.append((path, repos_csv))
+        backend.resolve_calls.append((path, repos_csv))
         return repo_name
 
-    monkeypatch.setattr("engram.mcp_server.load_config", lambda *a, **k: config)
+    monkeypatch.setattr("engram.mcp_server.load_config", fake_load_config)
     monkeypatch.setattr("engram.mcp_server.open_store", fake_open_store)
     monkeypatch.setattr("engram.mcp_server.query", query_impl)
     monkeypatch.setattr("engram.mcp_server._resolve_repo_for_path", fake_resolve)
-    monkeypatch.setattr("engram.mcp_server.GITA_REPOS_CSV", repos_csv)
-    return config, stores, resolve_calls, repos_csv
+    monkeypatch.setattr("engram.mcp_server.GITA_REPOS_CSV", backend.repos_csv)
+    return backend
 
 
 def test_search_pointers_queries_store_with_scope_and_k_then_closes_connection(
@@ -558,13 +653,11 @@ def test_search_pointers_queries_store_with_scope_and_k_then_closes_connection(
     query_calls = []
     hits = [POINTER_A, POINTER_B]
 
-    def fake_query(store, config, text, scope, corpus=None, k=5, **kwargs):
-        query_calls.append((store, config, text, scope, k))
+    def fake_query(*args, **kwargs):
+        query_calls.append((args, kwargs))
         return hits
 
-    config, stores, resolve_calls, repos_csv = _patch_backend(
-        monkeypatch, tmp_path, fake_query, "repoB"
-    )
+    backend = _patch_backend(monkeypatch, tmp_path, fake_query, "repoB")
     workdir = tmp_path / "work"
     workdir.mkdir()
     monkeypatch.chdir(workdir)
@@ -574,13 +667,20 @@ def test_search_pointers_queries_store_with_scope_and_k_then_closes_connection(
 
     assert portfolio == hits
     assert repo == hits
+    stores, config = backend.stores, backend.config
     assert len(stores) == 2
     assert [store.conn.closed for store in stores] == [1, 1]
+    assert backend.open_store_calls == [((), {}), ((), {})]
+    assert backend.load_config_calls
+    assert all(call == ((), {}) for call in backend.load_config_calls)
     assert query_calls == [
-        (stores[0], config, "portfolio question", Scope("portfolio", None), 7),
-        (stores[1], config, "repo question", Scope("repo", "repoB"), 2),
+        (
+            (stores[0], config, "portfolio question", Scope("portfolio", None)),
+            {"k": 7},
+        ),
+        ((stores[1], config, "repo question", Scope("repo", "repoB")), {"k": 2}),
     ]
-    assert resolve_calls == [(Path.cwd() / "_", repos_csv)]
+    assert backend.resolve_calls == [(Path.cwd() / "_", backend.repos_csv)]
 
 
 def test_search_pointers_closes_connection_and_propagates_query_error(
@@ -592,14 +692,14 @@ def test_search_pointers_closes_connection_and_propagates_query_error(
     def failing_query(*args, **kwargs):
         raise error
 
-    _, stores, _, _ = _patch_backend(monkeypatch, tmp_path, failing_query, "repoA")
+    backend = _patch_backend(monkeypatch, tmp_path, failing_query, "repoA")
 
     with pytest.raises(EmbeddingServerError) as exc_info:
         mcp_server.search_pointers("q", "portfolio", 5)
 
     assert exc_info.value is error
-    assert len(stores) == 1
-    assert stores[0].conn.closed == 1
+    assert len(backend.stores) == 1
+    assert backend.stores[0].conn.closed == 1
 
 
 @pytest.mark.parametrize("csv_exists", [False, True])
@@ -608,9 +708,8 @@ def test_unresolvable_repo_scope_returns_is_error_through_run_query_tool(
     tmp_path,
     csv_exists,
 ):
-    _, _, resolve_calls, repos_csv = _patch_backend(
-        monkeypatch, tmp_path, _refuse_search, None
-    )
+    backend = _patch_backend(monkeypatch, tmp_path, _refuse_search, None)
+    repos_csv = backend.repos_csv
     if csv_exists:
         repos_csv.parent.mkdir(parents=True)
         repos_csv.write_text(f"{tmp_path / 'elsewhere'},elsewhere\n")
@@ -621,6 +720,7 @@ def test_unresolvable_repo_scope_returns_is_error_through_run_query_tool(
     result = mcp_server.run_query_tool({"query": "where", "scope": "repo"})
 
     assert result == {"content": [{"type": "text", "text": expected}], "isError": True}
-    assert len(resolve_calls) == 1
+    assert len(backend.resolve_calls) == 1
     with pytest.raises(mcp_server.RepoScopeError):
         mcp_server.search_pointers("where", "repo", 5)
+    assert all(store.conn.closed == 1 for store in backend.stores)
