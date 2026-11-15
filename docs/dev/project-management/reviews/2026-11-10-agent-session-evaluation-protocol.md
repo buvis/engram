@@ -60,7 +60,7 @@ protocol (same ports, read-only indexes, production untouched).
 
 ## Decision this feeds
 
-Adoption decision: fix retrieval first (measured top-3 file hit rate 41.7%, 10 of 24, 95% Wilson interval 24% to 61%)
+Adoption decision: proceed (judged top-3 relevance 81.8%, 36 of 44, 95% Wilson interval 68% to 90%; user spot check 2026-11-15, 0 of 10 differences)
 
 The line above is machine-read: PRD 00012's `eligibility` check passes only
 when it reads `Adoption decision: proceed`. Change it when scoring is reported,
@@ -296,10 +296,9 @@ sets the adoption decision. The first set stays as development data.
 
 ## Second set results (2026-11-13)
 
-Result: **production passes the judged measure, pending the user's spot
-check**. 36 of 44 questions have a useful hit in the top 3 (81.8%, 95% Wilson
-interval 68% to 90%). The bar is 60% with a lower bound above 50%. The
-`Adoption decision:` line is unchanged until the spot check is done.
+Result: **production passes the judged measure, and the spot check confirmed
+it (2026-11-15)**. 36 of 44 questions have a useful hit in the top 3 (81.8%,
+95% Wilson interval 68% to 90%). The bar is 60% with a lower bound above 50%.
 
 | Metric | Value |
 |---|---|
@@ -330,6 +329,26 @@ interval 68% to 90%). The bar is 60% with a lower bound above 50%. The
 - **Spot check.** `eval.agent_session_relevance spot` writes the 10 seeded
   questions to the private `spot-check.md`. All 10 drawn are judged passes, so
   the check tests leniency, not strictness.
+
+### Spot check (2026-11-15)
+
+The user reviewed the 10 seeded questions (R8, R14, R16, R23, R25, R28, R33,
+R39, R40, R44) one by one and agreed with the judge on all 10. Zero
+differences, so the judged result stands and the adoption line now reads
+`proceed`. The line's earlier value was `fix retrieval first` (first set,
+exact-file match, 10 of 24).
+
+Noted during the check, for whoever reads the result later:
+
+- Four of the ten pass because a settled file is in the top 3 (R8, R14, R25,
+  R28). That is the rule, and in R14 the file does not clearly answer the
+  question.
+- Three passes rest on PRD or findings text that may postdate the question
+  (R16, R23, R33); two more show code that the session may itself have written
+  afterwards (R25, R40). The leak-sensitivity case above covers the first kind
+  only.
+- Most passes answer part of a multi-part question. "Useful" here means a
+  real pointer, not a complete answer.
 
 Method: `eval/agent_session_mine.py` (bursts), `eval/agent_session_relevance.py`
 (assemble, hits, score, spot). Question, pool and config hashes are in the

@@ -671,3 +671,18 @@ configuration and index were not changed.
 Next: user spot check. On a pass, set the adoption line and run PRD 00012
 through autopilot. Intake 00013 fixes (module-level chunks, OR lexical) stay
 worthwhile but no longer block adoption.
+
+## Adoption gate open (2026-11-15)
+
+The user spot-checked the 10 seeded questions and agreed with the judge on all
+10. The protocol now reads `Adoption decision: proceed`, so PRD 00012's
+`eligibility` check passes and the backlog can drain. The 2026-11-09 plan is
+fully executed and was removed; its outcomes are in the sections above.
+
+Caveats recorded in the protocol's "Spot check" section: several passes rest on
+the settled-file rule or on text that may postdate the question, and most hits
+answer part of a question. Watch real nudge usage after 00012 ships.
+
+Next: run PRD 00012 with `/autopilot:run-autopilot`. Then agent-plugins PRD
+00067 (eligible once `engram nudge --help` works) and intake 00066. Intakes
+00008, 00009 and 00013 remain unprocessed.
