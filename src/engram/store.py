@@ -528,9 +528,10 @@ class Store:
         values = [name, name] if prefix else [name]
         rows = self.conn.execute(
             "SELECT corpus, repo, doc_type, path, heading, body, line_start, "
-            f"line_end, content_hash, chunk_ordinal FROM chunks WHERE {where} AND {match} "
+            f"line_end, content_hash, chunk_ordinal FROM chunks WHERE {where} "
+            f"AND doc_type != ? AND {match} "
             "ORDER BY path, chunk_ordinal",
-            [*params, *values],
+            [*params, MODULE_CONTEXT_DOC_TYPE, *values],
         ).fetchall()
         if not rows and not prefix:
             return self.lookup_by_name(name, scope, prefix=True)
