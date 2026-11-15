@@ -30,12 +30,15 @@ Updated: 2026-11-10, after Session 7 was redefined around agent sessions.
 ## Active Work
 
 ### Batch 202611151147
-- [ ] 00012-agent-recall-surfaces-v1 (wip, build: catchup done 2026-11-15)
+- [x] 00012-agent-recall-surfaces-v1 (1 cycle)
 
-00012 adds `engram mcp` (stdlib JSON-RPC stdio server, `engram_query` tool)
-and `engram nudge <host>` (post-tool hook: broad-search detection, top-3
-recall). Reference spike: `spikes/engram-plugin/` (delete when 00012 lands).
-Consumer: agent-plugins PRD 00067, eligible once `engram nudge --help` works.
+Observations: 00012 shipped `engram mcp` (stdlib JSON-RPC stdio server,
+`engram_query` tool) and `engram nudge <host>` (post-tool hook: broad-search
+detection, top-3 recall); `mcp_server.py` owns `search_pointers` and
+`format_pointer_lines`, shared with `engram query`, and `nudge.py` imports
+`mcp_server`. Cycle 1 added a missing-test fix for invalid-UTF-8 stdin
+recovery on the `mcp` branch. Consumer: agent-plugins PRD 00067, eligible now
+that `engram nudge --help` works.
 
 ### Batch 202611100725 (closed)
 - [x] 00010-repo-memory-corpus-v1 (2 cycles)
