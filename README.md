@@ -123,7 +123,7 @@ engram index --reembed-code             # refresh code vectors in place
 engram status --scope portfolio         # per-corpus counts, stale and dead rows
 engram lookup --name stop_served --scope portfolio  # exact name, then prefix
 engram lookup --name stop_served --scope portfolio --repo engram
-engram lookup --file src/engram/client.py # symbols in source order
+engram lookup --file src/engram/client.py # symbols, then module context
 engram query --scope repo "retry a flaky embedding server"
 engram query --scope portfolio --corpus findings -k 10 "token budget overflow"
 engram harvest docs/dev/project-management/reviews/00003-audit.md
@@ -165,6 +165,17 @@ Anonymous symbols inside named ancestors remain in their parent's body;
 top-level anonymous symbols emitted by the parser get an explicit label.
 The next code index prunes exclusions and migrates old `None` headings once.
 `status` reports excluded files separately from files without a grammar.
+
+Code outside parsed symbols (imports, constants, top-level statements) is
+indexed as `Module context` chunks. They appear when a file is first indexed or
+its content changes. The index keeps the old chunks of unchanged files,
+including files cached as empty. There is no automatic migration, and
+`--reembed-code` only refreshes vectors of existing chunks, so it does not find
+missing spans. A backfill is a separate, explicit operation. The one exception is the
+`None`-heading migration: it re-chunks an unchanged file once and so adds its
+context then. `engram lookup --name` returns symbols only; `lookup --file` and
+`query` include context. Data and doc files with no symbols (Markdown, JSON,
+YAML, TOML and the like) stay out of the code corpus.
 
 `status` exits 1 for degraded stale files, dead rows, or unavailable required
 sources. Recently modified stale transcripts are reported as `in-flight` and

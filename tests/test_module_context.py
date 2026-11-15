@@ -1,9 +1,13 @@
+from functools import partial
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
-from engram import store, symbols
-from engram.client import Vector
+from engram import corpora, store, symbols
+from engram.client import EmbeddingEntry, EngramConfig, Vector
+from engram.corpora import CorpusFile
+from engram.indexer import index
 from engram.store import Chunk, ChunkWithVector, Scope, open_store
 
 
@@ -685,3 +689,110 @@ def test_lookup_respects_repository_scope_for_symbols_and_context(db):
     assert [h.chunk for h in db.search_bm25("wombat", repo_b, "code", 10)] == [b_ctx]
     both = db.search_bm25("wombat", PORTFOLIO, "code", 10)
     assert sorted(h.chunk.repo for h in both) == ["a", "b"]
+
+
+# --- index(): incremental runs add, keep, replace and prune context rows ---
+
+
+def _service(path, word):
+    body = "def run():\n    return os.sep"
+    path.write_text(f'import os\n\nMODE = "{word}"\n\n\n{body}\n')
+    h = corpora.hash_source(path)
+    return [
+        _sym(path, "function", "Function run", body, 6, 7, 1, "repo", h),
+        _ctx(path, f'import os\n\nMODE = "{word}"', 1, 3, 2, "repo", h),
+    ]
+
+
+def _hits(db, word):
+    return [hit.chunk for hit in db.search_bm25(word, PORTFOLIO, "code", 5)]
+
+
+@pytest.fixture
+def idx(db, tmp_path, monkeypatch):
+    files, calls = [CorpusFile("code", "repo", tmp_path / "service.py")], []
+    entry = EmbeddingEntry(id="test", endpoint="http://127.0.0.1:8081/v1")
+    config = EngramConfig([entry], None, tmp_path / "config.toml")
+    monkeypatch.setattr(corpora, "missing_dirs", [])
+    monkeypatch.setattr("engram.indexer.enumerate_corpora", lambda: iter(()))
+    monkeypatch.setattr("engram.indexer.transcripts.enumerate", lambda: iter(()))
+    monkeypatch.setattr(symbols, "enumerate", lambda **kwargs: iter(files))
+
+    def fake_embed(texts, entry):
+        calls.append(list(texts))
+        return [Vector([1.0, 0.0], entry.id, 2) for _ in texts]
+
+    monkeypatch.setattr("engram.indexer.embed", fake_embed)
+    run = partial(index, db, config, PORTFOLIO)
+    return SimpleNamespace(path=files[0].path, files=files, calls=calls, run=run)
+
+
+def test_index_adds_searchable_context_rows_for_new_file(db, idx):
+    rows = _service(idx.path, "marmot")
+    report = idx.run()
+    assert db.lookup_by_path(str(idx.path)) == rows
+    assert _hits(db, "marmot") == [rows[1]]
+    assert (report.chunks_added, len(idx.calls)) == (2, 1)
+
+
+def test_index_keeps_unchanged_file_rows_without_embedding(db, idx):
+    rows = _service(idx.path, "marmot")
+    idx.run()
+    report = idx.run()
+    assert (report.chunks_added, report.chunks_pruned, len(idx.calls)) == (0, 0, 1)
+    assert db.lookup_by_path(str(idx.path)) == rows
+
+
+def test_index_skips_cached_empty_file_until_its_content_changes(db, idx, monkeypatch):
+    idx.path.write_text("import os\nimport sys\n")
+    empty = ("code", "repo", str(idx.path), corpora.hash_source(idx.path))
+    db.mark_empty_source(*empty)
+    with monkeypatch.context() as m:
+        m.setattr(symbols, "process", None)  # any parse attempt raises TypeError
+        report = idx.run()
+    assert (report.chunks_added, report.failed_sources, idx.calls) == (0, [], [])
+    assert db.lookup_by_path(str(idx.path)) == []
+    assert db.known_empty_sources_by_corpus(PORTFOLIO, "code") == {empty}
+    idx.path.write_text("import json\nRETRY = 'badger'\n")
+    h = corpora.hash_source(idx.path)
+    report = idx.run()
+    ctx = _ctx(idx.path, "import json\nRETRY = 'badger'", 1, 2, 1, "repo", h)
+    assert db.lookup_by_path(str(idx.path)) == [ctx]
+    assert db.known_empty_sources_by_corpus(PORTFOLIO, "code") == set()
+    assert (report.chunks_added, len(idx.calls)) == (1, 1)
+
+
+def test_index_replaces_rows_of_changed_file_and_prunes_old_hash(db, idx):
+    _service(idx.path, "marmot")
+    idx.run()
+    rows = _service(idx.path, "ocelot")
+    report = idx.run()
+    assert db.lookup_by_path(str(idx.path)) == rows
+    assert (report.chunks_added, report.chunks_pruned) == (2, 2)
+    assert (_hits(db, "marmot"), _hits(db, "ocelot")) == ([], [rows[1]])
+
+
+def test_index_prunes_all_rows_of_deleted_file(db, idx):
+    _service(idx.path, "marmot")
+    idx.run()
+    idx.files.clear()
+    idx.path.unlink()
+    report = idx.run()
+    assert (db.lookup_by_path(str(idx.path)), _hits(db, "marmot")) == ([], [])
+    assert (report.chunks_pruned, report.chunks_added) == (2, 0)
+
+
+def test_index_retains_rows_when_changed_file_fails_then_retries(db, idx, monkeypatch):
+    old = _service(idx.path, "marmot")
+    idx.run()
+    new = _service(idx.path, "ocelot")
+    with monkeypatch.context() as m:
+        m.setattr(symbols, "process", None)  # the parser raises TypeError
+        failed = idx.run()
+    assert (failed.failed_sources, failed.chunks_pruned) == ([str(idx.path)], 0)
+    assert db.lookup_by_path(str(idx.path)) == old
+    assert db.known_empty_sources_by_corpus(PORTFOLIO, "code") == set()
+    retried = idx.run()
+    assert db.lookup_by_path(str(idx.path)) == new
+    assert (retried.chunks_added, retried.chunks_pruned, len(idx.calls)) == (2, 2, 2)
+
