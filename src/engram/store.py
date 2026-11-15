@@ -12,6 +12,10 @@ import sqlite_vec
 from engram.client import Vector, load_corpus_settings
 
 DEFAULT_DB_PATH = Path.home() / ".local" / "share" / "engram" / "engram.db"
+# Reserved doc type for source text outside emitted symbol spans. Not a
+# symbol: Store.lookup_by_name excludes it. A parser kind "module" is a
+# different value and stays a symbol.
+MODULE_CONTEXT_DOC_TYPE = "module_context"
 
 
 @dataclass(frozen=True)

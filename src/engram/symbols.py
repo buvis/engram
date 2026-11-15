@@ -17,7 +17,29 @@ from tree_sitter_language_pack import (
 from engram import corpora
 from engram.client import load_corpus_settings
 from engram.corpora import GITA_REPOS_CSV, CorpusFile
-from engram.store import Chunk
+from engram.store import MODULE_CONTEXT_DOC_TYPE, Chunk
+
+MODULE_CONTEXT_HEADING = "Module context"
+# Languages whose symbol-less files still get context. Data and doc grammars
+# (markdown, json, yaml, ...) are left out: they would index whole files.
+CONTEXT_LANGUAGES = frozenset(
+    {
+        "python",
+        "javascript",
+        "typescript",
+        "tsx",
+        "rust",
+        "go",
+        "c",
+        "cpp",
+        "arduino",
+        "swift",
+        "kotlin",
+        "lua",
+        "bash",
+        "batch",
+    }
+)
 
 skipped_files: list[str] = []
 excluded_files: list[str] = []
@@ -122,7 +144,48 @@ def chunk(path: Path, repo: str, content_hash: str) -> list[Chunk]:
 
     _walk(result.structure)
 
-    return chunks
+    if not chunks and language not in CONTEXT_LANGUAGES:
+        return []
+    return chunks + _context_chunks(lines, chunks, path, repo, content_hash)
+
+
+def _context_chunks(
+    lines: list[str], chunks: list[Chunk], path: Path, repo: str, content_hash: str
+) -> list[Chunk]:
+    """Chunks for the source lines no emitted symbol chunk covers."""
+    covered = {n for c in chunks for n in range(c.line_start, c.line_end + 1)}
+    runs: list[list[int]] = []
+    for n in range(1, len(lines) + 1):
+        if n in covered:
+            continue
+        if runs and runs[-1][-1] == n - 1:
+            runs[-1].append(n)
+        else:
+            runs.append([n])
+
+    context: list[Chunk] = []
+    ordinal = chunks[-1].chunk_ordinal + 1 if chunks else 1
+    for run in runs:
+        kept = [n for n in run if lines[n - 1].strip()]
+        if not kept:
+            continue
+        first, last = kept[0], kept[-1]
+        context.append(
+            Chunk(
+                corpus="code",
+                repo=repo,
+                doc_type=MODULE_CONTEXT_DOC_TYPE,
+                path=str(path),
+                heading=MODULE_CONTEXT_HEADING,
+                body="\n".join(lines[first - 1 : last]),
+                line_start=first,
+                line_end=last,
+                content_hash=content_hash,
+                chunk_ordinal=ordinal,
+            ),
+        )
+        ordinal += 1
+    return context
 
 
 def count_skipped(repos_csv: Path = GITA_REPOS_CSV) -> int:
