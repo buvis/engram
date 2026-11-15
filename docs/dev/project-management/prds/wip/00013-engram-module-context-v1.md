@@ -48,8 +48,17 @@ Add source context without duplicating emitted symbols.
   module_context, heading Module context, and the same repo/path/content hash.
   Append runs in source order with ordinals after the last existing ordinal
   (start at 1 if none). Existing chunks remain field-for-field unchanged.
-  A supported nonblank file with no symbols follows the same gap rule. No new
-  size splitting or embedding budget is introduced; existing limits still apply.
+  A nonblank file with no symbols follows the same gap rule only when its
+  detected language is a programming language on a fixed allowlist (python,
+  javascript, typescript, tsx, rust, go, c, cpp, arduino, swift, kotlin, lua,
+  bash, batch: the languages whose parser emits symbols in the portfolio).
+  A symbol-less file in any other grammar (markdown, json, yaml, toml,
+  terraform, html, css and the like) emits no chunks, as today. A file with at
+  least one emitted symbol always gets gap context, whatever its language.
+  (User decision 2026-11-15, design review: the unrestricted rule would index
+  every data and doc file whole, 1.9 MB in this repo alone, and duplicate
+  markdown into the code corpus.) No new size splitting or embedding budget is
+  introduced; existing limits still apply.
 
 #### Feature: Preserve parsing boundaries
 - **Description**: Do not turn failed or unsupported parsing into success.
@@ -133,8 +142,9 @@ README.md                       # Rollout limits
 **Tasks**:
 - [ ] Implement gap chunks and additive fixture tests (no deps). Acceptance:
   `.venv/bin/python -m pytest -q tests/test_module_context.py -k chunk` passes
-  non-vacuously with preamble/interstitial/tail, no-symbol, nested/overlapping,
-  whitespace and non-ASCII cases. Compare original symbol chunks exactly.
+  non-vacuously with preamble/interstitial/tail, no-symbol (allowlisted language
+  gains context, a symbol-less json and markdown file stay empty),
+  nested/overlapping, whitespace and non-ASCII cases. Compare original symbol chunks exactly.
   `.venv/bin/python -m pytest -q tests/test_symbols.py` also passes unchanged.
 
 **Exit Criteria**: Exact source slices cover every uncovered nonblank fixture

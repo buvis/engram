@@ -1,6 +1,6 @@
 # Project Capsule: engram
 
-Updated: 2026-11-15, after intake triage. Later dated entries supersede historical state below.
+Updated: 2026-11-15, catchup for PRD 00013. Later dated entries supersede historical state below.
 
 ## Key Invariants
 
@@ -28,6 +28,15 @@ Updated: 2026-11-15, after intake triage. Later dated entries supersede historic
 - `harness.py`, `eval/`: candidate scoring, gold set, and rg baseline.
 
 ## Active Work
+
+### Batch 202611152106
+- [ ] 00013-engram-module-context-v1 (in wip, build started 2026-11-15)
+
+Build notes: `symbols.chunk` is the single emit site (one `_walk` over
+`result.structure`, zero-based inclusive `item.span`); gap chunks append after
+it. Nested items emit overlapping spans, so coverage is a union, not a sum.
+`Store.lookup_by_name` is the only place the reserved `module_context`
+doc type must be filtered; a parser kind `module` stays a symbol.
 
 ### Intake triage (2026-11-15)
 
@@ -167,17 +176,17 @@ See the follow-up note for scope, evidence, and the unchanged `0644` file mode.
 
 ## Related context
 
-Topic (2026-11-15, PRD 00012): "Agent recall surfaces engram mcp and engram
-nudge". Repo hits are only the PRD itself (`prds/wip/00012-...md` 7-12,
-140-153, 178-185, 29-41, 118-137; top 0.0328). Portfolio adds
-`agent-plugins/.../prds/backlog/00067-engram-plugin-v1.md:7-15` (0.0161), the
-consumer PRD whose hook files call these commands. Reuse targets known
-directly: `spikes/engram-plugin/` (MCP loop, nudge core) and the `query()`
-call shape in `src/engram/cli.py`.
+Topic (2026-11-15, PRD 00013): "Index code outside parsed symbols". Repo hits:
+the PRD itself (`prds/wip/00013-engram-module-context-v1.md:7-10` 0.0328,
+`:13-19` 0.0159); the rest are unrelated settled `-k` flag findings from PRD
+00001 reviews (0.0161 and below). Portfolio adds nothing relevant (two engram
+transcript user turns at 0.0161/0.0159, unrelated autopilot and aegis rows).
+No prior implementation to reuse; the evidence is in
+`reviews/2026-11-15-intake-triage.md` and the 00013 discovery.
 
-Staleness (`engram status --scope portfolio`, exit 1, 2026-11-15): memory
-stale=4, transcripts stale=3 dead=8305, prd stale=6 dead=725, code stale=47.
-Harvest: 21 review files upserted, 14 missing frontmatter (known).
+Staleness (`engram status --scope portfolio`, exit 1, 2026-11-15 21:10):
+memory stale=5, transcripts stale=3 dead=9194, prd stale=5 dead=777, code
+stale=68. Harvest: 22 review files upserted, 15 missing frontmatter (known).
 
 ## GitHub State
 
