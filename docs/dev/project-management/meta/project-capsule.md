@@ -30,7 +30,7 @@ Updated: 2026-11-15, catchup for PRD 00013. Later dated entries supersede histor
 ## Active Work
 
 ### Batch 202611152106
-- [ ] 00013-engram-module-context-v1 (in wip, build started 2026-11-15)
+- [x] 00013-engram-module-context-v1 (2 cycles)
 
 Build notes: `symbols.chunk` is the single emit site (one `_walk` over
 `result.structure`, zero-based inclusive `item.span`); gap chunks append after
