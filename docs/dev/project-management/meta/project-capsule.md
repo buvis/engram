@@ -1,6 +1,6 @@
 # Project Capsule: engram
 
-Updated: 2026-11-10, after Session 7 was redefined around agent sessions.
+Updated: 2026-11-15, after intake triage. Later dated entries supersede historical state below.
 
 ## Key Invariants
 
@@ -28,6 +28,20 @@ Updated: 2026-11-10, after Session 7 was redefined around agent sessions.
 - `harness.py`, `eval/`: candidate scoring, gold set, and rg baseline.
 
 ## Active Work
+
+### Intake triage (2026-11-15)
+
+- Backlog: `00013-engram-module-context-v1.md`, source coverage outside emitted
+  symbols. Its intake is in `intake/processed/`; other recall candidates remain
+  explicitly deferred in its discovery. No implementation has started.
+- Intakes 00008 (reranking/embedding) and 00009 (fusion/OR) have reviewed
+  discoveries and deferred status. They remain in `intake/new/` because no
+  implementation spec is justified yet; they are no longer untriaged.
+- Adoption is resolved and 00012 shipped. No new ranking defaults, model changes
+  or production rebuilds were authorized by this intake pass. PRD 00013 preserves
+  unchanged-source caches; backfill is a separate operation.
+- Decisions and evidence: `reviews/2026-11-15-intake-triage.md`. Next build:
+  PRD 00013 via autopilot, with its usual fresh-session completion review.
 
 ### Batch 202611151147
 - [x] 00012-agent-recall-surfaces-v1 (1 cycle)

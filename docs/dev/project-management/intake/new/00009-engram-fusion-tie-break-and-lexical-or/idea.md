@@ -1,6 +1,10 @@
 # engram: fix rank-fusion tie-breaking and lexical AND-matching
 
-Status: new. Recorded 2026-11-02. Evidence: `reviews/2026-11-02-probe-fusion.md`.
+Status: deferred after discovery, 2026-11-15; no implementation PRD. Recorded 2026-11-02. Evidence: `reviews/2026-11-02-probe-fusion.md`.
+
+Current disposition: see [discovery.md](discovery.md). Newer samples do not
+establish a consistent relevance gain from changing the shared default.
+The original defect framing and historical probe results below are retained.
 
 ## Problem
 

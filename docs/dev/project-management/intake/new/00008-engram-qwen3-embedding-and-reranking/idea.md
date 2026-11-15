@@ -1,6 +1,10 @@
 # engram: move to Qwen3 embeddings and add a reranking stage if probes support it
 
-Status: new. Recorded 2026-11-02.
+Status: deferred after discovery, 2026-11-15; no implementation PRD. Recorded 2026-11-02.
+
+Current disposition: see [discovery.md](discovery.md). Reranking needs fresh
+paired relevance and warm-serving evidence; an embedding change remains unproven.
+The historical proposal and probe results below are retained.
 
 ## Idea
 

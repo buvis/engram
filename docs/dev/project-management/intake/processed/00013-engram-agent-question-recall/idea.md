@@ -1,8 +1,13 @@
 # engram: recall for agent questions, and a measure that can show it
 
-Status: new. Recorded 2026-11-12. Evidence:
+Status: processed, specced as PRD 00013. Recorded 2026-11-12. Evidence:
 `reviews/2026-11-10-agent-session-evaluation-protocol.md`, section "Recall
 probe (2026-11-12)"; runner `eval/agent_session_recall.py`.
+
+Current disposition, 2026-11-15: the adoption check passed and PRD 00012
+shipped. [discovery.md](discovery.md) scopes PRD 00013 to source coverage
+outside parsed symbols and records the other candidates as deferred. The
+historical problem and candidate list below are preserved.
 
 ## Problem
 
