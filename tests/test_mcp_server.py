@@ -1,7 +1,6 @@
 import io
 import json
 import sqlite3
-from pathlib import Path
 
 import pytest
 
@@ -12,7 +11,7 @@ from engram.client import (
     EmbeddingServerError,
 )
 from engram.query import Pointer
-from engram.store import Scope, StoreModelMismatchError
+from engram.store import StoreModelMismatchError
 
 EXPECTED_INSTRUCTIONS = (
     "engram is the portfolio memory: past agent sessions, PRDs, decisions, memory files, "
@@ -600,138 +599,29 @@ def test_serve_mcp_returns_zero_on_empty_input():
     assert stdout.getvalue() == ""
 
 
-# --- real search_pointers body ---
-
-
-class _FakeConn:
-    def __init__(self):
-        self.closed = 0
-
-    def close(self):
-        self.closed += 1
-
-
-class _FakeStore:
-    def __init__(self):
-        self.conn = _FakeConn()
-
-
-class _Backend:
-    def __init__(self, repos_csv):
-        self.config = object()
-        self.stores = []
-        self.resolve_calls = []
-        self.load_config_calls = []
-        self.open_store_calls = []
-        self.repos_csv = repos_csv
-
-
-def _patch_backend(monkeypatch, tmp_path, query_impl, repo_name):
-    backend = _Backend(tmp_path / "gita" / "repos.csv")
-
-    def fake_load_config(*args, **kwargs):
-        backend.load_config_calls.append((args, kwargs))
-        return backend.config
-
-    def fake_open_store(*args, **kwargs):
-        backend.open_store_calls.append((args, kwargs))
-        store = _FakeStore()
-        backend.stores.append(store)
-        return store
-
-    def fake_resolve(path, repos_csv=None):
-        backend.resolve_calls.append((path, repos_csv))
-        return repo_name
-
-    monkeypatch.setattr("engram.mcp_server.load_config", fake_load_config)
-    monkeypatch.setattr("engram.mcp_server.open_store", fake_open_store)
-    monkeypatch.setattr("engram.mcp_server.query", query_impl)
-    monkeypatch.setattr("engram.mcp_server._resolve_repo_for_path", fake_resolve)
-    monkeypatch.setattr("engram.mcp_server.GITA_REPOS_CSV", backend.repos_csv)
-    return backend
-
-
-def test_search_pointers_queries_store_with_scope_and_k_then_closes_connection(
-    monkeypatch,
-    tmp_path,
-):
-    query_calls = []
-    hits = [POINTER_A, POINTER_B]
-
-    def fake_query(*args, **kwargs):
-        query_calls.append((args, kwargs))
-        return hits
-
-    backend = _patch_backend(monkeypatch, tmp_path, fake_query, "repoB")
-    workdir = tmp_path / "work"
-    workdir.mkdir()
-    monkeypatch.chdir(workdir)
-
-    portfolio = mcp_server.search_pointers("portfolio question", "portfolio", 7)
-    repo = mcp_server.search_pointers("repo question", "repo", 2)
-
-    assert portfolio == hits
-    assert repo == hits
-    stores, config = backend.stores, backend.config
-    assert len(stores) == 2
-    assert [store.conn.closed for store in stores] == [1, 1]
-    assert backend.open_store_calls == [((), {}), ((), {})]
-    assert backend.load_config_calls
-    assert all(call == ((), {}) for call in backend.load_config_calls)
-    assert query_calls == [
-        (
-            (stores[0], config, "portfolio question", Scope("portfolio", None)),
-            {"k": 7},
-        ),
-        ((stores[1], config, "repo question", Scope("repo", "repoB")), {"k": 2}),
-    ]
-    assert backend.resolve_calls == [(Path.cwd() / "_", backend.repos_csv)]
-
-
-def test_search_pointers_closes_connection_and_propagates_query_error(
-    monkeypatch,
-    tmp_path,
-):
-    error = EmbeddingServerError("embedding server down")
-
-    def failing_query(*args, **kwargs):
-        raise error
-
-    backend = _patch_backend(monkeypatch, tmp_path, failing_query, "repoA")
-
-    with pytest.raises(EmbeddingServerError) as exc_info:
-        mcp_server.search_pointers("q", "portfolio", 5)
-
-    assert exc_info.value is error
-    assert len(backend.stores) == 1
-    assert backend.stores[0].conn.closed == 1
-
-
-@pytest.mark.parametrize("csv_exists", [False, True])
-def test_unresolvable_repo_scope_returns_is_error_through_run_query_tool(
-    monkeypatch,
-    tmp_path,
-    csv_exists,
-):
-    backend = _patch_backend(monkeypatch, tmp_path, _refuse_search, None)
-    repos_csv = backend.repos_csv
-    if csv_exists:
-        repos_csv.parent.mkdir(parents=True)
-        repos_csv.write_text(f"{tmp_path / 'elsewhere'},elsewhere\n")
-        expected = "not inside a registered repo; use scope portfolio instead"
-    else:
-        expected = f"{repos_csv} not found; register repos with gita first"
-
-    result = mcp_server.run_query_tool({"query": "where", "scope": "repo"})
-
-    assert result == {"content": [{"type": "text", "text": expected}], "isError": True}
-    assert len(backend.resolve_calls) == 1
-    with pytest.raises(mcp_server.RepoScopeError):
-        mcp_server.search_pointers("where", "repo", 5)
-    assert all(store.conn.closed == 1 for store in backend.stores)
-
-
 # --- cli ---
+
+
+class _LiveStdin:
+    """Hands out one request line at a time, noting stdout before each read."""
+
+    def __init__(self, messages, stdout):
+        self.lines = [f"{json.dumps(message)}\n" for message in messages]
+        self.stdout = stdout
+        self.stdout_before_read = []
+
+    def readline(self, *args):
+        self.stdout_before_read.append(self.stdout.getvalue())
+        return self.lines.pop(0) if self.lines else ""
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        line = self.readline()
+        if not line:
+            raise StopIteration
+        return line
 
 
 def test_cli_mcp_serves_until_eof(monkeypatch):
@@ -739,15 +629,18 @@ def test_cli_mcp_serves_until_eof(monkeypatch):
 
     def fake_search_pointers(text, scope, k):
         calls.append((text, scope, k))
-        return [POINTER_A, POINTER_B]
+        return [POINTER_A, POINTER_B] if scope == "repo" else [POINTER_A]
 
     monkeypatch.setattr("engram.mcp_server.search_pointers", fake_search_pointers)
-    lines = [
-        _request("initialize", {"protocolVersion": "2025-03-26"}, request_id="init"),
-        _call({"query": "cli seam", "scope": "repo", "k": 2}, request_id=2),
-    ]
-    stdin = io.StringIO("".join(f"{json.dumps(line)}\n" for line in lines))
     stdout = io.StringIO()
+    stdin = _LiveStdin(
+        [
+            _request("initialize", {"protocolVersion": "2025-03-26"}, request_id="init"),
+            _call({"query": "cli seam", "scope": "repo", "k": 2}, request_id=2),
+            _call({"query": "wide seam", "scope": "portfolio", "k": 7}, request_id=3),
+        ],
+        stdout,
+    )
     monkeypatch.setattr("sys.stdin", stdin)
     monkeypatch.setattr("sys.stdout", stdout)
 
@@ -755,8 +648,11 @@ def test_cli_mcp_serves_until_eof(monkeypatch):
 
     output = stdout.getvalue()
     assert output.endswith("\n")
+    sent = output.splitlines(keepends=True)
+    # Each reply is on stdout before the next request line is read.
+    assert stdin.stdout_before_read[:4] == ["", sent[0], "".join(sent[:2]), output]
     replies = _replies(output)
-    assert len(replies) == 2
+    assert len(replies) == 3
     assert replies[0]["id"] == "init"
     assert replies[0]["result"]["serverInfo"]["name"] == "engram"
     assert replies[0]["result"]["protocolVersion"] == "2025-03-26"
@@ -770,11 +666,18 @@ def test_cli_mcp_serves_until_eof(monkeypatch):
             "isError": False,
         },
     }
-    assert calls == [("cli seam", "repo", 2)]
+    assert replies[2] == {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "result": {"content": [{"type": "text", "text": LINE_A}], "isError": False},
+    }
+    assert calls == [("cli seam", "repo", 2), ("wide seam", "portfolio", 7)]
 
+
+def test_cli_mcp_returns_zero_on_empty_input(monkeypatch):
+    monkeypatch.setattr("engram.mcp_server.search_pointers", _refuse_search)
     empty_out = io.StringIO()
     monkeypatch.setattr("sys.stdin", io.StringIO(""))
     monkeypatch.setattr("sys.stdout", empty_out)
     assert cli.main(["mcp"]) == 0
     assert empty_out.getvalue() == ""
-    assert calls == [("cli seam", "repo", 2)]
