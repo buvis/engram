@@ -102,7 +102,7 @@ def _grep_search(args: list[str]) -> tuple[str, list[str]] | None:
             i += 1
         elif tok.startswith("--regexp="):
             value = tok[len("--regexp=") :]
-        elif tok.startswith("-e") and not tok.startswith("--"):
+        elif tok.startswith("-e"):
             value = tok[2:]
         elif tok in SEARCH_VALUE_FLAGS:
             i += 1
