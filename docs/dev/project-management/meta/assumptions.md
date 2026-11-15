@@ -28,3 +28,8 @@
 - Ivan: the README paragraph sits after the code-indexing paragraph (near line 169), not at the "Indexing keys on content hash" line; it names `--reembed-code` as the re-embedding path that does not find missing spans.
 - Ivan: `files_skipped` is not asserted in the index tests.
 - Pat (LOW): trailing blank line and README wrap fixed by the orchestrator in a style commit; the `_service` helper name (writes a file and returns expected rows) was left as is.
+
+## 4: [D1] Count lines at newline only and trim context runs in one pass (review cycle 1 rework)
+
+- Orchestrator (micro lane): `source.split("\n")` needs no CRLF handling because `Path.read_text()` uses universal newlines, which turn `\r\n` and lone `\r` into `\n`. A CRLF probe chunked with no `\r` in any body, which refutes Pat's MEDIUM.
+- Orchestrator: the form-feed regression test lives in `tests/test_symbols.py` because adding it to `tests/test_module_context.py` pushed that file to 820 lines.
