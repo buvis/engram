@@ -21,7 +21,9 @@ def _ctx(path, body, line_start, line_end, ordinal, repo="widget", content_hash=
     )
 
 
-def _sym(path, doc_type, heading, body, line_start, line_end, ordinal, repo, content_hash):
+def _sym(
+    path, doc_type, heading, body, line_start, line_end, ordinal, repo, content_hash
+):
     return Chunk(
         corpus="code",
         repo=repo,
@@ -87,10 +89,28 @@ def test_chunk_keeps_symbol_chunks_identical_alongside_context(tmp_path):
 
     symbol_chunks = [c for c in chunks if c.doc_type != "module_context"]
     assert symbol_chunks == [
-        _sym(path, "function", "Function alpha", "def alpha():\n    return LIMIT",
-             6, 7, 1, "gadget", "h2"),
-        _sym(path, "function", "Function beta", "def beta():\n    return os.sep",
-             11, 12, 2, "gadget", "h2"),
+        _sym(
+            path,
+            "function",
+            "Function alpha",
+            "def alpha():\n    return LIMIT",
+            6,
+            7,
+            1,
+            "gadget",
+            "h2",
+        ),
+        _sym(
+            path,
+            "function",
+            "Function beta",
+            "def beta():\n    return os.sep",
+            11,
+            12,
+            2,
+            "gadget",
+            "h2",
+        ),
     ]
     assert chunks[:2] == symbol_chunks
     assert len(chunks) == 5
@@ -108,17 +128,104 @@ def test_chunk_gives_symbolless_python_file_one_context_chunk(tmp_path):
     chunks = symbols.chunk(path, "gadget", "h2")
 
     assert chunks == [
-        _ctx(path, "import os\nimport sys\n\nNAME = 'x'", 2, 5, 1, "gadget", "h2")
+        _ctx(path, "import os\nimport sys\n\nNAME = 'x'", 2, 5, 1, "gadget", "h2"),
     ]
     assert str(path) not in symbols.skipped_files
     assert store.MODULE_CONTEXT_DOC_TYPE == "module_context"
     assert symbols.MODULE_CONTEXT_HEADING == "Module context"
-    assert symbols.CONTEXT_LANGUAGES == frozenset(
-        {
-            "python", "javascript", "typescript", "tsx", "rust", "go", "c", "cpp",
-            "arduino", "swift", "kotlin", "lua", "bash", "batch",
-        }
+    assert (
+        frozenset(
+            {
+                "python",
+                "javascript",
+                "typescript",
+                "tsx",
+                "rust",
+                "go",
+                "c",
+                "cpp",
+                "arduino",
+                "swift",
+                "kotlin",
+                "lua",
+                "bash",
+                "batch",
+            },
+        )
+        == symbols.CONTEXT_LANGUAGES
     )
+
+
+@pytest.mark.parametrize(
+    ("filename", "source", "body", "line_end"),
+    [
+        (
+            "consts.js",
+            "import fs from 'fs';\n\nconst LIMIT = 10;\n",
+            "import fs from 'fs';\n\nconst LIMIT = 10;",
+            3,
+        ),
+        (
+            "consts.rs",
+            "use std::io;\n\nconst LIMIT: u32 = 10;\n",
+            "use std::io;\n\nconst LIMIT: u32 = 10;",
+            3,
+        ),
+        (
+            "consts.go",
+            'package main\n\nimport "os"\n\nvar Limit = 10\n',
+            'package main\n\nimport "os"\n\nvar Limit = 10',
+            5,
+        ),
+        (
+            "script.sh",
+            "set -e\n\nexport NAME=x\necho hi\n",
+            "set -e\n\nexport NAME=x\necho hi",
+            4,
+        ),
+    ],
+    ids=["javascript", "rust", "go", "bash"],
+)
+def test_chunk_gives_symbolless_allowlisted_file_one_context_chunk(
+    tmp_path,
+    filename,
+    source,
+    body,
+    line_end,
+):
+    symbols.skipped_files.clear()
+    path = tmp_path / filename
+    path.write_text(source)
+
+    chunks = symbols.chunk(path, "widget", "h1")
+
+    assert chunks == [_ctx(path, body, 1, line_end, 1)]
+    assert str(path) not in symbols.skipped_files
+
+
+def test_chunk_gives_context_to_symbol_file_in_non_context_language(tmp_path):
+    symbols.skipped_files.clear()
+    path = tmp_path / "tool.rb"
+    path.write_text("require 'json'\n\ndef size\n  1\nend\n\nputs size\n")
+
+    chunks = symbols.chunk(path, "widget", "h1")
+
+    assert chunks == [
+        _sym(
+            path,
+            "method",
+            "Method size",
+            "def size\n  1\nend",
+            3,
+            5,
+            1,
+            "widget",
+            "h1",
+        ),
+        _ctx(path, "require 'json'", 1, 1, 2),
+        _ctx(path, "puts size", 7, 7, 3),
+    ]
+    assert str(path) not in symbols.skipped_files
 
 
 @pytest.mark.parametrize(
@@ -126,10 +233,15 @@ def test_chunk_gives_symbolless_python_file_one_context_chunk(tmp_path):
     [
         ("consts.py.json", "[1, 2, 3]\n"),
         ("README.md", "Just some prose.\n\nMore prose here.\n"),
+        ("config.yaml", "name: x\nlimit: 10\n"),
+        ("config.toml", 'name = "x"\nlimit = 10\n'),
+        ("page.html", "<html><body><p>hi</p></body></html>\n"),
     ],
 )
 def test_chunk_returns_nothing_for_symbolless_non_context_language(
-    tmp_path, filename, source
+    tmp_path,
+    filename,
+    source,
 ):
     symbols.skipped_files.clear()
     path = tmp_path / filename
@@ -155,12 +267,14 @@ def test_chunk_does_not_duplicate_nested_class_lines_into_context(tmp_path):
         "    def area(self):\n"  # 6
         "        return 0\n"  # 7
         "\n"  # 8
-        "SHAPES = [Shape]\n"  # 9
+        "SHAPES = [Shape]\n",  # 9
     )
 
     chunks = symbols.chunk(path, "widget", "h1")
 
-    assert [(c.doc_type, c.line_start, c.line_end, c.chunk_ordinal) for c in chunks[:2]] == [
+    assert [
+        (c.doc_type, c.line_start, c.line_end, c.chunk_ordinal) for c in chunks[:2]
+    ] == [
         ("class", 3, 7, 1),
         ("function", 6, 7, 2),
     ]
@@ -173,15 +287,20 @@ def test_chunk_does_not_duplicate_nested_class_lines_into_context(tmp_path):
 # --- _context_chunks(): union of crossing and overhanging spans ---
 
 
-def test_context_chunks_emits_only_slices_outside_crossing_and_overhanging_spans():
+@pytest.mark.parametrize("order", [(0, 1, 2, 3), (2, 1, 0, 3)])
+def test_context_chunks_emits_only_slices_outside_crossing_and_overhanging_spans(
+    order,
+):
     lines = [f"x{n} = {n}" for n in range(1, 15)]
     path = Path("pkg/mod.py")
-    spans = [
+    by_line = [
         _sym(path, "function", "Function a", "", 2, 5, 3, "gizmo", "h9"),
         _sym(path, "function", "Function b", "", 4, 7, 5, "gizmo", "h9"),  # crosses a
         _sym(path, "class", "Class C", "", 10, 12, 7, "gizmo", "h9"),
         _sym(path, "function", "Function d", "", 11, 13, 9, "gizmo", "h9"),  # past C
     ]
+    # The highest-ordinal span stays last in both orders.
+    spans = [by_line[i] for i in order]
     original = list(spans)
 
     context = symbols._context_chunks(lines, spans, path, "gizmo", "h9")
@@ -199,7 +318,7 @@ def test_context_chunks_without_spans_starts_ordinals_at_one():
 
     assert symbols._context_chunks([], [], path, "gizmo", "h9") == []
     assert symbols._context_chunks(["a = 1", "", "b = 2"], [], path, "gizmo", "h9") == [
-        _ctx("pkg/other.py", "a = 1\n\nb = 2", 1, 3, 1, "gizmo", "h9")
+        _ctx("pkg/other.py", "a = 1\n\nb = 2", 1, 3, 1, "gizmo", "h9"),
     ]
 
 
@@ -209,7 +328,7 @@ def test_context_chunks_ignores_span_lines_past_end_of_file():
     spans = [_sym(path, "function", "Function f", "", 2, 9, 1, "w", "h")]
 
     assert symbols._context_chunks(lines, spans, path, "w", "h") == [
-        _ctx("m.py", "a = 1", 1, 1, 2, "w", "h")
+        _ctx("m.py", "a = 1", 1, 1, 2, "w", "h"),
     ]
 
 
@@ -223,27 +342,28 @@ def test_chunk_trims_blank_run_edges_keeps_interior_and_drops_blank_gaps(tmp_pat
         "   \t\n"  # 2
         "import os\n"  # 3
         "  \n"  # 4 interior whitespace-only line
-        "import sys\n"  # 5
-        "    \n"  # 6
-        "\n"  # 7
-        "def f():\n"  # 8
-        "    return 1\n"  # 9
-        "\n"  # 10
-        "   \t\n"  # 11
-        "\n"  # 12
-        "def g():\n"  # 13
-        "    return 2\n"  # 14
-        "\n"  # 15
-        "\t\n"  # 16
+        "\n"  # 5 second interior blank line in a row
+        "import sys\n"  # 6
+        "    \n"  # 7
+        "\n"  # 8
+        "def f():\n"  # 9
+        "    return 1\n"  # 10
+        "\n"  # 11
+        "   \t\n"  # 12
+        "\n"  # 13
+        "def g():\n"  # 14
+        "    return 2\n"  # 15
+        "\n"  # 16
+        "\t\n",  # 17
     )
 
     chunks = symbols.chunk(path, "widget", "h1")
 
     assert [(c.doc_type, c.line_start, c.line_end) for c in chunks[:2]] == [
-        ("function", 8, 9),
-        ("function", 13, 14),
+        ("function", 9, 10),
+        ("function", 14, 15),
     ]
-    assert chunks[2:] == [_ctx(path, "import os\n  \nimport sys", 3, 5, 3)]
+    assert chunks[2:] == [_ctx(path, "import os\n  \n\nimport sys", 3, 6, 3)]
 
 
 # --- chunk(): non-ASCII text keeps line numbers and exact bodies ---
@@ -265,9 +385,24 @@ def test_chunk_keeps_line_numbers_and_bodies_for_non_ascii_lines(tmp_path):
     chunks = symbols.chunk(path, "widget", "h1")
 
     assert chunks == [
-        _sym(path, "function", "Function pozdrav",
-             'def pozdrav():\n    return "こんにちは"', 4, 5, 1, "widget", "h1"),
-        _ctx(path, '# Příliš žluťoučký kůň úpěl ďábelské ódy\nNAME = "東京タワー"', 1, 2, 2),
+        _sym(
+            path,
+            "function",
+            "Function pozdrav",
+            'def pozdrav():\n    return "こんにちは"',
+            4,
+            5,
+            1,
+            "widget",
+            "h1",
+        ),
+        _ctx(
+            path,
+            '# Příliš žluťoučký kůň úpěl ďábelské ódy\nNAME = "東京タワー"',
+            1,
+            2,
+            2,
+        ),
         _ctx(path, 'ČAS = "時間"', 7, 7, 3),
     ]
 
@@ -300,6 +435,13 @@ def build():
     return Store()
 
 
+RETRIES = 3
+
+
+def helper():
+    return RETRIES
+
+
 if __name__ == "__main__":
     build()
 '''
@@ -320,7 +462,8 @@ def test_chunk_context_covers_each_uncovered_nonblank_line_exactly_once(tmp_path
     uncovered = {
         n for n in range(1, len(lines) + 1) if n not in covered and lines[n - 1].strip()
     }
-    assert {2, 3, 5, 20, 27, 28} <= uncovered
+    assert {2, 3, 5, 20, 27, 34, 35} <= uncovered
+    assert len(context) == 4  # top, TIMEOUT, RETRIES, __main__ block
     for n in uncovered:
         hits = [c for c in context if c.line_start <= n <= c.line_end]
         assert len(hits) == 1, n
@@ -331,7 +474,7 @@ def test_chunk_context_covers_each_uncovered_nonblank_line_exactly_once(tmp_path
         assert lines[c.line_start - 1].strip() and lines[c.line_end - 1].strip()
     last = max(c.chunk_ordinal for c in syms)
     assert [c.chunk_ordinal for c in context] == list(
-        range(last + 1, last + 1 + len(context))
+        range(last + 1, last + 1 + len(context)),
     )
 
 
@@ -348,7 +491,10 @@ def test_chunk_context_covers_each_uncovered_nonblank_line_exactly_once(tmp_path
     ],
 )
 def test_chunk_returns_nothing_for_blank_or_unsupported_files(
-    tmp_path, filename, source, skipped
+    tmp_path,
+    filename,
+    source,
+    skipped,
 ):
     symbols.skipped_files.clear()
     path = tmp_path / filename
