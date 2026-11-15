@@ -12,7 +12,9 @@ from engram.query import Pointer
 FOOTER_TEXT = "Read a cited range if it is relevant; ignore it if not."
 
 
-def make_pointer(rank: int, path: str, line_start: int, line_end: int, heading: str) -> Pointer:
+def make_pointer(
+    rank: int, path: str, line_start: int, line_end: int, heading: str
+) -> Pointer:
     return Pointer(
         rank=rank,
         score=1.0 - rank / 10,
@@ -34,7 +36,9 @@ POINTERS = [
 
 def expected_text(query: str, pointers: list[Pointer]) -> str:
     lines = [f'engram recall for "{query}" (prior sessions, PRDs, memory, code):']
-    lines += [f"- {p.path}:{p.line_start}-{p.line_end}  ({p.heading})" for p in pointers]
+    lines += [
+        f"- {p.path}:{p.line_start}-{p.line_end}  ({p.heading})" for p in pointers
+    ]
     lines.append(FOOTER_TEXT)
     return "\n".join(lines)
 
@@ -94,9 +98,17 @@ def search(monkeypatch):
     return fake
 
 
-def run(host: str, payload: str, environ: dict[str, str] | None = None) -> tuple[int, str, str]:
+def run(
+    host: str, payload: str, environ: dict[str, str] | None = None
+) -> tuple[int, str, str]:
     stdout, stderr = io.StringIO(), io.StringIO()
-    code = nudge.run_nudge(host, io.StringIO(payload), stdout, stderr, environ if environ is not None else {})
+    code = nudge.run_nudge(
+        host,
+        io.StringIO(payload),
+        stdout,
+        stderr,
+        environ if environ is not None else {},
+    )
     return code, stdout.getvalue(), stderr.getvalue()
 
 
@@ -184,7 +196,9 @@ def test_drops_hits_named_in_pack_file(repos, search, tmp_path) -> None:
 def test_stays_silent_when_nudge_is_off(search) -> None:
     stdout, stderr = io.StringIO(), io.StringIO()
 
-    code = nudge.run_nudge("claude", UnreadableStdin(), stdout, stderr, {"ENGRAM_NUDGE": "off"})
+    code = nudge.run_nudge(
+        "claude", UnreadableStdin(), stdout, stderr, {"ENGRAM_NUDGE": "off"}
+    )
 
     assert code == 0
     assert stdout.getvalue() == ""
@@ -195,14 +209,17 @@ def test_stays_silent_when_nudge_is_off(search) -> None:
 @pytest.mark.parametrize("flag", ["on", "OFF", "", "0"])
 def test_runs_unless_nudge_is_exactly_off(repos, search, flag) -> None:
     repo, other = repos
-    code, out, err = run("plain", codex_payload(f"rg foo {q(other)}", repo), {"ENGRAM_NUDGE": flag})
+    code, out, err = run(
+        "plain", codex_payload(f"rg foo {q(other)}", repo), {"ENGRAM_NUDGE": flag}
+    )
 
     assert (code, err) == (0, "")
     assert out == expected_text("foo", POINTERS) + "\n"
 
 
 @pytest.mark.parametrize(
-    "error", [EmbeddingServerError("embedding unavailable"), RuntimeError("store locked")]
+    "error",
+    [EmbeddingServerError("embedding unavailable"), RuntimeError("store locked")],
 )
 def test_exits_zero_when_query_fails(repos, search, error) -> None:
     repo, other = repos
@@ -277,13 +294,26 @@ def test_treats_git_log_pickaxe_as_broad_end_to_end(repos, search) -> None:
 @pytest.mark.parametrize(
     ("event", "expected"),
     [
-        ({"tool_input": {"command": "rg foo /a"}, "cwd": "/work/one"}, ("rg foo /a", "/work/one")),
-        ({"tool_input": {"command": "git log -S x"}, "cwd": "/w/two"}, ("git log -S x", "/w/two")),
         (
-            {"tool_input": {"command": "rg a"}, "toolArgs": {"command": "rg b"}, "cwd": "/c"},
+            {"tool_input": {"command": "rg foo /a"}, "cwd": "/work/one"},
+            ("rg foo /a", "/work/one"),
+        ),
+        (
+            {"tool_input": {"command": "git log -S x"}, "cwd": "/w/two"},
+            ("git log -S x", "/w/two"),
+        ),
+        (
+            {
+                "tool_input": {"command": "rg a"},
+                "toolArgs": {"command": "rg b"},
+                "cwd": "/c",
+            },
             ("rg a", "/c"),
         ),
-        ({"tool_input": None, "toolArgs": {"command": "rg b"}, "cwd": "/c"}, ("rg b", "/c")),
+        (
+            {"tool_input": None, "toolArgs": {"command": "rg b"}, "cwd": "/c"},
+            ("rg b", "/c"),
+        ),
     ],
 )
 def test_reads_command_and_cwd_from_tool_input(event, expected) -> None:
@@ -298,7 +328,9 @@ def test_accepts_copilot_tool_args_as_object_and_string(repos, search) -> None:
     assert nudge.read_hook_event(json.dumps(as_object)) == ("rg alpha /x", "/w/a")
     assert nudge.read_hook_event(json.dumps(as_string)) == ("grep -r beta /y", "/w/b")
 
-    payload = json.dumps({"toolArgs": json.dumps({"command": f"rg foo {q(other)}"}), "cwd": str(repo)})
+    payload = json.dumps(
+        {"toolArgs": json.dumps({"command": f"rg foo {q(other)}"}), "cwd": str(repo)}
+    )
     code, out, err = run("copilot", payload)
     assert (code, err) == (0, "")
     assert json.loads(out) == {"additionalContext": expected_text("foo", POINTERS)}
@@ -358,8 +390,24 @@ def test_skips_value_of_glob_flag(repos, template) -> None:
 @pytest.mark.parametrize(
     "flag",
     [
-        "-g", "--glob", "-t", "--type", "-T", "--type-not", "-A", "-B", "-C", "-m",
-        "--max-count", "--max-depth", "-f", "--file", "-j", "--threads", "-M", "--max-columns",
+        "-g",
+        "--glob",
+        "-t",
+        "--type",
+        "-T",
+        "--type-not",
+        "-A",
+        "-B",
+        "-C",
+        "-m",
+        "--max-count",
+        "--max-depth",
+        "-f",
+        "--file",
+        "-j",
+        "--threads",
+        "-M",
+        "--max-columns",
     ],
 )
 def test_skips_value_of_each_value_flag(repos, flag) -> None:
@@ -429,7 +477,20 @@ def test_reads_only_the_first_command(repos, template, expected) -> None:
 
 @pytest.mark.parametrize(
     "command",
-    ["", "   ", "rg", "git", "find", "'", "|", "rg -e", "rg -g", "git log -S", "find -name", "\\"],
+    [
+        "",
+        "   ",
+        "rg",
+        "git",
+        "find",
+        "'",
+        "|",
+        "rg -e",
+        "rg -g",
+        "git log -S",
+        "find -name",
+        "\\",
+    ],
 )
 def test_returns_none_for_incomplete_commands(repos, command) -> None:
     repo, _ = repos
@@ -602,13 +663,23 @@ TWO_HIT_TEXT = (
         (
             "claude",
             json.dumps(
-                {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": TWO_HIT_TEXT}}
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": "PostToolUse",
+                        "additionalContext": TWO_HIT_TEXT,
+                    }
+                },
             ),
         ),
         (
             "codex",
             json.dumps(
-                {"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": TWO_HIT_TEXT}}
+                {
+                    "hookSpecificOutput": {
+                        "hookEventName": "PostToolUse",
+                        "additionalContext": TWO_HIT_TEXT,
+                    }
+                },
             ),
         ),
         ("copilot", json.dumps({"additionalContext": TWO_HIT_TEXT})),
