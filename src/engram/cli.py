@@ -109,15 +109,18 @@ def _build_parser() -> argparse.ArgumentParser:
     pack_parser.add_argument("--capsule", default=None)
 
     _add_memory_parser(subparsers)
-
-    subparsers.add_parser("mcp", help="serve engram_query over MCP stdio")
-
-    nudge_parser = subparsers.add_parser(
-        "nudge", help="post-tool hook: recall prior work after a broad search"
-    )
-    nudge_parser.add_argument("host", choices=list(nudge.HOSTS))
+    _add_agent_parsers(subparsers)
 
     return parser
+
+
+def _add_agent_parsers(subparsers: argparse._SubParsersAction) -> None:
+    subparsers.add_parser("mcp", help="serve engram_query over MCP stdio")
+    nudge_parser = subparsers.add_parser(
+        "nudge",
+        help="post-tool hook: recall prior work after a broad search",
+    )
+    nudge_parser.add_argument("host", choices=list(nudge.HOSTS))
 
 
 def _add_memory_parser(subparsers: argparse._SubParsersAction) -> None:

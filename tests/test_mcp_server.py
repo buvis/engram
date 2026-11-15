@@ -635,7 +635,9 @@ def test_cli_mcp_serves_until_eof(monkeypatch):
     stdout = io.StringIO()
     stdin = _LiveStdin(
         [
-            _request("initialize", {"protocolVersion": "2025-03-26"}, request_id="init"),
+            _request(
+                "initialize", {"protocolVersion": "2025-03-26"}, request_id="init"
+            ),
             _call({"query": "cli seam", "scope": "repo", "k": 2}, request_id=2),
             _call({"query": "wide seam", "scope": "portfolio", "k": 7}, request_id=3),
         ],
