@@ -1,0 +1,41 @@
+{
+  "fixture": "engram",
+  "findings": [],
+  "authorization": {"route": "invocation", "source": "autoclaude-drain"},
+  "target_integrity": {
+    "status": "changed",
+    "violations": [
+      {
+        "phase": "recon",
+        "kind": "ref",
+        "ref": "refs/remotes/origin/HEAD",
+        "before": "15820a30e93cdc05382d5f1de65c849e955dc4ca",
+        "after": "6d0d171ba6413dc480587c100af6aacbe6c0e63a",
+        "commit": {
+          "author": "Agent ran by Tomáš Bouška <tomas@buvis.net>",
+          "committer": "autopilot-loop/202611151147 <tomas@buvis.net>",
+          "date": "2026-11-15T20:51:42+01:00",
+          "subject": "chore(autopilot): record done state for 00012-agent-recall-surfaces-v1.md"
+        },
+        "reflog": "Tomáš Bouška <tomas@buvis.net> | fetch",
+        "restore": "git -C /Users/bob/git/src/github.com/buvis/engram update-ref refs/remotes/origin/HEAD 15820a30e93cdc05382d5f1de65c849e955dc4ca 6d0d171ba6413dc480587c100af6aacbe6c0e63a"
+      },
+      {
+        "phase": "recon",
+        "kind": "ref",
+        "ref": "refs/remotes/origin/master",
+        "before": "15820a30e93cdc05382d5f1de65c849e955dc4ca",
+        "after": "6d0d171ba6413dc480587c100af6aacbe6c0e63a",
+        "commit": {
+          "author": "Agent ran by Tomáš Bouška <tomas@buvis.net>",
+          "committer": "autopilot-loop/202611151147 <tomas@buvis.net>",
+          "date": "2026-11-15T20:51:42+01:00",
+          "subject": "chore(autopilot): record done state for 00012-agent-recall-surfaces-v1.md"
+        },
+        "reflog": "Tomáš Bouška <tomas@buvis.net> | update by push",
+        "restore": "git -C /Users/bob/git/src/github.com/buvis/engram update-ref refs/remotes/origin/master 15820a30e93cdc05382d5f1de65c849e955dc4ca 6d0d171ba6413dc480587c100af6aacbe6c0e63a"
+      }
+    ],
+    "touched": []
+  }
+}
