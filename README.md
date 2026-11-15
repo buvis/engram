@@ -175,6 +175,53 @@ directories may be absent without degrading the index.
 the header and each decision block, and preserves rationale text. An audit
 without decision blocks fails; review parsing and per-file reporting are unchanged.
 
+## Agent recall
+
+Two commands bring engram hits to a coding agent.
+
+`engram mcp` runs a stdio MCP server with one tool, `engram_query`. Inputs:
+
+- `query`: required.
+- `scope`: `repo` or `portfolio`, default `portfolio`. `scope: "repo"` resolves
+  against the server process's working directory.
+- `k`: 1 to 20, default 5.
+
+It returns the same tab-separated lines `engram query` prints, or `no hits`.
+A failure comes back as `isError`, and the server keeps serving. Example MCP
+server config entry:
+
+```json
+{"command": "engram", "args": ["mcp"]}
+```
+
+`engram nudge <host>` is a post-tool hook command. `<host>` is `claude`,
+`codex`, `copilot`, or `plain`. It reads the hook payload from stdin. Claude
+Code and Codex send `tool_input.command` and `cwd`; Copilot CLI sends
+`toolArgs.command` (an object or a JSON string) and `cwd`.
+
+The nudge acts only on a broad search: `rg`, `grep`, or `find` over paths
+outside the current repository, under `.claude/projects`, or across several
+repositories, or `git log -S`, `-G`, or `--grep`. Only the first command of a
+line is read. On a broad search it queries portfolio scope for the top 3 hits
+and prints them:
+
+- `claude` and `codex`:
+  `{"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": <text>}}`
+- `copilot`: `{"additionalContext": <text>}`
+- `plain`: the text.
+
+It always exits 0 and reports a failure as one stderr line.
+
+Environment guards:
+
+- `ENGRAM_NUDGE=off` disables the nudge before stdin is read. Set it for blind
+  reviewer roles.
+- `ENGRAM_PACK_FILE` names a file whose text suppresses hits already injected:
+  a hit whose path occurs in that file is dropped.
+
+A first query can wait for the embedding server to start, up to the 120 s embed
+timeout, so set a timeout in your hook config.
+
 ## Config
 
 `~/.local/share/engram/config.toml`, written with defaults on first run:
