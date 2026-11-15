@@ -111,7 +111,9 @@ def chunk(path: Path, repo: str, content_hash: str) -> list[Chunk]:
         return []
 
     result = process(source, ProcessConfig(language, structure=True))
-    lines = source.splitlines()
+    # Tree-sitter rows break at "\n" only; splitlines() also breaks at form
+    # feeds and Unicode separators, which would skew every span after them.
+    lines = source.split("\n")
 
     chunks: list[Chunk] = []
     chunk_ordinal = 1
@@ -154,22 +156,19 @@ def _context_chunks(
 ) -> list[Chunk]:
     """Chunks for the source lines no emitted symbol chunk covers."""
     covered = {n for c in chunks for n in range(c.line_start, c.line_end + 1)}
-    runs: list[list[int]] = []
-    for n in range(1, len(lines) + 1):
-        if n in covered:
-            continue
-        if runs and runs[-1][-1] == n - 1:
-            runs[-1].append(n)
-        else:
-            runs.append([n])
+    spans: list[tuple[int, int]] = []
+    first = last = 0
+    for n in range(1, len(lines) + 2):
+        if n > len(lines) or n in covered:
+            if first:
+                spans.append((first, last))
+                first = 0
+        elif lines[n - 1].strip():
+            first, last = first or n, n
 
     context: list[Chunk] = []
     ordinal = chunks[-1].chunk_ordinal + 1 if chunks else 1
-    for run in runs:
-        kept = [n for n in run if lines[n - 1].strip()]
-        if not kept:
-            continue
-        first, last = kept[0], kept[-1]
+    for first, last in spans:
         context.append(
             Chunk(
                 corpus="code",

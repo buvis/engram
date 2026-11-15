@@ -58,6 +58,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
+- **symbols**: keep symbol bodies and line numbers aligned in files that
+  contain form feeds or Unicode line separators.
 - **symbols/diffmap**: name constant, macro, and type symbols with plain kind
   words (`Constant LIMIT`) instead of raw JSON (`{"Other":"Constant"} LIMIT`).
 - **pack**: enforce the hard cap even with long omission notices, retrieve reuse
