@@ -623,74 +623,117 @@ _GIT = [
 ]
 
 
-def _main_checkout_with_linked_worktree(tmp_path, name):
-    main_dir = tmp_path / "checkouts" / name
-    main_dir.mkdir(parents=True)
-    main_root = _init_git_repo(main_dir)
-    subprocess.run(
-        [*_GIT, "commit", "-q", "--allow-empty", "-m", "init"],
-        cwd=main_root,
-        check=True,
-    )
-    # Not under the main checkout's path, so no path-prefix match can
-    # stand in for real worktree resolution.
-    worktree_dir = tmp_path / "worktrees" / f"{name}-wt"
-    subprocess.run(
-        [*_GIT, "worktree", "add", "-q", str(worktree_dir)],
-        cwd=main_root,
-        check=True,
-    )
+def _git_stdout(cwd, *args):
     result = subprocess.run(
-        ["git", "rev-parse", "--show-toplevel"],
-        cwd=worktree_dir,
+        [*_GIT, *args],
+        cwd=cwd,
         check=True,
         capture_output=True,
         text=True,
     )
-    return main_root, Path(result.stdout.strip())
+    return result.stdout.strip()
 
 
-def _run_pack_capturing_build(monkeypatch, worktree_root):
-    _stage_diff(worktree_root)
+def _main_checkout_with_linked_worktree(tmp_path, name):
+    main_dir = tmp_path / "checkouts" / name
+    main_dir.mkdir(parents=True)
+    main_root = _init_git_repo(main_dir)
+    _git_stdout(main_root, "commit", "-q", "--allow-empty", "-m", "init")
+    # Not under the main checkout's path and named unlike the repo, so
+    # neither a path-prefix match nor the directory name can stand in for
+    # real worktree resolution.
+    worktree_dir = tmp_path / "worktrees" / "wt-xyz"
+    _git_stdout(main_root, "worktree", "add", "-q", str(worktree_dir))
+    return main_root, Path(_git_stdout(worktree_dir, "rev-parse", "--show-toplevel"))
+
+
+def _commit_range(root):
+    base = _git_stdout(root, "rev-parse", "HEAD")
+    (root / "added.txt").write_text("added line\n")
+    _git_stdout(root, "add", "added.txt")
+    _git_stdout(root, "commit", "-q", "-m", "add")
+    return f"{base}..{_git_stdout(root, 'rev-parse', 'HEAD')}"
+
+
+def _run_pack_capturing_build(monkeypatch, worktree_root, mode="cycle"):
+    if mode == "cycle":
+        _stage_diff(worktree_root)
+        argv = ["pack", "--cycle", "cyc1"]
+    else:
+        argv = ["pack", "--diff", _commit_range(worktree_root)]
     monkeypatch.chdir(worktree_root)
     monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
     monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
     calls = []
     report = _make_pack_report(worktree_root / "docs/dev/tmp/engram-pack-cyc1.md")
     monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
-    exit_code = main(["pack", "--cycle", "cyc1"])
+    exit_code = main(argv)
     return exit_code, calls
 
 
+def _registry_rows(decoy, repo_name, real_root):
+    # Before the real row: an unrelated repo, a name ending in repo_name, a
+    # proper suffix of repo_name, and a name starting with repo_name. After
+    # it: a same-name duplicate (first match must win) and an unrelated row
+    # (so the real row is not last).
+    return (
+        "/some/other/repo,other-repo\n"
+        f"{decoy / 'x'},x-{repo_name}\n"
+        f"{decoy / 'suffix'},{repo_name[1:]}\n"
+        f"{decoy / 'fork'},{repo_name}-fork\n"
+        f"{real_root},{repo_name}\n"
+        f"{decoy / 'dup'},{repo_name}\n"
+        "/yet/another/repo,zzz-last\n"
+    )
+
+
+@pytest.mark.parametrize("mode", ["cycle", "diff"])
 @pytest.mark.parametrize("repo_name", ["repoA", "beta-tools"])
-def test_cli_pack_succeeds_in_linked_worktree(monkeypatch, tmp_path, repo_name):
+def test_cli_pack_succeeds_in_linked_worktree(monkeypatch, tmp_path, repo_name, mode):
     main_root, worktree_root = _main_checkout_with_linked_worktree(
         tmp_path,
         repo_name,
     )
     decoy = tmp_path / "decoy"
     repos_csv = tmp_path / "repos.csv"
-    # Only the main checkout is registered; an unrelated row and a near-miss
-    # name (shared prefix) come first so neither first-row nor prefix
-    # matching yields the main checkout's path.
-    repos_csv.write_text(
-        "/some/other/repo,other-repo\n"
-        f"{decoy},{repo_name}-fork\n"
-        f"{main_root},{repo_name}\n",
-    )
+    repos_csv.write_text(_registry_rows(decoy, repo_name, main_root))
     monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", repos_csv)
 
-    exit_code, calls = _run_pack_capturing_build(monkeypatch, worktree_root)
+    exit_code, calls = _run_pack_capturing_build(monkeypatch, worktree_root, mode)
 
     assert exit_code == 0
     assert len(calls) == 1
     call = calls[0]
     assert call["repo"] == repo_name
     assert call["repo_root"].resolve() == worktree_root.resolve()
-    assert call["index_root"] is not None
-    assert Path(call["index_root"]).resolve() == main_root.resolve()
-    assert Path(call["index_root"]).resolve() != worktree_root.resolve()
-    assert Path(call["index_root"]).resolve() != decoy.resolve()
+    assert isinstance(call["index_root"], Path)
+    assert call["index_root"].resolve() == main_root.resolve()
+    assert call["index_root"].resolve() != worktree_root.resolve()
+    assert not call["index_root"].resolve().is_relative_to(decoy.resolve())
+
+
+def test_cli_pack_linked_worktree_index_root_is_registry_path_not_git_layout(
+    monkeypatch,
+    tmp_path,
+):
+    _, worktree_root = _main_checkout_with_linked_worktree(tmp_path, "beta-tools")
+    # Registered at a directory that is NOT the git common-dir's parent, so
+    # index_root must come from the registry row, not from git's own layout.
+    registered_root = tmp_path / "registered" / "beta-tools"
+    registered_root.mkdir(parents=True)
+    repos_csv = tmp_path / "repos.csv"
+    repos_csv.write_text(
+        _registry_rows(tmp_path / "decoy", "beta-tools", registered_root),
+    )
+    monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", repos_csv)
+    monkeypatch.setattr("engram.cli._resolve_repo_name", lambda: "beta-tools")
+
+    exit_code, calls = _run_pack_capturing_build(monkeypatch, worktree_root)
+
+    assert exit_code == 0
+    assert len(calls) == 1
+    assert isinstance(calls[0]["index_root"], Path)
+    assert calls[0]["index_root"].resolve() == registered_root.resolve()
 
 
 def test_cli_pack_linked_worktree_of_unregistered_checkout_passes_registry_lookup_result(
@@ -698,10 +741,15 @@ def test_cli_pack_linked_worktree_of_unregistered_checkout_passes_registry_looku
     tmp_path,
 ):
     _, worktree_root = _main_checkout_with_linked_worktree(tmp_path, "ghost-repo")
+    decoy = tmp_path / "decoy"
     repos_csv = tmp_path / "repos.csv"
-    # The main checkout is absent; only a near-miss name with another path.
+    # The main checkout is absent; only loose-match decoys with other paths:
+    # a name ending in it, a proper suffix of it, a name starting with it.
     repos_csv.write_text(
-        f"/some/other/repo,other-repo\n{tmp_path / 'decoy'},ghost-repo-fork\n",
+        "/some/other/repo,other-repo\n"
+        f"{decoy / 'x'},x-ghost-repo\n"
+        f"{decoy / 'suffix'},repo\n"
+        f"{decoy / 'fork'},ghost-repo-fork\n",
     )
     monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", repos_csv)
     monkeypatch.setattr("engram.cli._resolve_repo_name", lambda: "ghost-repo")
