@@ -12,6 +12,16 @@ def _write_diff(tmp_path: Path, lines: list[str]) -> Path:
     return diff_path
 
 
+def _git_commit_all(tmp_path: Path, message: str) -> None:
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "-c", "user.email=t@e", "-c", "user.name=t", "commit", "-m", message],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
+
+
 # --- changed_symbols(): a non-UTF-8 source file is decoded with replacement, not crashed on (worktree mode) ---
 
 
@@ -52,13 +62,7 @@ def test_non_utf8_source_file_at_source_ref_is_parsed_with_replacement_not_crash
 ):
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
     (tmp_path / "weird.py").write_bytes(b'def foo():\n    return "\xe9"\n')
-    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
-    subprocess.run(
-        ["git", "-c", "user.email=t@e", "-c", "user.name=t", "commit", "-m", "older"],
-        cwd=tmp_path,
-        check=True,
-        capture_output=True,
-    )
+    _git_commit_all(tmp_path, "older")
     older_ref = subprocess.run(
         ["git", "rev-parse", "HEAD"],
         cwd=tmp_path,
@@ -70,13 +74,7 @@ def test_non_utf8_source_file_at_source_ref_is_parsed_with_replacement_not_crash
     (tmp_path / "weird.py").write_text(
         "def beta():\n    return 2\n",
     )
-    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
-    subprocess.run(
-        ["git", "-c", "user.email=t@e", "-c", "user.name=t", "commit", "-m", "newer"],
-        cwd=tmp_path,
-        check=True,
-        capture_output=True,
-    )
+    _git_commit_all(tmp_path, "newer")
 
     diff_path = _write_diff(
         tmp_path,
@@ -114,13 +112,7 @@ def test_non_utf8_bytes_in_the_diff_file_are_decoded_with_replacement_not_crashe
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
     module_path = tmp_path / "mod.py"
     module_path.write_bytes(b'def foo():\n    return "x"\n')
-    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
-    subprocess.run(
-        ["git", "-c", "user.email=t@e", "-c", "user.name=t", "commit", "-m", "initial"],
-        cwd=tmp_path,
-        check=True,
-        capture_output=True,
-    )
+    _git_commit_all(tmp_path, "initial")
     module_path.write_bytes(b'def foo():\n    return "\xe9"\n')
 
     diff_result = subprocess.run(
