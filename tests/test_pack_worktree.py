@@ -6,8 +6,14 @@ from _pack_helpers import (
     _vec,
 )
 
+from engram.diffmap import Symbol
 from engram.indexer import IndexReport
-from engram.pack import MAX_SYMBOLS_PER_PACK, RETRIEVAL_K, build
+from engram.pack import (
+    MAX_SYMBOLS_PER_PACK,
+    RETRIEVAL_K,
+    _reindex_and_resolve_symbols,
+    build,
+)
 from engram.store import ChunkWithVector, open_store
 
 # --- regression: a pack built in a worktree excludes spans indexed under main ---
@@ -134,6 +140,48 @@ def test_pack_in_worktree_excludes_changed_spans_indexed_under_main_checkout(
     assert any("return 0" in text for text in embedded_texts)
     assert any("return 1" in text for text in embedded_texts)
     assert not any("MAIN-TEXT" in text for text in embedded_texts)
+
+
+def test_reindex_maps_main_checkout_span_when_symbol_path_is_not_literally_under_repo_root(
+    tmp_path,
+    monkeypatch,
+):
+    # A symlinked (or otherwise non-canonical) repo_root means a symbol path
+    # resolved through the filesystem (e.g. by a future changed_symbols()
+    # that canonicalizes, or by any caller passing an already-resolved path)
+    # is not a literal string-prefix of repo_root, even though both name the
+    # same directory on disk. The exclusion mapping must still match it.
+    real_dir = tmp_path / "real"
+    real_dir.mkdir()
+    (real_dir / "big.py").write_text("def f0():\n    return 0\n")
+    repo_root = tmp_path / "link"
+    repo_root.symlink_to(real_dir)
+    diff_path = tmp_path / "changes.diff"
+    diff_path.write_text("placeholder\n")
+
+    symbol_path = str((real_dir / "big.py").resolve())
+    monkeypatch.setattr(
+        "engram.pack.changed_symbols",
+        lambda *a, **k: [
+            Symbol(path=symbol_path, name="f0", kind="function", line_start=1, line_end=2),
+        ],
+    )
+    monkeypatch.setattr(
+        "engram.pack.index",
+        lambda *a, **k: IndexReport(0, 0, 0, []),
+    )
+
+    _, changed_spans, _, _ = _reindex_and_resolve_symbols(
+        store=None,
+        config=None,
+        repo="repoA",
+        repo_root=repo_root,
+        diff_path=diff_path,
+        source_ref=None,
+        index_root=tmp_path / "main",
+    )
+
+    assert (str(tmp_path / "main" / "big.py"), 1, 2) in changed_spans
 
 
 _LAST_START = 1 + 4 * MAX_SYMBOLS_PER_PACK  # span of the first symbol past the cap

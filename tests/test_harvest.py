@@ -426,6 +426,40 @@ def test_harvest_os_error_during_repo_resolution_yields_no_repo_outcome_without_
     assert result.records_count == 0
 
 
+# --- harvest: main-checkout lookup failure during repo resolution is isolated ---
+
+
+@pytest.mark.parametrize(
+    "main_checkout_error", [subprocess.CalledProcessError(1, ["git"]), OSError("simulated")]
+)
+def test_resolve_repo_for_path_returns_none_when_main_checkout_lookup_fails(
+    tmp_path,
+    monkeypatch,
+    main_checkout_error,
+):
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    toplevel = _init_git_repo(repo_dir)
+    path = toplevel / "file.md"
+    path.write_text("irrelevant")
+    repos_csv = tmp_path / "repos.csv"
+    # a registry entry that does not match the resolved toplevel, so
+    # resolution falls through to _resolve_main_checkout
+    _write_repos_csv(repos_csv, [(tmp_path / "other-repo", "repoA")])
+    original_run = subprocess.run
+
+    def flaky_run(cmd, **kwargs):
+        if "--git-common-dir" in cmd:
+            raise main_checkout_error
+        return original_run(cmd, **kwargs)
+
+    monkeypatch.setattr("engram.harvest.subprocess.run", flaky_run)
+
+    result = _resolve_repo_for_path(path, repos_csv)
+
+    assert result is None
+
+
 def test_harvest_os_error_during_repo_resolution_on_one_path_does_not_abort_the_batch(
     tmp_path,
     monkeypatch,

@@ -294,9 +294,10 @@ def _reindex_and_resolve_symbols(
         # A worktree's files are indexed under the main checkout's paths, so the
         # same spans there are self-matches too.
         extra_spans = set()
+        resolved_repo_root = repo_root.resolve()
         for s in all_symbols:
             try:
-                rel = Path(s.path).relative_to(repo_root)
+                rel = Path(s.path).resolve().relative_to(resolved_repo_root)
             except ValueError:
                 continue
             extra_spans.add((str(Path(index_root) / rel), s.line_start, s.line_end))
