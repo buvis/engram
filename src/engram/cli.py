@@ -307,12 +307,11 @@ def _run_rebuild() -> int:
                     _preserve_findings(tmp_store, config)
                 finally:
                     tmp_store.conn.close()
+                os.replace(tmp_path, DEFAULT_DB_PATH)
             except Exception as e:
                 tmp_path.unlink(missing_ok=True)
                 print(f"rebuild failed: {e}", file=sys.stderr)
                 return 1
-
-            os.replace(tmp_path, DEFAULT_DB_PATH)
     except StoreBusyError as e:
         print(str(e), file=sys.stderr)
         return 1
