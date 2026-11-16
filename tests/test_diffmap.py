@@ -840,3 +840,108 @@ def test_function_and_module_level_edits_in_same_file_yield_functions_plus_one_f
             path=expected_path, name="bar", kind="function", line_start=9, line_end=10
         ),
     }
+
+
+# --- changed_symbols(): git's C-quoted header path ("b/caf\303\251.py") is decoded to the real name ---
+
+_C_QUOTED_CASES = pytest.mark.parametrize(
+    ("quoted_stem", "decoded_stem", "ascii_stem"),
+    [
+        (r"caf\303\251", "café", "cafe"),
+        (r"na\303\257ve", "naïve", "naive"),
+    ],
+    ids=["e_acute", "i_diaeresis"],
+)
+
+
+@_C_QUOTED_CASES
+def test_changed_symbols_decodes_c_quoted_non_ascii_path(
+    tmp_path, quoted_stem, decoded_stem, ascii_stem
+):
+    (tmp_path / f"{decoded_stem}.py").write_text("def foo():\n    return 1\n")
+    (tmp_path / f"{ascii_stem}.py").write_text("def bar():\n    return 2\n")
+    diff_path = _write_diff(
+        tmp_path,
+        [
+            f'diff --git "a/{quoted_stem}.py" "b/{quoted_stem}.py"',
+            "index 1111111..2222222 100644",
+            f'--- "a/{quoted_stem}.py"',
+            f'+++ "b/{quoted_stem}.py"',
+            "@@ -1,2 +1,2 @@",
+            " def foo():",
+            "-    return 0",
+            "+    return 1",
+            f"diff --git a/{ascii_stem}.py b/{ascii_stem}.py",
+            "index 1111111..2222222 100644",
+            f"--- a/{ascii_stem}.py",
+            f"+++ b/{ascii_stem}.py",
+            "@@ -1,2 +1,2 @@",
+            " def bar():",
+            "-    return 0",
+            "+    return 2",
+        ],
+    )
+
+    result = changed_symbols(diff_path, tmp_path)
+
+    assert result == [
+        Symbol(
+            path=str(tmp_path / f"{decoded_stem}.py"),
+            name="foo",
+            kind="function",
+            line_start=1,
+            line_end=2,
+        ),
+        Symbol(
+            path=str(tmp_path / f"{ascii_stem}.py"),
+            name="bar",
+            kind="function",
+            line_start=1,
+            line_end=2,
+        ),
+    ]
+
+
+@_C_QUOTED_CASES
+def test_changed_symbols_decodes_c_quoted_deleted_path(
+    tmp_path, quoted_stem, decoded_stem, ascii_stem
+):
+    diff_path = _write_diff(
+        tmp_path,
+        [
+            f'diff --git "a/{quoted_stem}.py" "b/{quoted_stem}.py"',
+            "deleted file mode 100644",
+            "index 1111111..0000000 100644",
+            f'--- "a/{quoted_stem}.py"',
+            "+++ /dev/null",
+            "@@ -1,2 +0,0 @@",
+            "-def gone():",
+            "-    return 1",
+            f"diff --git a/{ascii_stem}.py b/{ascii_stem}.py",
+            "deleted file mode 100644",
+            "index 1111111..0000000 100644",
+            f"--- a/{ascii_stem}.py",
+            "+++ /dev/null",
+            "@@ -1,1 +0,0 @@",
+            "-X = 1",
+        ],
+    )
+
+    result = changed_symbols(diff_path, tmp_path)
+
+    assert result == [
+        Symbol(
+            path=str(tmp_path / f"{decoded_stem}.py"),
+            name=f"{decoded_stem}.py",
+            kind="file",
+            line_start=1,
+            line_end=1,
+        ),
+        Symbol(
+            path=str(tmp_path / f"{ascii_stem}.py"),
+            name=f"{ascii_stem}.py",
+            kind="file",
+            line_start=1,
+            line_end=1,
+        ),
+    ]
