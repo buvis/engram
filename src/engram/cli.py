@@ -76,20 +76,7 @@ def _build_parser() -> argparse.ArgumentParser:
     query_parser.add_argument("-k", "--k", type=int, default=5)
     query_parser.add_argument("text")
 
-    index_parser = subparsers.add_parser("index")
-    index_parser.add_argument("--scope", choices=["repo", "portfolio"], default=None)
-    index_parser.add_argument("--corpus", default=None)
-    index_parser.add_argument("--rebuild", action="store_true")
-    index_parser.add_argument(
-        "--reembed-code",
-        action="store_true",
-        help="regenerate vectors of indexed code chunks without a full rebuild",
-    )
-    index_parser.add_argument(
-        "--backfill-code",
-        action="store_true",
-        help="rechunk unchanged code sources with the current chunker, reusing vectors",
-    )
+    _add_index_parser(subparsers)
 
     lookup_parser = subparsers.add_parser("lookup")
     lookup_mode = lookup_parser.add_mutually_exclusive_group(required=True)
@@ -120,6 +107,23 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_agent_parsers(subparsers)
 
     return parser
+
+
+def _add_index_parser(subparsers: argparse._SubParsersAction) -> None:
+    index_parser = subparsers.add_parser("index")
+    index_parser.add_argument("--scope", choices=["repo", "portfolio"], default=None)
+    index_parser.add_argument("--corpus", default=None)
+    index_parser.add_argument("--rebuild", action="store_true")
+    index_parser.add_argument(
+        "--reembed-code",
+        action="store_true",
+        help="regenerate vectors of indexed code chunks without a full rebuild",
+    )
+    index_parser.add_argument(
+        "--backfill-code",
+        action="store_true",
+        help="rechunk unchanged code sources with the current chunker, reusing vectors",
+    )
 
 
 def _add_agent_parsers(subparsers: argparse._SubParsersAction) -> None:
