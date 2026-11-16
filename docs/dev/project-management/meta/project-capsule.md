@@ -1,6 +1,6 @@
 # Project Capsule: engram
 
-Updated: 2026-11-15, catchup for PRD 00013. Later dated entries supersede historical state below.
+Updated: 2026-11-16, catchup for a brush hygiene pass. Later dated entries supersede historical state below.
 
 ## Key Invariants
 
@@ -28,6 +28,10 @@ Updated: 2026-11-15, catchup for PRD 00013. Later dated entries supersede histor
 - `harness.py`, `eval/`: candidate scoring, gold set, and rg baseline.
 
 ## Active Work
+
+State 2026-11-16: no PRD in backlog, wip or hold; 11 in `done/`. Batch
+202611152106 drained (`7830f88`) and its agoge pass has exited. The 2026-11-09
+plan is fully executed and gone. Intakes 00008 and 00009 stay deferred.
 
 ### Batch 202611152106
 - [x] 00013-engram-module-context-v1 (2 cycles)
@@ -176,6 +180,10 @@ See the follow-up note for scope, evidence, and the unchanged `0644` file mode.
 
 ## Related context
 
+2026-11-16: no topic this session (on `master`, no wip PRD), so no engram
+query ran. Harvest: 26 review files upserted, 15 missing frontmatter (known).
+The entry below is the previous session's.
+
 Topic (2026-11-15, PRD 00013): "Index code outside parsed symbols". Repo hits:
 the PRD itself (`prds/wip/00013-engram-module-context-v1.md:7-10` 0.0328,
 `:13-19` 0.0159); the rest are unrelated settled `-k` flag findings from PRD
@@ -190,8 +198,10 @@ stale=68. Harvest: 22 review files upserted, 15 missing frontmatter (known).
 
 ## GitHub State
 
-Remote: `https://github.com/buvis/engram` (2026-11-15). No open issues or PRs.
-No releases. Workflow "Test" on master: last 5 runs success (latest 2026-11-15).
+Remote: `https://github.com/buvis/engram` (2026-11-16). No open issues. One
+open PR: #4, Renovate, tree-sitter-language-pack 1.25.0 to 1.25.2, its "Test"
+run passed. No releases. Workflow "Test" on master: last runs success (latest
+2026-11-15).
 
 ## Project Memories
 
