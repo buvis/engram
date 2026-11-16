@@ -21,7 +21,7 @@ from engram.client import (
 from engram.corpora import GITA_REPOS_CSV, enumerate_corpora
 from engram.findings import FINDINGS_CORPUS
 from engram.harvest import _resolve_repo_for_path, harvest
-from engram.indexer import index, reembed_code
+from engram.indexer import backfill_code, index, reembed_code
 from engram.mcp_server import format_pointer_lines
 from engram.memory import MEMORY_SUBDIR, check_directory, memory_dir, redact
 from engram.migrate import OK_ACTIONS, MigrationError, apply_migration, plan_migration
@@ -84,6 +84,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--reembed-code",
         action="store_true",
         help="regenerate vectors of indexed code chunks without a full rebuild",
+    )
+    index_parser.add_argument(
+        "--backfill-code",
+        action="store_true",
+        help="rechunk unchanged code sources with the current chunker, reusing vectors",
     )
 
     lookup_parser = subparsers.add_parser("lookup")
@@ -320,7 +325,41 @@ def _run_rebuild() -> int:
     return 0
 
 
+def _run_backfill(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    if args.corpus is not None or args.rebuild or args.reembed_code:
+        parser.error(
+            "--backfill-code cannot be combined with --corpus, --rebuild "
+            "or --reembed-code",
+        )
+    scope = _resolve_scope(args.scope or "repo")
+    if scope is None:
+        print(_repo_scope_error_msg(), file=sys.stderr)
+        return 1
+    try:
+        report = backfill_code(open_store(), load_config(), scope)
+    except StoreModelMismatchError as e:
+        print(
+            f"{e}; run `engram index --rebuild` to rebuild the store",
+            file=sys.stderr,
+        )
+        return 1
+    except (FileNotFoundError, EmbeddingServerError, EmbeddingPreflightError) as e:
+        print(str(e), file=sys.stderr)
+        return 1
+    print(
+        f"backfilled {report.sources_rechunked} code sources: "
+        f"{report.chunks_embedded} chunks embedded, "
+        f"{report.vectors_reused} vectors reused, "
+        f"{report.empty_cleared} empty marks cleared",
+    )
+    _print_failed(report.failed_sources)
+    return 0
+
+
 def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
+    if args.backfill_code:
+        return _run_backfill(args, parser)
+
     if args.rebuild:
         if args.scope is not None or args.corpus is not None:
             parser.error("--rebuild cannot be combined with --scope or --corpus")
