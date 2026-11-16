@@ -16,6 +16,7 @@ from engram.findings import FINDINGS_CORPUS
 from engram.harvest import (
     FileHarvestResult,
     HarvestReport,
+    _resolve_repo_for_path,
     harvest,
 )
 from engram.store import open_store
@@ -531,6 +532,127 @@ def test_harvest_unreadable_registry_non_os_error_propagates_instead_of_being_sw
 
     with pytest.raises(ValueError, match="simulated registry programming error"):
         harvest(store, config, [review_path])
+
+
+# --- _resolve_repo_for_path: linked worktrees fall back to the main checkout ---
+
+
+def _git(cwd, *args):
+    subprocess.run(
+        [
+            "git",
+            "-c",
+            "user.name=engram-test",
+            "-c",
+            "user.email=engram-test@example.com",
+            "-c",
+            "commit.gpgsign=false",
+            "-c",
+            "core.hooksPath=/dev/null",
+            *args,
+        ],
+        cwd=cwd,
+        check=True,
+        capture_output=True,
+    )
+
+
+def _make_repo_with_worktree(root, name):
+    (root / name).mkdir()
+    main = _init_git_repo(root / name)
+    _git(main, "commit", "--allow-empty", "--no-verify", "-q", "-m", "init")
+    worktree = root / f"{name}-wt"
+    _git(main, "worktree", "add", "-q", "--detach", str(worktree))
+    (worktree / "sub").mkdir()
+    file_path = worktree / "sub" / "review.md"
+    file_path.write_text("review\n")
+    return main, worktree, file_path
+
+
+def test_resolve_repo_for_path_maps_linked_worktree_to_main_checkout(tmp_path):
+    main_one, _, file_one = _make_repo_with_worktree(tmp_path, "proj")
+    main_two, _, file_two = _make_repo_with_worktree(tmp_path, "proj-two")
+    link_two = tmp_path / "link-two"
+    link_two.symlink_to(main_two)
+    repos_csv = tmp_path / "repos.csv"
+    _write_repos_csv(
+        repos_csv,
+        [
+            (tmp_path, "ancestor-decoy"),
+            (tmp_path / "other" / "proj-wt", "worktree-basename-decoy"),
+            (tmp_path / "other" / "proj", "main-basename-decoy"),
+            (main_one, "proj-main"),
+            (link_two, "proj-two-main"),
+        ],
+    )
+
+    assert _resolve_repo_for_path(file_one, repos_csv) == "proj-main"
+    assert _resolve_repo_for_path(file_two, repos_csv) == "proj-two-main"
+
+
+def test_resolve_repo_for_path_registered_worktree_keeps_its_own_name(tmp_path):
+    main, worktree, worktree_file = _make_repo_with_worktree(tmp_path, "proj")
+    main_file = main / "review.md"
+    main_file.write_text("review\n")
+    repos_csv = tmp_path / "repos.csv"
+    _write_repos_csv(repos_csv, [(main, "proj-main"), (worktree, "proj-wt-own")])
+
+    assert _resolve_repo_for_path(worktree_file, repos_csv) == "proj-wt-own"
+    assert _resolve_repo_for_path(main_file, repos_csv) == "proj-main"
+
+
+def test_resolve_repo_for_path_worktree_of_unregistered_repo_returns_none(tmp_path):
+    main, _, worktree_file = _make_repo_with_worktree(tmp_path, "proj")
+    bare_dir = tmp_path / "store" / "proj.git"
+    _git(tmp_path, "clone", "--bare", "-q", str(main), str(bare_dir))
+    bare_worktree = tmp_path / "bare-wt"
+    _git(bare_dir, "worktree", "add", "-q", "--detach", str(bare_worktree))
+    bare_file = bare_worktree / "review.md"
+    bare_file.write_text("review\n")
+    empty_csv = tmp_path / "empty.csv"
+    empty_csv.write_text("")
+    decoy_csv = tmp_path / "repos.csv"
+    _write_repos_csv(
+        decoy_csv,
+        [
+            (tmp_path, "ancestor-decoy"),
+            (tmp_path / "pro", "prefix-decoy"),
+            (tmp_path / "other" / "proj", "main-basename-decoy"),
+            (tmp_path / "other" / "proj-wt", "worktree-basename-decoy"),
+            (tmp_path / "store", "bare-parent-decoy"),
+            (bare_dir, "bare-dir-decoy"),
+        ],
+    )
+
+    assert _resolve_repo_for_path(worktree_file, empty_csv) is None
+    assert _resolve_repo_for_path(worktree_file, decoy_csv) is None
+    assert _resolve_repo_for_path(bare_file, decoy_csv) is None
+
+
+def test_registry_root_returns_path_for_name(tmp_path):
+    from engram.harvest import registry_root
+
+    repos_csv = tmp_path / "repos.csv"
+    _write_repos_csv(
+        repos_csv,
+        [
+            (tmp_path / "a" / "proj-main", "proj-main"),
+            (tmp_path / "b" / "proj", "proj"),
+            (tmp_path / "c" / "my-proj", "my-proj"),
+            (tmp_path / "d" / "proj", "proj"),
+        ],
+    )
+    empty_csv = tmp_path / "empty.csv"
+    empty_csv.write_text("")
+
+    proj_root = registry_root("proj", repos_csv)
+    assert isinstance(proj_root, Path)
+    assert proj_root == tmp_path / "b" / "proj"
+    assert registry_root("my-proj", repos_csv) == tmp_path / "c" / "my-proj"
+    assert registry_root("pro", repos_csv) is None
+    assert registry_root("proj", empty_csv) is None
+    assert registry_root("proj", tmp_path / "missing.csv") is None
+    assert registry_root("proj", tmp_path) is None
 
 
 # --- HarvestReport.any_failed ---
