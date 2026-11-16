@@ -2,15 +2,10 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from _cli_helpers import _write_diff
 
 from engram import symbols
 from engram.diffmap import Symbol, changed_symbols
-
-
-def _write_diff(tmp_path: Path, lines: list[str]) -> Path:
-    diff_path = tmp_path / "changes.diff"
-    diff_path.write_text("\n".join(lines) + "\n")
-    return diff_path
 
 
 # --- changed_symbols(): an added line resolves to its smallest enclosing symbol ---

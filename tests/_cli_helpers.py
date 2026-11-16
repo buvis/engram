@@ -21,3 +21,9 @@ def _init_git_repo(path):
 def _write_repos_csv(csv_path, entries):
     lines = [f"{repo_path},{name}" for repo_path, name in entries]
     csv_path.write_text("\n".join(lines) + "\n")
+
+
+def _write_diff(tmp_path: Path, lines: list[str]) -> Path:
+    diff_path = tmp_path / "changes.diff"
+    diff_path.write_text("\n".join(lines) + "\n")
+    return diff_path
