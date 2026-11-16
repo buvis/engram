@@ -672,7 +672,10 @@ def test_backfill_marks_known_source_empty_when_chunker_now_returns_nothing(
 # --- CLI: engram index --backfill-code ---
 
 
-@pytest.mark.parametrize("conflict", [["--corpus", "code"], ["--rebuild"], ["--reembed-code"]])
+@pytest.mark.parametrize(
+    "conflict",
+    [["--corpus", "code"], ["--corpus", "docs"], ["--rebuild"], ["--reembed-code"]],
+)
 def test_cli_backfill_rejects_corpus_rebuild_and_reembed(
     tmp_path, monkeypatch, capsys, conflict
 ):
@@ -686,7 +689,8 @@ def test_cli_backfill_rejects_corpus_rebuild_and_reembed(
     with pytest.raises(SystemExit) as exc_info:
         main(["index", "--backfill-code", *conflict])
 
-    assert exc_info.value.code != 0
+    # argparse's parser.error() exit code, not some other non-zero exit.
+    assert exc_info.value.code == 2
     # A conflict rejection, not argparse failing to recognise the flag.
     assert "unrecognized arguments" not in capsys.readouterr().err
     assert not (tmp_path / "engram.db").exists()
@@ -721,7 +725,34 @@ def _seed_two_repos_with_failure(store, tmp_path, monkeypatch):
     return {wide: fresh_wide, parsed: fresh_parsed}, counts, [str(missing)]
 
 
-@pytest.mark.parametrize("seed", [_seed_one_pre_00013, _seed_two_repos_with_failure])
+def _seed_unrelated_counts(store, tmp_path, monkeypatch):
+    # Every count differs from the others and from any sum of the others.
+    wide, _, _, fresh_wide = _seed_pre_00013(
+        store, tmp_path, "repoA", "wide.py", _VECTORS_C, ("alpha", "beta", "gamma")
+    )
+    one, _, _, fresh_one = _seed_pre_00013(store, tmp_path, "repoB", "one.py", _VECTORS_A)
+    parsed = _source(tmp_path, "repoB", "grammar.py", "def g1(): pass\n")
+    h = hash_source(parsed)
+    store.mark_empty_source("code", "repoB", str(parsed), h)
+    fresh_parsed = [_module_context(parsed, "repoB", h, "grammar-context-marker")]
+    fresh_parsed += [_symbol(parsed, "repoB", h, f"g{i}", i, 10 * i) for i in (1, 2, 3)]
+    gone_a = tmp_path / "repoA" / "gone.py"
+    gone_b = tmp_path / "repoB" / "gone.py"
+    files = [("repoA", wide), ("repoA", gone_a), ("repoB", parsed)]
+    files += [("repoB", one), ("repoB", gone_b)]
+    _fake_enumerate(monkeypatch, [CorpusFile("code", r, p) for r, p in files])
+    by_path = {str(wide): fresh_wide, str(one): fresh_one, str(parsed): fresh_parsed}
+    _fake_chunker(monkeypatch, by_path)
+    # wide and one: module context embedded, symbols reused; parsed: every chunk
+    # embedded and its empty mark cleared; both unreadable files fail.
+    counts = (3, 1 + 1 + len(fresh_parsed), len(_VECTORS_C) + len(_VECTORS_A), 1)
+    rows = {wide: fresh_wide, one: fresh_one, parsed: fresh_parsed}
+    return rows, counts, [str(gone_a), str(gone_b)]
+
+
+@pytest.mark.parametrize(
+    "seed", [_seed_one_pre_00013, _seed_two_repos_with_failure, _seed_unrelated_counts]
+)
 def test_cli_backfill_prints_summary(tmp_path, monkeypatch, capsys, seed):
     db = tmp_path / "engram.db"
     store = open_store(db)
@@ -740,9 +771,10 @@ def test_cli_backfill_prints_summary(tmp_path, monkeypatch, capsys, seed):
         f"backfilled {rechunked} code sources: {embedded} chunks embedded, "
         f"{reused} vectors reused, {cleared} empty marks cleared"
     ]
-    assert captured.err.splitlines() == [
+    # One stderr line per failed source, in any order.
+    assert sorted(captured.err.splitlines()) == sorted(
         f"failed (existing rows kept): {path}" for path in failed
-    ]
+    )
     assert exit_code == 0
     assert len(_texts(embed_calls)) == embedded
     # The backfill landed in the tmp_path store the CLI opened.
