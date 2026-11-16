@@ -599,8 +599,7 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
             return 1
         diff_path, id_, source_ref = diff_resolved
         prd_path, capsule_path = _resolve_pack_prd_and_capsule(args, repo_root)
-        config = load_config()
-        store = open_store()
+        config, store = load_config(), open_store()
         report = build(
             store,
             config,
@@ -620,7 +619,6 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
             file=sys.stderr,
         )
         return 1
-
     except (
         OSError,
         ValueError,
@@ -631,10 +629,8 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
         print(f"engram pack failed: {e}", file=sys.stderr)
         return 1
 
-    print(report.path)
-    print(report.total_estimated_tokens)
-    print(report.index_report.files_scanned)
-    print(report.index_report.chunks_added)
+    print(report.path, report.total_estimated_tokens, sep="\n")
+    print(report.index_report.files_scanned, report.index_report.chunks_added, sep="\n")
     return 0
 
 
