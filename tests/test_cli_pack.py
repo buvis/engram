@@ -239,7 +239,7 @@ def test_pack_diff_materializes_diff_under_repo_root_when_invoked_from_a_subdire
 
     calls = []
     report = _make_pack_report(
-        toplevel / "docs/dev/tmp/engram-pack-abc123--def456.md",
+        toplevel / "docs/dev/tmp/engram-pack-abc123--def456-14ec8cc4.md",
     )
     monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
 
@@ -249,10 +249,12 @@ def test_pack_diff_materializes_diff_under_repo_root_when_invoked_from_a_subdire
     assert len(diff_calls) == 1
     assert len(calls) == 1
     written_at_repo_root = (
-        toplevel / "docs/dev/tmp/engram-pack-diff-abc123--def456.diff"
+        toplevel / "docs/dev/tmp/engram-pack-diff-abc123--def456-14ec8cc4.diff"
     )
     assert written_at_repo_root.read_text() == fake_stdout
-    assert not (subdir / "docs/dev/tmp/engram-pack-diff-abc123--def456.diff").exists()
+    assert not (
+        subdir / "docs/dev/tmp/engram-pack-diff-abc123--def456-14ec8cc4.diff"
+    ).exists()
 
 
 def test_pack_out_dir_default_anchors_to_repo_root_when_invoked_from_a_subdirectory(
@@ -457,7 +459,7 @@ def test_pack_diff_materializes_git_diff_and_slugs_id_per_given_example(
 
     calls = []
     report = _make_pack_report(
-        toplevel / "docs/dev/tmp/engram-pack-abc123--def456.md",
+        toplevel / "docs/dev/tmp/engram-pack-abc123--def456-14ec8cc4.md",
     )
     monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
 
@@ -467,14 +469,16 @@ def test_pack_diff_materializes_git_diff_and_slugs_id_per_given_example(
     assert len(diff_calls) == 1
     assert len(calls) == 1
     call = calls[0]
-    assert call["id_"] == "abc123--def456"
+    assert call["id_"] == "abc123--def456-14ec8cc4"
     assert call["source_ref"] == "def456"
     assert (
         call["diff_path"].resolve()
-        == (toplevel / "docs/dev/tmp/engram-pack-diff-abc123--def456.diff").resolve()
+        == (
+            toplevel / "docs/dev/tmp/engram-pack-diff-abc123--def456-14ec8cc4.diff"
+        ).resolve()
     )
     written = (
-        toplevel / "docs/dev/tmp/engram-pack-diff-abc123--def456.diff"
+        toplevel / "docs/dev/tmp/engram-pack-diff-abc123--def456-14ec8cc4.diff"
     ).read_text()
     assert written == fake_stdout
 
@@ -498,7 +502,7 @@ def test_pack_diff_keeps_raw_source_ref_while_slugging_special_characters_in_id(
 
     calls = []
     report = _make_pack_report(
-        toplevel / "docs/dev/tmp/engram-pack-feature-foo--bugfix-bar.md",
+        toplevel / "docs/dev/tmp/engram-pack-feature-foo--bugfix-bar-77cd121a.md",
     )
     monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
 
@@ -508,8 +512,49 @@ def test_pack_diff_keeps_raw_source_ref_while_slugging_special_characters_in_id(
     assert len(diff_calls) == 1
     assert len(calls) == 1
     call = calls[0]
-    assert call["id_"] == "feature-foo--bugfix-bar"
+    assert call["id_"] == "feature-foo--bugfix-bar-77cd121a"
     assert call["source_ref"] == "bugfix/bar"
+
+
+def test_pack_diff_ids_differ_for_ranges_that_sanitize_alike(
+    monkeypatch,
+    tmp_path,
+):
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    toplevel = _init_git_repo(repo_dir)
+    _register_repo(monkeypatch, tmp_path, toplevel)
+    monkeypatch.chdir(toplevel)
+
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+
+    calls = []
+    report = _make_pack_report(toplevel / "docs/dev/tmp/engram-pack-x.md")
+    monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
+
+    # Both ranges sanitize to "a-b--c"; each run gets its own diff body.
+    runs = [("a/b..c", "diff from slash range\n"), ("a-b..c", "diff from dash range\n")]
+    for range_str, stdout in runs:
+        _, fake_run = _make_fake_git_diff_run(stdout, returncode=0)
+        monkeypatch.setattr("engram.cli.subprocess.run", fake_run)
+        assert main(["pack", "--diff", range_str]) == 0
+
+    assert len(calls) == 2
+    slash_call, dash_call = calls
+    assert slash_call["id_"] == "a-b--c-1da1fe5c"
+    assert dash_call["id_"] == "a-b--c-0c3213a4"
+    assert slash_call["id_"] != dash_call["id_"]
+    assert slash_call["diff_path"] != dash_call["diff_path"]
+    # The second run must not have overwritten the first run's scratch diff.
+    tmp_dir = toplevel / "docs/dev/tmp"
+    assert (tmp_dir / "engram-pack-diff-a-b--c-1da1fe5c.diff").read_text() == (
+        "diff from slash range\n"
+    )
+    assert (tmp_dir / "engram-pack-diff-a-b--c-0c3213a4.diff").read_text() == (
+        "diff from dash range\n"
+    )
+    assert not (tmp_dir / "engram-pack-diff-a-b--c.diff").exists()
 
 
 # --- pack: --diff failures never call build ---
