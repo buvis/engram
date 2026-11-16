@@ -55,14 +55,14 @@ def _resolve_repo_for_path(path: Path, repos_csv: Path = GITA_REPOS_CSV) -> str 
             return "claude-home"
         return None
 
-    toplevel = result.stdout.strip()
+    toplevel = Path(result.stdout.strip()).resolve()
     try:
         rows = corpora.read_repos_csv(repos_csv)
-    except FileNotFoundError:
+    except OSError:
         return None
 
     for repo_path, name in rows:
-        if repo_path == toplevel:
+        if Path(repo_path).resolve() == toplevel:
             return name
     return None
 
