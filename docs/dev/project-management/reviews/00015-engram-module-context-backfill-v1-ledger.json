@@ -1,0 +1,90 @@
+[
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "The CLI error and scope behaviors the PRD specifies for `--backfill-code` have no test. The untested paths are `StoreModelMismatchError` (rebuild hint, exit 1), `EmbeddingServerError` and `EmbeddingPreflightError` (print, exit 1), `FileNotFoundError`, and `_resolve_scope` returning None (error message, exit 1). The default `--scope repo` is also untested, because both CLI tests pass `--scope portfolio` or conflict flags only.",
+    "file": "src/engram/cli.py:338",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Simplification: `_rechunk_source` returns `tuple[int, int] | None`, and `backfill_code` reads it as `counts[0]` and `counts[1]`, which hides what each number means. Unpack into named locals instead.",
+    "file": "src/engram/indexer.py:311",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "The second-run test checks identical rows and zero embeddings but does not enforce the required zero writes; rewriting identical rows would pass. Capture `store.conn.total_changes` before the second run and assert it remains unchanged.",
+    "file": "tests/test_backfill.py:411",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "medium",
+    "issue": "Merging dictionaries unnecessarily copies every reusable vector and constructs an intermediate dictionary. Replace the assignment with `vectors.update(zip(missing, embed(missing, entry), strict=True))`.",
+    "file": "src/engram/indexer.py:236",
+    "reason": "single-voice"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`code_chunks_with_vectors` filters on `corpus='code' AND path=?` with no repo term. The only chunks index is `UNIQUE(repo, path, content_hash, chunk_ordinal)`, which leads with `repo`, so each call is likely a full scan of `chunks`.",
+    "file": "src/engram/store.py:581",
+    "reason": "single-voice; the PRD mandates the path-only signature, so the finding's own text concedes the shape is specified"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The README rewrap leaves short orphan lines. \"The one exception\" now follows the new sentence flow awkwardly. Cosmetic: reflow the paragraph.",
+    "file": "README.md:172",
+    "reason": "single-voice; cosmetic rewrap, no behavioral or documentation-accuracy impact"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The diff replaces the whole of `assumptions.md`, dropping the PRD 00014 ledger, and edits `project-capsule.md`. These are autopilot process artifacts outside the PRD's file list.",
+    "file": "docs/dev/project-management/meta/assumptions.md",
+    "reason": "single-voice; these are autopilot's own per-PRD artifacts, rewritten by the build gate by design, not PRD deliverables"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`_run_backfill` also catches `FileNotFoundError`, which the spec's error list omits. This mirrors the plain `index` path and is harmless.",
+    "file": "src/engram/cli.py:350",
+    "reason": "single-voice; the finding's own text calls it harmless and consistent with the plain index path"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The backfill takes no `write_lock`, so it could race a concurrent `--rebuild` or `harvest` that swaps or writes the DB. The spec does not ask for a lock, and plain `index` has the same gap.",
+    "file": "src/engram/cli.py:343",
+    "reason": "single-voice; pre-existing gap shared with plain index, outside this PRD's scope"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`embed(...)` is zipped with `strict=True`. A wrong-length embed result raises an uncaught `ValueError` that aborts the run. The spec says nothing about this case, and earlier sources stay committed.",
+    "file": "src/engram/indexer.py:235",
+    "reason": "single-voice; strict=True failing loud on a server contract violation is the intended behavior"
+  },
+  {
+    "cycle": 1,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "PRD step 6 reuses a vector by the same `(heading, body)`. The code keys on `text_for_embedding`, which is heading plus repo-relative path plus body. The path is identical for every chunk of one source, so behavior is equivalent. It is a literal deviation from the contract and could be noted.",
+    "file": "src/engram/indexer.py:348",
+    "reason": "verified equivalent: `_rechunk_source` is called per source, so the repo-relative path component is constant across every chunk in one call; keying on text_for_embedding therefore partitions identically to (heading, body). Both reviewers state the behavior matches."
+  }
+]
