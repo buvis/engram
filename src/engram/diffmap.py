@@ -12,6 +12,17 @@ from tree_sitter_language_pack import ProcessConfig, detect_language_from_path, 
 from engram.symbols import kind_name
 
 _HUNK_HEADER_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
+_C_QUOTED_RE = re.compile(r'"(.*)"')
+_C_ESCAPE_RE = re.compile(rb"\\([0-3][0-7]{2}|.)")
+_C_ESCAPES = {
+    b"a": b"\a",
+    b"b": b"\b",
+    b"t": b"\t",
+    b"n": b"\n",
+    b"v": b"\v",
+    b"f": b"\f",
+    b"r": b"\r",
+}
 
 
 @dataclass(frozen=True)
@@ -82,9 +93,8 @@ def _section_file_identity(
     section: list[str],
     repo_root: Path,
 ) -> tuple[str, str, str, bool] | None:
-    # ponytail: paths with spaces handled via the +++/--- lines; git's C-quoted
-    # form ("b/caf\303\251.py") is not unquoted - decode it here if non-ASCII
-    # paths ever show up in a reviewed diff.
+    # Paths with spaces are handled via the +++/--- lines; git's C-quoted form
+    # ("b/caf\303\251.py") is decoded before the a/ or b/ prefix is stripped.
     plus_line = next((line for line in section if line.startswith("+++ ")), None)
     if plus_line is None:
         return None
@@ -96,10 +106,10 @@ def _section_file_identity(
         )
         if minus_line is None:
             return None
-        rel_path = minus_line[4:]
+        rel_path = _unquote_c_path(minus_line[4:])
         rel_path = rel_path.removeprefix("a/")
     else:
-        rel_path = plus_line[4:]
+        rel_path = _unquote_c_path(plus_line[4:])
         rel_path = rel_path.removeprefix("b/")
     path = repo_root / rel_path
     if Path(rel_path).is_absolute() or not path.resolve().is_relative_to(
@@ -109,6 +119,22 @@ def _section_file_identity(
     abs_path = str(path)
     name = Path(rel_path).name
     return abs_path, name, rel_path, is_deletion
+
+
+def _unquote_c_path(path: str) -> str:
+    """Decode git's C-quoted form ("caf\\303\\251.py"); leave unquoted paths as-is."""
+    quoted = _C_QUOTED_RE.fullmatch(path)
+    if quoted is None:
+        return path
+
+    def _replace(match: re.Match[bytes]) -> bytes:
+        escape = match.group(1)
+        if len(escape) > 1:
+            return bytes([int(escape, 8)])
+        return _C_ESCAPES.get(escape, escape)
+
+    raw = _C_ESCAPE_RE.sub(_replace, quoted.group(1).encode())
+    return raw.decode(errors="replace")
 
 
 def _split_sections(lines: list[str]) -> list[list[str]]:
