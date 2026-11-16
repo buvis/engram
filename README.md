@@ -120,6 +120,7 @@ engram index --scope portfolio          # index everything (incremental)
 engram index --scope repo --corpus prd  # index one corpus in the current repo
 engram index --rebuild                  # re-embed from scratch, atomic swap
 engram index --reembed-code             # refresh code vectors in place
+engram index --backfill-code --scope portfolio  # add module context to unchanged code
 engram status --scope portfolio         # per-corpus counts, stale and dead rows
 engram lookup --name stop_served --scope portfolio  # exact name, then prefix
 engram lookup --name stop_served --scope portfolio --repo engram
@@ -171,9 +172,12 @@ indexed as `Module context` chunks. They appear when a file is first indexed or
 its content changes. The index keeps the old chunks of unchanged files,
 including files cached as empty. There is no automatic migration, and
 `--reembed-code` only refreshes vectors of existing chunks, so it does not find
-missing spans. A backfill is a separate, explicit operation. The one exception
+missing spans. The one exception
 is the `None`-heading migration: it re-chunks an unchanged file once and so
-adds its context then. `engram lookup --name` returns symbols only;
+adds its context then. `engram index --backfill-code [--scope repo|portfolio]`
+re-chunks the indexed code files in scope so they gain their context chunks,
+and reuses the stored vectors of chunks that did not change.
+`engram lookup --name` returns symbols only;
 `lookup --file` and `query` include context. Data and doc files with no symbols
 (Markdown, JSON, YAML, TOML and the like) stay out of the code corpus.
 

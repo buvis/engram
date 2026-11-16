@@ -20,6 +20,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - **index**: code outside parsed symbols (imports, constants, top-level statements) is now indexed as `Module context` chunks for newly indexed or changed files. Queries and `engram lookup --file` include them; `engram lookup --name` still returns symbols only.
+- **index**: `engram index --backfill-code [--scope repo|portfolio]` re-chunks
+  already-indexed code files so unchanged files gain `Module context` chunks,
+  reusing the stored vectors of unchanged chunks.
 - **mcp**: `engram mcp` serves an `engram_query` tool over MCP stdio, so agent
   hosts can search prior sessions, PRDs, memory, and code in-process.
 - **nudge**: `engram nudge <claude|codex|copilot|plain>` reads a post-tool hook
