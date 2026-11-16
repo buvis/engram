@@ -172,6 +172,7 @@ def test_resolve_repo_for_path_maps_claude_project_management_to_claude_home(
         ("registry", "target", "linked-repo"),
         ("toplevel", "target", "real-repo"),
         ("registry", "near_miss", None),
+        ("registry", "name_on_wrong_path", None),
         ("registry", "empty", None),
     ],
 )
@@ -186,22 +187,42 @@ def test_resolve_repo_for_path_matches_symlinked_registry_path(
     toplevel = _init_git_repo(tmp_path / "repo")
     sibling = tmp_path / "repo-sibling"
     sibling.mkdir()
+    same_name_decoy = tmp_path / "decoy" / "repo"
+    same_name_decoy.mkdir(parents=True)
     link = tmp_path / "links" / "repo"
     link.parent.mkdir()
     link.symlink_to(toplevel, target_is_directory=True)
     sibling_link = tmp_path / "links" / "repo-sibling"
     sibling_link.symlink_to(sibling, target_is_directory=True)
-    file_path = toplevel / "review.md"
+    file_path = toplevel / "docs" / "reviews" / "review.md"
+    file_path.parent.mkdir(parents=True)
     file_path.write_text("content")
-    near_misses = [(sibling_link, "sibling-repo"), (link.parent, "links-repo")]
+    near_misses_before = [
+        (same_name_decoy, "decoy-repo"),
+        (sibling_link, "sibling-repo"),
+        (file_path.parent, "subdir-repo"),
+    ]
+    near_misses_after = [(link.parent, "links-repo")]
     target = link if symlinked_side == "registry" else toplevel
     rows = {
-        "target": [near_misses[0], (target, expected), near_misses[1]],
-        "near_miss": near_misses,
+        "target": [*near_misses_before, (target, expected), *near_misses_after],
+        "near_miss": [*near_misses_before, *near_misses_after],
+        "name_on_wrong_path": [
+            *near_misses_before,
+            (sibling_link, "linked-repo"),
+            (same_name_decoy, "real-repo"),
+            *near_misses_after,
+        ],
         "empty": [],
     }[registered]
-    repos_csv = tmp_path / "repos.csv"
+    registry_dir = tmp_path / "registry"
+    registry_dir.mkdir()
+    repos_csv = registry_dir / "repos.csv"
     _write_repos_csv(repos_csv, rows)
+    _write_repos_csv(
+        tmp_path / "repos.csv",
+        [(toplevel, "decoy-csv-repo"), (link, "decoy-csv-repo")],
+    )
     git_cwds = []
     original_run = subprocess.run
 
@@ -226,6 +247,7 @@ def test_resolve_repo_for_path_matches_symlinked_registry_path(
         ("/", "slash-repo", "slash-repo"),
         ("//", "double-slash-repo", "double-slash-repo"),
         ("-other/", "near-miss-repo", None),
+        ("-other/", "slash-repo", None),
     ],
 )
 def test_resolve_repo_for_path_matches_trailing_slash_registry_path(
@@ -237,15 +259,23 @@ def test_resolve_repo_for_path_matches_trailing_slash_registry_path(
     repo_dir = tmp_path / "repo"
     repo_dir.mkdir()
     toplevel = _init_git_repo(repo_dir)
-    file_path = toplevel / "review.md"
+    file_path = toplevel / "docs" / "reviews" / "review.md"
+    file_path.parent.mkdir(parents=True)
     file_path.write_text("content")
-    repos_csv = tmp_path / "repos.csv"
+    same_name_decoy = tmp_path / "decoy" / "repo"
+    same_name_decoy.mkdir(parents=True)
     rows = [
+        (f"{same_name_decoy}/", "decoy-repo"),
+        (f"{file_path.parent}/", "subdir-repo"),
         (f"{toplevel.parent}/", "parent-repo"),
         (f"{toplevel}{suffix}", registered_name),
         (f"{toplevel}-sibling/", "sibling-repo"),
     ]
+    registry_dir = tmp_path / "registry"
+    registry_dir.mkdir()
+    repos_csv = registry_dir / "repos.csv"
     _write_repos_csv(repos_csv, rows)
+    _write_repos_csv(tmp_path / "repos.csv", [(toplevel, "decoy-csv-repo")])
 
     result = _resolve_repo_for_path(file_path, repos_csv=repos_csv)
 
@@ -688,6 +718,29 @@ def test_harvest_unreadable_registry_yields_no_repo_without_aborting_batch(
     chunks = store.chunks_for_corpus(FINDINGS_CORPUS)
     assert {c.repo for c in chunks} == {"repoA", "repoC"}
     assert all("repoB-marker-token" not in c.body for c in chunks)
+
+
+def test_harvest_unreadable_registry_non_os_error_propagates_instead_of_being_swallowed(
+    tmp_path,
+    monkeypatch,
+):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+    monkeypatch.setattr("engram.findings.embed", _make_embed())
+    (tmp_path / "repo").mkdir()
+    review_path = _init_git_repo(tmp_path / "repo") / "review.md"
+    _write_review_file(review_path)
+    repos_csv = tmp_path / "repos.csv"
+    _write_repos_csv(repos_csv, [(review_path.parent, "repo")])
+    monkeypatch.setattr("engram.harvest.GITA_REPOS_CSV", repos_csv)
+
+    def broken_read(csv_path):
+        raise ValueError("simulated registry programming error")
+
+    monkeypatch.setattr("engram.corpora.read_repos_csv", broken_read)
+
+    with pytest.raises(ValueError, match="simulated registry programming error"):
+        harvest(store, config, [review_path])
 
 
 # --- HarvestReport.any_failed ---
