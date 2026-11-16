@@ -574,11 +574,11 @@ def _hit(path, line_start, line_end, rank=1):
 
 def _symlinked_root(tmp_path):
     """A real source dir plus a symlinked registry root reaching the same files."""
-    real_root = tmp_path / "real"
+    real_root = tmp_path / "a"
     real_root.mkdir()
     for name in ("changed.py", "other.py", "changed_helper.py"):
         (real_root / name).write_text("x = 1\n")
-    link_root = tmp_path / "link"
+    link_root = tmp_path / "b"
     link_root.symlink_to(real_root, target_is_directory=True)
     return real_root, link_root
 
@@ -596,6 +596,25 @@ def test_exclude_drops_hit_whose_path_is_symlink_of_changed_span(tmp_path):
     linked_span = (str(link_root / "other.py"), 40, 50)
     assert _exclude([_hit(real_root / "other.py", 45, 60)], {linked_span}) == []
 
+    # a second, nested and differently named symlinked root reaches the same file
+    (tmp_path / "q").mkdir()
+    second_root = tmp_path / "q" / "w"
+    second_root.symlink_to(real_root, target_is_directory=True)
+    assert _exclude([_hit(second_root / "changed.py", 20, 22)], {span}) == []
+
+    # a symlink to the file itself, under another name, not a symlinked dir
+    file_link = tmp_path / "alias.py"
+    file_link.symlink_to(real_root / "changed.py")
+    assert _exclude([_hit(file_link, 12, 16)], {span}) == []
+
+    # touching ranges overlap: the hit ends where the span starts, or the reverse
+    assert _exclude([_hit(linked_changed, 10, 15)], {span}) == []
+    assert _exclude([_hit(linked_changed, 25, 30)], {span}) == []
+
+    # equal raw paths still match when nothing exists on disk to resolve
+    missing = str(tmp_path / "gone" / "changed.py")
+    assert _exclude([_hit(missing, 10, 20)], {(missing, 15, 25)}) == []
+
     # several hits and spans: only the canonical self-matches go
     kept = _hit(real_root / "changed_helper.py", 10, 20, rank=3)
     hits = [
@@ -609,11 +628,21 @@ def test_exclude_drops_hit_whose_path_is_symlink_of_changed_span(tmp_path):
 def test_exclude_keeps_hit_whose_path_is_not_a_symlink_of_changed_span(tmp_path):
     real_root, link_root = _symlinked_root(tmp_path)
     span = (str(real_root / "changed.py"), 15, 25)
+    same_bytes = (real_root / "changed.py").read_bytes()
 
-    # a different symlink, to an unrelated file that shares the basename
+    # a plain real file elsewhere, same basename and identical contents
     unrelated_dir = tmp_path / "elsewhere"
     unrelated_dir.mkdir()
-    (unrelated_dir / "changed.py").write_text("y = 2\n")
+    (unrelated_dir / "changed.py").write_bytes(same_bytes)
+    plain_same_name = _hit(unrelated_dir / "changed.py", 15, 25, rank=4)
+
+    # a real file in a sibling dir: same grandparent, basename and contents
+    sibling_dir = tmp_path / "sibling"
+    sibling_dir.mkdir()
+    (sibling_dir / "changed.py").write_bytes(same_bytes)
+    sibling = _hit(sibling_dir / "changed.py", 10, 20, rank=5)
+
+    # a different symlink, to an unrelated file that shares the basename
     other_link = tmp_path / "changed.py"
     other_link.symlink_to(unrelated_dir / "changed.py")
     via_other_link = _hit(other_link, 10, 20, rank=1)
@@ -623,7 +652,23 @@ def test_exclude_keeps_hit_whose_path_is_not_a_symlink_of_changed_span(tmp_path)
 
     # canonical match on the path, but the lines do not overlap the span
     disjoint_lines = _hit(link_root / "changed.py", 100, 110, rank=3)
+    lines_before = _hit(link_root / "changed.py", 1, 5, rank=6)
+    ends_one_before = _hit(link_root / "changed.py", 10, 14, rank=7)
+    starts_one_after = _hit(link_root / "changed.py", 26, 30, rank=8)
 
-    hits = [via_other_link, prefix_near_miss, disjoint_lines]
+    # a path that does not exist on disk is not a match for an existing span
+    missing = _hit(tmp_path / "missing" / "changed.py", 15, 25, rank=9)
+
+    hits = [
+        via_other_link,
+        prefix_near_miss,
+        disjoint_lines,
+        plain_same_name,
+        sibling,
+        lines_before,
+        ends_one_before,
+        starts_one_after,
+        missing,
+    ]
     assert _exclude(hits, {span}) == hits
     assert _exclude([], {span}) == []
