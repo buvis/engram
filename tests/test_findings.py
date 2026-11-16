@@ -149,7 +149,28 @@ def test_parse_raises_when_reviewers_value_is_whitespace_only(tmp_path):
 
 @pytest.mark.parametrize(
     "reviewers",
-    [[""], [" "], [], ["alice", ""], [1], 1, {"a": "b"}],
+    [
+        [""],
+        [" "],
+        [],
+        ["alice", ""],
+        [1],
+        1,
+        {"a": "b"},
+        ["alice", 1, "bob"],
+        ["alice", "", "bob"],
+        True,
+        3.5,
+        [["alice"]],
+        [None],
+        [1.5],
+        [True],
+        [["a"]],
+        [{"a": "b"}],
+        "\t",
+        "\n",
+        ["\t"],
+    ],
 )
 def test_parse_rejects_blank_or_non_string_reviewers(tmp_path, reviewers):
     path, _lines = _write_review(
@@ -168,7 +189,14 @@ def test_parse_rejects_blank_or_non_string_reviewers(tmp_path, reviewers):
 
 @pytest.mark.parametrize(
     "reviewers_yaml",
-    ["alice,bob", json.dumps(["alice", "bob"])],
+    [
+        "alice,bob",
+        json.dumps(["alice", "bob"]),
+        "zed",
+        json.dumps(["x-y", "q"]),
+        "alice",
+        json.dumps(["alice"]),
+    ],
 )
 def test_parse_accepts_string_or_list_of_names(tmp_path, reviewers_yaml):
     path, _lines = _write_review(
