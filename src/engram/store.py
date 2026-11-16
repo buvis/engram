@@ -4,6 +4,7 @@ import fcntl
 import hashlib
 import os
 import sqlite3
+import struct
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -438,6 +439,12 @@ class Store:
             (corpus, repo, path, content_hash),
         )
 
+    def unmark_empty_source(self, corpus: str, repo: str, path: str) -> None:
+        self.conn.execute(
+            "DELETE FROM empty_sources WHERE corpus = ? AND repo = ? AND path = ?",
+            (corpus, repo, path),
+        )
+
     def prune_empty_sources(
         self,
         scope: Scope,
@@ -570,6 +577,26 @@ class Store:
             (str(path),),
         ).fetchall()
         return [Chunk(*row) for row in rows]
+
+    def code_chunks_with_vectors(self, path: str) -> list[ChunkWithVector]:
+        if not self._chunks_vec_exists():
+            return []
+        model_id = self._get_meta("embedding_model_id")
+        dim = int(self._get_meta("embedding_dim"))
+        rows = self.conn.execute(
+            "SELECT c.corpus, c.repo, c.doc_type, c.path, c.heading, c.body, "
+            "c.line_start, c.line_end, c.content_hash, c.chunk_ordinal, cv.embedding "
+            "FROM chunks c JOIN chunks_vec cv ON cv.chunk_id = c.id "
+            "WHERE c.corpus = 'code' AND c.path = ? ORDER BY c.chunk_ordinal",
+            (path,),
+        ).fetchall()
+        return [
+            ChunkWithVector(
+                chunk=Chunk(*row[:10]),
+                vector=Vector(list(struct.unpack(f"{dim}f", row[10])), model_id, dim),
+            )
+            for row in rows
+        ]
 
     def status(
         self, scope: Scope, in_flight_seconds: int | None = None
