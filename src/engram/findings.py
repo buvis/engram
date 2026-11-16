@@ -155,7 +155,12 @@ def parse(path: Path) -> list[Record]:
 
         metadata = yaml.safe_load("\n".join(lines[1:frontmatter_end]))
         reviewers = metadata.get("reviewers") if isinstance(metadata, Mapping) else ""
-        if not str(reviewers or "").strip():
+        names = [reviewers] if isinstance(reviewers, str) else reviewers
+        if not (
+            isinstance(names, list)
+            and names
+            and all(isinstance(name, str) and name.strip() for name in names)
+        ):
             raise ValueError("frontmatter must contain reviewers")
 
         body_lines = lines[frontmatter_end + 1 :]
