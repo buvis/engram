@@ -1,4 +1,3 @@
-import pytest
 from _pack_helpers import (
     _chunk,
     _config,
