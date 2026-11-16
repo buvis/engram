@@ -755,11 +755,9 @@ def test_rebuild_index_failure_removes_tmp_db_and_keeps_live_db(
     assert opened_paths == [str(tmp_db)]
     assert len(indexed_stores) == 1
     assert close_events == [("close", True)]
-    # No temp DB under any name (deleted, not renamed); live DB untouched.
-    # (The rebuild lock file is expected and excluded here.)
-    assert sorted(
-        p.name for p in tmp_path.iterdir() if not p.name.endswith(".lock")
-    ) == ["engram.db"]
+    # No temp DB under any name; live DB untouched. The lock file is expected.
+    names = sorted(p.name for p in tmp_path.iterdir() if not p.name.endswith(".lock"))
+    assert names == ["engram.db"]
     assert live_db.read_text() == "live data"
 
 
