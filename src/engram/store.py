@@ -1,8 +1,12 @@
 """Chunk store: SQLite-backed FTS5 + sqlite-vec index over corpus chunks."""
 
+import fcntl
 import hashlib
+import os
 import sqlite3
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
@@ -87,6 +91,27 @@ class StatusReport:
 
 class StoreModelMismatchError(RuntimeError):
     pass
+
+
+class StoreBusyError(RuntimeError):
+    pass
+
+
+@contextmanager
+def write_lock(lock_path: Path) -> Iterator[None]:
+    """Hold an exclusive non-blocking flock on lock_path; raise if already held."""
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(lock_path, os.O_RDWR | os.O_CREAT)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise StoreBusyError(
+                f"engram store busy: {lock_path} is held by another harvest or rebuild"
+            ) from None
+        yield
+    finally:
+        os.close(fd)
 
 
 def open_store(db_path: Path = DEFAULT_DB_PATH) -> "Store":
