@@ -849,8 +849,11 @@ _C_QUOTED_CASES = pytest.mark.parametrize(
     [
         (r"caf\303\251", "café", "cafe"),
         (r"na\303\257ve", "naïve", "naive"),
+        (r"\302\265s", "µs", "us"),
+        (r"\346\227\245\350\250\230", "日記", "nikki"),
+        (r"\360\237\220\215", "🐍", "snake"),
     ],
-    ids=["e_acute", "i_diaeresis"],
+    ids=["e_acute", "i_diaeresis", "micro_sign_c2_lead", "cjk_3_byte", "emoji_4_byte"],
 )
 
 
@@ -943,5 +946,147 @@ def test_changed_symbols_decodes_c_quoted_deleted_path(
             kind="file",
             line_start=1,
             line_end=1,
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("quoted_rel", "decoded_rel"),
+    [
+        (r"a\"b\\c.py", 'a"b\\c.py'),
+        (r"tab\there.py", "tab\there.py"),
+        (r"dir/a\"b.py", 'dir/a"b.py'),
+    ],
+    ids=["quote_and_backslash", "tab", "quote_in_subdirectory"],
+)
+def test_changed_symbols_c_quoted_path_unescapes_c_escapes_to_exact_relative_path(
+    tmp_path, quoted_rel, decoded_rel
+):
+    target = tmp_path / decoded_rel
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text("def foo():\n    return 1\n")
+    diff_path = _write_diff(
+        tmp_path,
+        [
+            f'diff --git "a/{quoted_rel}" "b/{quoted_rel}"',
+            "index 1111111..2222222 100644",
+            f'--- "a/{quoted_rel}"',
+            f'+++ "b/{quoted_rel}"',
+            "@@ -1,2 +1,2 @@",
+            " def foo():",
+            "-    return 0",
+            "+    return 1",
+        ],
+    )
+
+    result = changed_symbols(diff_path, tmp_path)
+
+    assert result == [
+        Symbol(
+            path=str(tmp_path / decoded_rel),
+            name="foo",
+            kind="function",
+            line_start=1,
+            line_end=2,
+        ),
+    ]
+    assert Path(result[0].path).relative_to(tmp_path).as_posix() == decoded_rel
+
+
+@pytest.mark.parametrize(
+    "raw_rel",
+    ["café.py", r"back\nslash.py", r"caf\303\251.py"],
+    ids=["raw_utf8", "literal_backslash_n", "literal_backslash_octal"],
+)
+def test_changed_symbols_leaves_unquoted_path_unchanged_not_c_quoted_decoded(
+    tmp_path, raw_rel
+):
+    (tmp_path / raw_rel).write_text("def foo():\n    return 1\n")
+    diff_path = _write_diff(
+        tmp_path,
+        [
+            f"diff --git a/{raw_rel} b/{raw_rel}",
+            "index 1111111..2222222 100644",
+            f"--- a/{raw_rel}",
+            f"+++ b/{raw_rel}",
+            "@@ -1,2 +1,2 @@",
+            " def foo():",
+            "-    return 0",
+            "+    return 1",
+        ],
+    )
+
+    result = changed_symbols(diff_path, tmp_path)
+
+    assert result == [
+        Symbol(
+            path=str(tmp_path / raw_rel),
+            name="foo",
+            kind="function",
+            line_start=1,
+            line_end=2,
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    "header_lines",
+    [
+        [
+            r'diff --git "a/\056\056/\056\056/etc/passwd" "b/\056\056/\056\056/etc/passwd"',
+            "index 1111111..2222222 100644",
+            r'--- "a/\056\056/\056\056/etc/passwd"',
+            r'+++ "b/\056\056/\056\056/etc/passwd"',
+            "@@ -1,1 +1,1 @@",
+            "-x",
+            "+y",
+        ],
+        [
+            r'diff --git "a/\056\056/\056\056/etc/passwd" "b/\056\056/\056\056/etc/passwd"',
+            "deleted file mode 100644",
+            "index 1111111..0000000 100644",
+            r'--- "a/\056\056/\056\056/etc/passwd"',
+            "+++ /dev/null",
+            "@@ -1,1 +0,0 @@",
+            "-x",
+        ],
+    ],
+    ids=["modified_plus_line", "deleted_minus_line"],
+)
+def test_changed_symbols_rejects_c_quoted_traversal_path_after_decoding(
+    tmp_path, header_lines
+):
+    diff_path = _write_diff(tmp_path, header_lines)
+
+    with pytest.raises(ValueError, match="outside repository"):
+        changed_symbols(diff_path, tmp_path)
+
+
+def test_changed_symbols_c_quoted_grammarless_file_symbol_uses_decoded_name(
+    tmp_path,
+):
+    (tmp_path / "café.bin").write_text("first line\n")
+    diff_path = _write_diff(
+        tmp_path,
+        [
+            r'diff --git "a/caf\303\251.bin" "b/caf\303\251.bin"',
+            "index 1111111..2222222 100644",
+            r'--- "a/caf\303\251.bin"',
+            r'+++ "b/caf\303\251.bin"',
+            "@@ -1,1 +1,2 @@",
+            " first line",
+            "+second line",
+        ],
+    )
+
+    result = changed_symbols(diff_path, tmp_path)
+
+    assert result == [
+        Symbol(
+            path=str(tmp_path / "café.bin"),
+            name="café.bin",
+            kind="file",
+            line_start=2,
+            line_end=2,
         ),
     ]
