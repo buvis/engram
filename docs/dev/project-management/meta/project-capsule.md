@@ -61,13 +61,13 @@ commit "docs(meta): trim capsule to current facts".
 
 - [x] 00014-engram-findings-pack-correctness-v1 (2 cycles)
 - [x] 00015-engram-module-context-backfill-v1 (2 cycles)
-- [ ] 00016-engram-worktree-repo-resolution-v1 (wip; in progress, lane
-  classified fast-track but routed full as uncardable)
+- [x] 00016-engram-worktree-repo-resolution-v1 (2 cycles)
 
-Observations: one medium deferred item remains (the PRD's acceptance
-command `pytest -q tests/test_diffmap.py -k c_quoted` now deselects all 20
-tests because the C-quoted tests moved to `tests/test_diffmap_decoding.py`
-during the cycle-1 file-size split) — recorded in the batch deferred JSON.
+Observations: batch drained, nothing left in backlog/ or wip/. One medium
+deferred item remains (the PRD's acceptance command
+`pytest -q tests/test_diffmap.py -k c_quoted` now deselects all 20 tests
+because the C-quoted tests moved to `tests/test_diffmap_decoding.py` during
+the cycle-1 file-size split) — recorded in the batch deferred JSON.
 
 State 2026-11-16 (autopilot batch 202611161217):
 
