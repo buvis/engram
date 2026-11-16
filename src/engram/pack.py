@@ -290,17 +290,17 @@ def _reindex_and_resolve_symbols(
             f"pack reindex failed (existing rows kept): {', '.join(failures)}"
         )
     changed_spans = {(s.path, s.line_start, s.line_end) for s in all_symbols}
-    if index_root is not None:
+    if index_root is not None and Path(index_root).resolve() != repo_root.resolve():
         # A worktree's files are indexed under the main checkout's paths, so the
         # same spans there are self-matches too.
-        changed_spans |= {
-            (
-                str(Path(index_root) / Path(s.path).relative_to(repo_root)),
-                s.line_start,
-                s.line_end,
-            )
-            for s in all_symbols
-        }
+        extra_spans = set()
+        for s in all_symbols:
+            try:
+                rel = Path(s.path).relative_to(repo_root)
+            except ValueError:
+                continue
+            extra_spans.add((str(Path(index_root) / rel), s.line_start, s.line_end))
+        changed_spans |= extra_spans
 
     query_symbols = all_symbols[:MAX_SYMBOLS_PER_PACK]
     symbols_omitted = max(0, len(all_symbols) - MAX_SYMBOLS_PER_PACK)
