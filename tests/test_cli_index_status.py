@@ -1,3 +1,6 @@
+import sqlite3
+import uuid
+
 import pytest
 from _cli_helpers import _refuse
 
@@ -703,6 +706,10 @@ def test_index_rebuild_removes_leftover_tmp_db_before_building(monkeypatch, tmp_
     assert exit_code == 0
 
 
+class _IndexFailure(Exception):
+    """Not a RuntimeError: cleanup must not depend on the exception type."""
+
+
 def test_rebuild_index_failure_removes_tmp_db_and_keeps_live_db(
     monkeypatch,
     tmp_path,
@@ -710,20 +717,30 @@ def test_rebuild_index_failure_removes_tmp_db_and_keeps_live_db(
 ):
     live_db = tmp_path / "engram.db"
     tmp_db = tmp_path / "engram.db.rebuild-tmp"
-    events = []
+    live_db.write_text("live data")
+    message = f"index blew up {uuid.uuid4().hex}"
+    close_events = []
     opened_paths = []
     indexed_stores = []
+
+    class _ConnRecordingTmpOnClose:
+        def close(self):
+            # The connection must be closed while the temp file still exists.
+            close_events.append(("close", tmp_db.exists()))
+
+    class _Store:
+        conn = _ConnRecordingTmpOnClose()
 
     def fake_open_store(path, *args, **kwargs):
         # Real open_store creates the DB file on disk; the partial temp DB
         # must exist when index() fails so cleanup is really observable.
         opened_paths.append(str(path))
         tmp_db.write_text("partial data")
-        return _FakeRebuildStore(events)
+        return _Store()
 
     def fake_index(store, *args, **kwargs):
         indexed_stores.append(store)
-        raise RuntimeError("embedding failed")
+        raise _IndexFailure(message)
 
     monkeypatch.setattr("engram.cli.DEFAULT_DB_PATH", live_db)
     monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
@@ -734,12 +751,42 @@ def test_rebuild_index_failure_removes_tmp_db_and_keeps_live_db(
 
     captured = capsys.readouterr()
     assert exit_code == 1
-    assert "rebuild failed: embedding failed" in captured.err
+    assert f"rebuild failed: {message}" in captured.err
     assert opened_paths == [str(tmp_db)]
     assert len(indexed_stores) == 1
-    assert not tmp_db.exists()
-    assert events == ["close"]
-    assert not live_db.exists()
+    assert close_events == [("close", True)]
+    # No temp DB under any name (deleted, not renamed); live DB untouched.
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["engram.db"]
+    assert live_db.read_text() == "live data"
+
+
+def test_rebuild_index_failure_during_open_store_removes_tmp_db(
+    monkeypatch,
+    tmp_path,
+    capsys,
+):
+    live_db = tmp_path / "engram.db"
+    tmp_db = tmp_path / "engram.db.rebuild-tmp"
+    live_db.write_text("live data")
+    message = f"open_store blew up {uuid.uuid4().hex}"
+
+    def fake_open_store(path, *args, **kwargs):
+        # open_store creates the file on disk, then fails before returning.
+        tmp_db.write_text("partial data")
+        raise sqlite3.OperationalError(message)
+
+    monkeypatch.setattr("engram.cli.DEFAULT_DB_PATH", live_db)
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", fake_open_store)
+    monkeypatch.setattr("engram.cli.index", _refuse)
+
+    exit_code = main(["index", "--rebuild"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert f"rebuild failed: {message}" in captured.err
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["engram.db"]
+    assert live_db.read_text() == "live data"
 
 
 # --- default scope (no --scope flag) distinguishes missing repos.csv from unregistered repo ---
