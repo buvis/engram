@@ -1,35 +1,47 @@
-# Assumptions ledger (PRD 00013)
+# Assumption ledger — PRD 00014 (batch 202611161217)
 
-## 1: Emit module-context chunks for source lines outside emitted symbol spans
+## 1: Strict reviewers check in findings.py
 
-- Tess: the direct `_context_chunks` test keeps the highest-ordinal span last, so it separates `chunks[-1].chunk_ordinal + 1` from `len(chunks) + 1` but not from `max + 1` (the contract says last; `chunk` always passes increasing ordinals).
-- Tess: `[1, 2, 3]` in `consts.py.json` and plain prose in `README.md` are detected as json and markdown and yield no symbols (confirmed against the pre-change `chunk`).
-- Tess (strengthen): ruby's `method` doc type, `Method size` heading and span come from observed parser output, not the contract; the js, rs, go and sh fixtures yield no symbols today.
-- Tess (strengthen): a `.java` file holding only `package demo;` yields a `module` symbol, so java was left out of the symbol-less cases.
-- Ivan: `CONTEXT_LANGUAGES` lists one entry per line (formatter style); values match the design.
-- Ivan: the CHANGELOG bullet is one physical line; neighboring entries wrap near 80 columns.
-- Orchestrator: a formatter hook reflowed `store.py`, `symbols.py` and the test file during subagent dispatches (trailing commas, line splits only); the orchestrator reverted the unrelated reflow in `src/` each time and committed the test reflow with the strengthen commit.
-- Pat (LOW, not fixed): `_context_chunks` builds full line-number lists per run; the test re-types the `CONTEXT_LANGUAGES` literal; `_sym` takes nine positional arguments.
+- The literal "alice,bob" is written as a plain YAML scalar (reviewers: alice,bob); other values are encoded with json.dumps, which YAML parses back to the same Python objects. (Tess)
+- The error message must match exactly (anchored regex), as the contract states it verbatim. (Tess)
+- Only tests selected by `-k reviewers` count for the strengthen pass, so an allowlist exploit also allowlisted the default fixture "alice,bob,carl". (Devon)
+- YAML `true`, `3.5`, `null` and tab-only strings are invalid reviewers values; the tests reject `1` and `[1]`, which only implies this. (Devon)
+- A single string such as "alice,bob" counts as valid if it is not blank; it is not split on commas or checked per-name, since the tests accept "alice,bob" as one string. (Ivan)
+- A tuple or other non-list sequence is rejected; YAML only produces lists, so this cannot come up in practice. (Ivan)
 
-## 2: Exclude module-context chunks from Store.lookup_by_name
+## 2: Canonical registry match in harvest.py
 
-- Tess: an exact match that finds only context rows counts as "finds nothing", so the call falls back to the prefix match.
-- Tess: `lookup_by_name("Module context", ...)` (a name with a space) returns `[]` when only context rows exist.
-- Tess (strengthen): non-code rows use corpus and doc type `prd`; a context row may carry a lower ordinal than a symbol in store-level tests, although the chunker never emits that.
-- Tess (strengthen): FTS splits `wombat.run()` into tokens, so `wombat` is found (confirmed by the passing run after implementation).
-- Orchestrator: the CHANGELOG bullet from task 1 was extended in the task 2 commit instead of adding a second bullet.
-- Pat (LOW, not fixed): `_put` is a third near-duplicate row constructor in the test file; one test ends with an assertion over its own fixture literals; the `_sym` reflow came from the formatter hook.
+- `_resolve_repo_for_path` runs `git rev-parse --show-toplevel` before it reads the registry; the unreadable-registry test picks the failing file by the last git working directory, so it depends on this order. (Tess)
+- `harvest.py` reads the registry through the module attribute `corpora.read_repos_csv`. (Tess)
+- When the registry read fails, the `no_repo` result's `error` field is not checked, since the contract does not say what it holds. (Tess)
+- `//` counts as a valid trailing-slash spelling alongside `/`. (Tess)
+- Non-`OSError` exceptions from the registry read (e.g. `ValueError`) are expected to propagate rather than be swallowed. (Tess, Ivan)
+- Resolving a registry path inside the loop needs no per-row error handling: non-strict `Path.resolve()` does not raise for a missing path, and no test covers an unresolvable registry entry. (Ivan)
+- Moving the resolve-path tests into a new `tests/test_harvest_resolve.py` module counts as "splitting the test file" for the style gate; the setup helper extraction is an allowed fix for the function-length violation. (Ivan, style-fix dispatch)
+- Shared test helpers (`_init_git_repo`, `_write_repos_csv`) moved into a new `tests/_harvest_helpers.py` rather than reusing the identical helper already in `_cli_helpers.py`, to avoid touching an existing helper module. (Ivan, style-fix dispatch)
 
-## 3: Add incremental index regressions for module context and document the partial rollout
+## 3: write_lock and StoreBusyError in store.py
 
-- Orchestrator: test-and-docs task, so Tess and Devon did not run; Ivan wrote the index tests against the unchanged indexer and all passed first time (no red-check possible, no production change).
-- Ivan: the cached-empty unchanged and changed cases share one test (case 4 runs "after that"); this also keeps the file under 800 lines (797).
-- Ivan: parser failure is simulated by setting `symbols.process` to `None` (calling it raises `TypeError`, which the indexer treats as a parse failure) instead of an explicit raising function, to stay under the line limit.
-- Ivan: the README paragraph sits after the code-indexing paragraph (near line 169), not at the "Indexing keys on content hash" line; it names `--reembed-code` as the re-embedding path that does not find missing spans.
-- Ivan: `files_skipped` is not asserted in the index tests.
-- Pat (LOW): trailing blank line and README wrap fixed by the orchestrator in a style commit; the `_service` helper name (writes a file and returns expected rows) was left as is.
+- `write_lock` accepts only `pathlib.Path` arguments; `str` paths are untested. (Tess)
+- `StoreBusyError` is raised when the `with` block is entered, so the block body never runs on contention. (Tess)
+- "Never waits" is tested as completing well under 1 second, proving LOCK_NB with no retry/sleep. (Tess)
+- The lock file is kept (not deleted) on release, required for mutual exclusion to keep working across repeated acquire/release cycles, even though the contract only says "releases and closes on exit". (Tess)
+- Closing the file descriptor releases the lock; there is no explicit LOCK_UN before close. (Ivan)
+- The busy error is raised `from None`, so the underlying BlockingIOError does not appear as its cause; tests check only the message and type. (Ivan)
+- A process-level advisory lock (fcntl.flock) is sufficient for "exclusive"; nothing requires additional in-process thread-level locking beyond the existing contention test. (Devon, confirmed by Tess's strengthen)
 
-## 4: [D1] Count lines at newline only and trim context runs in one pass (review cycle 1 rework)
+## 4: Canonical self-match exclusion in pack.py
 
-- Orchestrator (micro lane): `source.split("\n")` needs no CRLF handling because `Path.read_text()` uses universal newlines, which turn `\r\n` and lone `\r` into `\n`. A CRLF probe chunked with no `\r` in any body, which refutes Pat's MEDIUM.
-- Orchestrator: the form-feed regression test lives in `tests/test_symbols.py` because adding it to `tests/test_module_context.py` pushed that file to 820 lines.
+- Spans are `(path, start, end)` tuples, matching `set[tuple[str, int, int]]`. (Tess)
+- Line ranges are inclusive on both the hit and the span side; a hit touching a span's boundary line counts as overlapping. (Tess, confirmed by Devon's exploit 7)
+- `_exclude` keeps the original order of the hits it returns. (Tess)
+- `os.path.realpath` is the canonical form to use (resolves symlinks, leaves nonexistent paths as normalized-but-unresolved strings), so two equal raw path strings for paths that don't exist on disk still match after realpath. (Ivan)
+
+## 5: Decode C-quoted diff paths in diffmap.py
+
+- Decoded names use NFC composed Unicode (U+00E9 é, U+00EF ï), matching Python's native `codecs.escape_decode(...).decode("utf-8")` output. (Tess)
+- Only the `+++`/`---` lines are parsed for the path; the `diff --git` header's own path is not. (Tess, Ivan)
+- A path counts as C-quoted only when the whole path text is wrapped in double quotes. (Ivan)
+- Decoding must happen BEFORE the outside-repository traversal check, so a C-quoted escape-encoded traversal path (e.g. `"b/\056\056/\056\056/etc/passwd"`) is caught after decoding, not bypassed by it. (Devon, confirmed by Tess's strengthen and Ivan's implementation)
+- **Noted deviation (Pat review, LOW, not retried):** the implementation uses a hand-rolled regex/escape-table decoder instead of the PRD-named `codecs.escape_decode(inner.encode("utf-8"))[0].decode("utf-8")`. It passes every test and arguably handles escapes `codecs.escape_decode` mishandles, but departs from the literal contract text without being flagged as a deliberate substitution.
+- Invalid UTF-8 after octal decoding is replaced (`errors="replace"`), not raised, matching how the module already reads the diff file; also noted LOW by Pat as a possible silent-mangling risk. (Ivan)

@@ -57,11 +57,12 @@ commit "docs(meta): trim capsule to current facts".
 
 ## Active Work
 
-State 2026-11-16:
+State 2026-11-16 (autopilot batch 202611161217):
 
-- Backlog, in build order (run through `/autopilot:run-autopilot`):
-  - `00014-engram-findings-pack-correctness-v1`: 7 verified defects in
-    harvest, rebuild and pack, plus a harvest/rebuild advisory lock.
+- `00014-engram-findings-pack-correctness-v1` is in `wip/`, building now via
+  `/autopilot:run-autopilot`: 7 verified defects in harvest, rebuild and pack,
+  plus a harvest/rebuild advisory lock. `design: skip`, `default_model: opus`.
+- Backlog, next in build order:
   - `00015-engram-module-context-backfill-v1`: `engram index --backfill-code`.
     Building it does not run it; the production run needs a backup and the
     user's OK.
@@ -113,16 +114,22 @@ State 2026-11-16:
 
 ## Related context
 
-2026-11-16: no topic (on `master`, no wip PRD), so no engram query ran.
-Harvest: 20 review files upserted (explicit list). Staleness after the
-incremental refresh (`engram status --scope portfolio`, exit 1): transcripts
-dead=55 (in-flight), all other corpora stale=0 dead=0.
+2026-11-16 (00014 catchup): topic "master 00014 Engram findings, harvest and
+pack correctness". Top repo hits are the PRD itself and the harvest dedup
+tests (`test_harvest_reharvesting_unchanged_file_twice_yields_one_record_set_no_duplicates`,
+`test_findings_upsert_reharvest_dedup_and_replace_yields_one_record_set`) —
+relevant because PRD defect 4 (findings race between copy and `os.replace`)
+sits next to this existing dedup/replace behavior; nothing else ranked above
+noise. Portfolio scope surfaced no additional repo. Staleness
+(`engram status --scope portfolio`, exit 1): transcripts dead=543 (expected,
+many repos never harvest transcripts), prd dead=32, memory stale=2, code
+stale=1; findings/discovery/decision all stale=0 dead=0.
 
 ## GitHub State
 
 Remote: `https://github.com/buvis/engram` (2026-11-16). No open issues, no
 open PRs (#4 merged as `d580ff0`). No releases. Workflow "Test" on master:
-green, latest 2026-11-16.
+green, latest 2026-11-16 (5 consecutive successes).
 
 ## Project Memories
 
