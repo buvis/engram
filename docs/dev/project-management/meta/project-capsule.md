@@ -1,6 +1,6 @@
 # Project Capsule: engram
 
-Updated: 2026-11-16, catchup for a brush hygiene pass. Later dated entries supersede historical state below.
+Updated: 2026-11-16 (second catchup, after the brush pass). Later dated entries supersede historical state below.
 
 ## Key Invariants
 
@@ -31,7 +31,10 @@ Updated: 2026-11-16, catchup for a brush hygiene pass. Later dated entries super
 
 State 2026-11-16: no PRD in backlog, wip or hold; 11 in `done/`. Batch
 202611152106 drained (`7830f88`) and its agoge pass has exited. The 2026-11-09
-plan is fully executed and gone. Intakes 00008 and 00009 stay deferred.
+plan is fully executed; earlier sessions claimed it was removed but it was
+still tracked until the second 2026-11-16 catchup deleted it. Intakes 00008 and
+00009 stay deferred. Renovate PR #4 (tree-sitter-language-pack 1.25.2) merged
+as `d580ff0`.
 
 ### Batch 202611152106
 - [x] 00013-engram-module-context-v1 (2 cycles)
@@ -180,8 +183,11 @@ See the follow-up note for scope, evidence, and the unchanged `0644` file mode.
 
 ## Related context
 
-2026-11-16: no topic this session (on `master`, no wip PRD), so no engram
-query ran. Harvest: 26 review files upserted, 15 missing frontmatter (known).
+2026-11-16 (second catchup): no topic (on `master`, no wip PRD), so no engram
+query ran. Harvest: 20 review files upserted (explicit list, no unsupported
+inputs). Staleness (`engram status --scope portfolio`, exit 1): memory stale=5;
+transcripts stale=3 dead=10682; prd stale=4 dead=724; code stale=97 dead=19.
+An ordinary incremental portfolio index clears the dead rows.
 The entry below is the previous session's.
 
 Topic (2026-11-15, PRD 00013): "Index code outside parsed symbols". Repo hits:
@@ -198,10 +204,9 @@ stale=68. Harvest: 22 review files upserted, 15 missing frontmatter (known).
 
 ## GitHub State
 
-Remote: `https://github.com/buvis/engram` (2026-11-16). No open issues. One
-open PR: #4, Renovate, tree-sitter-language-pack 1.25.0 to 1.25.2, its "Test"
-run passed. No releases. Workflow "Test" on master: last runs success (latest
-2026-11-15).
+Remote: `https://github.com/buvis/engram` (2026-11-16). No open issues, no
+open PRs (#4 merged as `d580ff0`). No releases. Workflow "Test" on master:
+green, latest 2026-11-16.
 
 ## Project Memories
 
