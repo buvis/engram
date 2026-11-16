@@ -34,17 +34,27 @@ class HarvestReport:
         return any(r.outcome != "upserted" for r in self.results)
 
 
+def _resolve_main_checkout(cwd: Path) -> Path | None:
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (subprocess.CalledProcessError, OSError):
+        return None
+    common_dir = Path(result.stdout.strip()).resolve()
+    # A linked worktree of a non-bare repo shares <main>/.git; map it to <main>.
+    return common_dir.parent if common_dir.name == ".git" else None
+
+
 def _resolve_repo_for_path(path: Path, repos_csv: Path = GITA_REPOS_CSV) -> str | None:
     cwd = path.parent
     try:
         result = subprocess.run(
-            [
-                "git",
-                "rev-parse",
-                "--path-format=absolute",
-                "--show-toplevel",
-                "--git-common-dir",
-            ],
+            ["git", "rev-parse", "--show-toplevel"],
             cwd=cwd,
             capture_output=True,
             text=True,
@@ -61,20 +71,21 @@ def _resolve_repo_for_path(path: Path, repos_csv: Path = GITA_REPOS_CSV) -> str 
             return "claude-home"
         return None
 
-    toplevel_out, common_dir_out = result.stdout.strip().splitlines()
-    toplevel = Path(toplevel_out).resolve()
-    common_dir = Path(common_dir_out).resolve()
-    # A linked worktree of a non-bare repo shares <main>/.git; map it to <main>.
-    main_checkout = common_dir.parent if common_dir.name == ".git" else None
+    toplevel = Path(result.stdout.strip()).resolve()
     try:
         rows = corpora.read_repos_csv(repos_csv)
     except OSError:
         return None
 
     resolved_rows = [(Path(repo_path).resolve(), name) for repo_path, name in rows]
-    for root in (toplevel, main_checkout):
+    for repo_root, name in resolved_rows:
+        if repo_root == toplevel:
+            return name
+
+    main_checkout = _resolve_main_checkout(cwd)
+    if main_checkout is not None:
         for repo_root, name in resolved_rows:
-            if root is not None and repo_root == root:
+            if repo_root == main_checkout:
                 return name
     return None
 
