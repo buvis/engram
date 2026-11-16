@@ -278,6 +278,7 @@ def _reindex_and_resolve_symbols(
     repo_root: Path,
     diff_path: Path,
     source_ref: str | None,
+    index_root: Path | None = None,
 ) -> tuple[IndexReport, set[tuple[str, int, int]], list[Symbol], int]:
     all_symbols = changed_symbols(diff_path, repo_root, source_ref)
     index_report = index(store, config, Scope("repo", repo))
@@ -289,6 +290,17 @@ def _reindex_and_resolve_symbols(
             f"pack reindex failed (existing rows kept): {', '.join(failures)}"
         )
     changed_spans = {(s.path, s.line_start, s.line_end) for s in all_symbols}
+    if index_root is not None:
+        # A worktree's files are indexed under the main checkout's paths, so the
+        # same spans there are self-matches too.
+        changed_spans |= {
+            (
+                str(Path(index_root) / Path(s.path).relative_to(repo_root)),
+                s.line_start,
+                s.line_end,
+            )
+            for s in all_symbols
+        }
 
     query_symbols = all_symbols[:MAX_SYMBOLS_PER_PACK]
     symbols_omitted = max(0, len(all_symbols) - MAX_SYMBOLS_PER_PACK)
@@ -498,6 +510,7 @@ def build(
     prd_path: Path | None = None,
     capsule_path: Path | None = None,
     out_dir: Path = Path("docs/dev/tmp"),
+    index_root: Path | None = None,
 ) -> PackReport:
     index_report, changed_spans, query_symbols, symbols_omitted = (
         _reindex_and_resolve_symbols(
@@ -507,6 +520,7 @@ def build(
             repo_root,
             diff_path,
             source_ref,
+            index_root,
         )
     )
 
