@@ -424,8 +424,8 @@ def test_harvest_step_error_propagates_without_busy_and_releases_the_lock(
         raised = exc
 
     captured = capsys.readouterr()
-    # The real error surfaces (raised, or reported with a failing exit code).
-    assert raised is boom or (code not in (0, None) and str(boom) in captured.err)
+    assert raised is boom
+    assert code is None
     assert "busy" not in captured.err.lower()
     assert captured.out == ""
     assert not _probe_is_locked(lock_path), "harvest leaked the lock after an error"
@@ -568,17 +568,13 @@ def test_rebuild_replace_error_is_not_reported_as_success_and_releases_the_lock(
     boom = OSError(errno.EXDEV, "replace exploded")
     calls = _patch_rebuild_success_deps(monkeypatch, lock_path, replace_error=boom)
 
-    raised, code = None, None
-    try:
-        code = _run_cli(["index", "--rebuild"])
-    except OSError as exc:
-        raised = exc
+    code = _run_cli(["index", "--rebuild"])
 
     captured = capsys.readouterr()
-    # The real error surfaces (raised, or reported with a failing exit code).
-    assert raised is boom or (
-        code not in (0, None) and "replace exploded" in captured.err
-    )
+    assert code == 1
+    assert "rebuild failed:" in captured.err
+    assert "replace exploded" in captured.err
+    assert not tmp_db.exists(), "rebuild left the temp db behind after a replace error"
     assert calls[-1] == ("os.replace", tmp_db, cli_db_path, True)
     assert "busy" not in captured.err
     assert captured.out == ""
