@@ -68,6 +68,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **pack/cli**: read HEAD for open-ended diff ranges and handle three-dot ranges;
   reject escaping paths and non-diff input before indexing, and report index,
   configuration, filesystem, and embedding failures without publishing success.
+- **harvest**: reject `reviewers` values that hold no real reviewer name
+  (blank strings, empty lists, non-string elements) instead of passing
+  validation via their truthy string form.
+- **harvest**: match registry rows to the git toplevel by canonical
+  (resolved) path, so a symlinked or trailing-slash registry entry resolves
+  correctly; an unreadable `repos.csv` (for example a permissions error) now
+  yields a no-repo result for the file instead of aborting the whole batch.
+- **pack**: compare canonical (realpath) paths when excluding changed spans
+  from retrieved hits, so a symlinked registry root no longer defeats
+  self-match exclusion and lets a pack recommend the changed code to itself.
+- **diffmap**: decode Git's C-quoted diff paths, so non-ASCII file names
+  (`caf\303\251.py`) map to the correct path instead of a nonexistent one.
+- **cli**: `engram index --rebuild` no longer leaves a multi-GB
+  `engram.db.rebuild-tmp` file behind when the rebuild fails; the temp store
+  connection is closed and the temp file removed on any failure.
+- **cli**: `engram index --rebuild` and `engram harvest` now take an
+  advisory write lock, so a rebuild and a harvest can never run at the same
+  time and silently corrupt or lose each other's writes.
+- **cli**: `engram pack --diff` ids no longer collide: different diff
+  ranges that sanitize to the same slug (for example `a/b..c` and
+  `a-b..c`) now write to different scratch-diff and pack files.
 - **eval**: retain exact gold-source evidence privately, recover deleted transcripts from pinned Git history, and reject source or label drift without changing historical scores.
 - **corpora**: restore repository-scoped memory recall for dotted project paths; keep ambiguous and unknown project directories unmapped.
 - **indexer**: skip code enumeration when indexing only another corpus, including memory attribution migrations.
