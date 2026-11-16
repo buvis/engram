@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 import engram.corpora as corpora
 from engram import symbols, transcripts
 from engram.chunker import chunk_markdown
-from engram.client import EngramConfig, embed, resolve_pinned_entry
+from engram.client import EmbeddingEntry, EngramConfig, embed, resolve_pinned_entry
 from engram.corpora import CorpusFile, enumerate_corpora, hash_source
 from engram.store import Chunk, ChunkWithVector, Scope, Store
 
@@ -182,8 +182,9 @@ def backfill_code(store: Store, config: EngramConfig, scope: Scope) -> BackfillR
         except OSError:
             failed_sources.append(path)
             continue
-        was_empty = ("code", file.repo, path, h) in known_empty
-        if not was_empty and (file.repo, path, h) not in known:
+        key = (file.repo, path, h)
+        was_empty = ("code", *key) in known_empty
+        if not was_empty and key not in known:
             continue
         try:
             chunks = symbols.chunk(file.path, file.repo, h)
@@ -191,29 +192,13 @@ def backfill_code(store: Store, config: EngramConfig, scope: Scope) -> BackfillR
             # Existing rows and empty marks stay; the source is retried next run.
             failed_sources.append(path)
             continue
-
-        stored = [] if was_empty else store.code_chunks_with_vectors(path)
-        if [item.chunk for item in stored] == chunks:
+        counts = _rechunk_source(store, entry, key, chunks, was_empty=was_empty)
+        if counts is None:
             continue
-        if not chunks:
-            store.replace_chunks_for_source("code", path, [])
-            store.mark_empty_source("code", file.repo, path, h)
-            rechunked += 1
-            continue
-
-        vectors = {item.chunk.text_for_embedding: item.vector for item in stored}
-        missing = [c.text_for_embedding for c in chunks if c.text_for_embedding not in vectors]
-        if missing:
-            vectors = {**vectors, **dict(zip(missing, embed(missing, entry), strict=True))}
-        items = [ChunkWithVector(chunk=c, vector=vectors[c.text_for_embedding]) for c in chunks]
-        store.replace_chunks_for_source("code", path, items)
-        if was_empty:
-            store.unmark_empty_source("code", file.repo, path)
-            cleared += 1
         rechunked += 1
-        embedded += len(missing)
-        reused += len(chunks) - len(missing)
-
+        embedded += counts[0]
+        reused += counts[1]
+        cleared += int(was_empty)
     return BackfillReport(
         sources_rechunked=rechunked,
         chunks_embedded=embedded,
@@ -221,6 +206,38 @@ def backfill_code(store: Store, config: EngramConfig, scope: Scope) -> BackfillR
         empty_cleared=cleared,
         failed_sources=failed_sources,
     )
+
+
+def _rechunk_source(
+    store: Store,
+    entry: EmbeddingEntry,
+    source: tuple[str, str, str],
+    chunks: list[Chunk],
+    *,
+    was_empty: bool,
+) -> tuple[int, int] | None:
+    """Store a (repo, path, hash) code source's chunks, reusing unchanged vectors.
+
+    Returns (embedded, reused) counts, or None when the stored chunks already match.
+    """
+    repo, path, h = source
+    stored = [] if was_empty else store.code_chunks_with_vectors(path)
+    if [item.chunk for item in stored] == chunks:
+        return None
+    if not chunks:
+        store.replace_chunks_for_source("code", path, [])
+        store.mark_empty_source("code", repo, path, h)
+        return 0, 0
+
+    vectors = {item.chunk.text_for_embedding: item.vector for item in stored}
+    missing = [c.text_for_embedding for c in chunks if c.text_for_embedding not in vectors]
+    if missing:
+        vectors = {**vectors, **dict(zip(missing, embed(missing, entry), strict=True))}
+    items = [ChunkWithVector(chunk=c, vector=vectors[c.text_for_embedding]) for c in chunks]
+    store.replace_chunks_for_source("code", path, items)
+    if was_empty:
+        store.unmark_empty_source("code", repo, path)
+    return len(missing), len(chunks) - len(missing)
 
 
 def reembed_code(store: Store, config: EngramConfig, batch_size: int = 64) -> int:
