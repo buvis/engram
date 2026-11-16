@@ -170,48 +170,52 @@ def parse(path: Path) -> list[Record]:
         if not TESTS_RE.search(body_text):
             raise ValueError("missing tests")
 
-        records: list[Record] = []
-        current_heading = ""
-        issue_column: int | None = None
-        index = 0
-        while index < len(body_lines):
-            line = body_lines[index]
-            line_number = frontmatter_end + index + 2
-            if line.startswith("|") and line.endswith("|"):
-                issue_column = _parse_table_row(
-                    records,
-                    body_lines,
-                    index,
-                    line,
-                    line_number,
-                    issue_column,
-                )
-                index += 1
-                continue
-            issue_column = None
-            bullet_match = BULLET_RE.match(line)
-            if bullet_match:
-                index = _parse_bullet(
-                    records,
-                    body_lines,
-                    index,
-                    bullet_match,
-                    frontmatter_end,
-                )
-                continue
-            current_heading = _parse_unstructured(
-                records,
-                line,
-                line_number,
-                current_heading,
-            )
-            index += 1
-
-        return records
+        return _parse_review_body(body_lines, frontmatter_end)
     except ValueError:
         raise
     except (OSError, yaml.YAMLError) as exc:
         raise ValueError(f"unable to parse {path}") from exc
+
+
+def _parse_review_body(body_lines: list[str], frontmatter_end: int) -> list[Record]:
+    records: list[Record] = []
+    current_heading = ""
+    issue_column: int | None = None
+    index = 0
+    while index < len(body_lines):
+        line = body_lines[index]
+        line_number = frontmatter_end + index + 2
+        if line.startswith("|") and line.endswith("|"):
+            issue_column = _parse_table_row(
+                records,
+                body_lines,
+                index,
+                line,
+                line_number,
+                issue_column,
+            )
+            index += 1
+            continue
+        issue_column = None
+        bullet_match = BULLET_RE.match(line)
+        if bullet_match:
+            index = _parse_bullet(
+                records,
+                body_lines,
+                index,
+                bullet_match,
+                frontmatter_end,
+            )
+            continue
+        current_heading = _parse_unstructured(
+            records,
+            line,
+            line_number,
+            current_heading,
+        )
+        index += 1
+
+    return records
 
 
 def upsert(
