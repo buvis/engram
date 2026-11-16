@@ -514,35 +514,17 @@ def build(
 ) -> PackReport:
     index_report, changed_spans, query_symbols, symbols_omitted = (
         _reindex_and_resolve_symbols(
-            store,
-            config,
-            repo,
-            repo_root,
-            diff_path,
-            source_ref,
-            index_root,
+            store, config, repo, repo_root, diff_path, source_ref, index_root
         )
     )
 
     hits = _retrieve_pack_hits(
-        store,
-        config,
-        repo,
-        repo_root,
-        query_symbols,
-        source_ref,
+        store, config, repo, repo_root, query_symbols, source_ref
     )
 
     budget = config.pack_budget
     sections, trimmed_sections, unreadable_paths = _build_pack_sections(
-        store,
-        config,
-        id_,
-        hits,
-        changed_spans,
-        prd_path,
-        capsule_path,
-        budget,
+        store, config, id_, hits, changed_spans, prd_path, capsule_path, budget
     )
 
     return _finalize_pack(
