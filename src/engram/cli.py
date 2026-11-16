@@ -32,8 +32,10 @@ from engram.store import (
     ChunkWithVector,
     Scope,
     Store,
+    StoreBusyError,
     StoreModelMismatchError,
     open_store,
+    write_lock,
 )
 
 _NOT_IN_REPO_MSG = "not inside a registered repo; pass --scope portfolio instead"
@@ -238,9 +240,14 @@ def _run_query(args: argparse.Namespace) -> int:
 
 
 def _run_harvest(args: argparse.Namespace) -> int:
-    config = load_config()
-    store = open_store()
-    report = harvest(store, config, args.paths)
+    try:
+        with write_lock(Path(str(DEFAULT_DB_PATH) + ".lock")):
+            config = load_config()
+            store = open_store()
+            report = harvest(store, config, args.paths)
+    except StoreBusyError as e:
+        print(str(e), file=sys.stderr)
+        return 1
     for r in report.results:
         line = f"{r.path}\t{r.outcome}\t{r.records_count}"
         if r.error is not None:
@@ -288,21 +295,26 @@ def _preserve_findings(tmp_store: Store, config: EngramConfig) -> None:
 
 def _run_rebuild() -> int:
     tmp_path = Path(str(DEFAULT_DB_PATH) + ".rebuild-tmp")
-    tmp_path.unlink(missing_ok=True)
-    config = load_config()
     try:
-        tmp_store = open_store(tmp_path)
-        try:
-            report = index(tmp_store, config, Scope("portfolio", None))
-            _preserve_findings(tmp_store, config)
-        finally:
-            tmp_store.conn.close()
-    except Exception as e:
-        tmp_path.unlink(missing_ok=True)
-        print(f"rebuild failed: {e}", file=sys.stderr)
-        return 1
+        with write_lock(Path(str(DEFAULT_DB_PATH) + ".lock")):
+            tmp_path.unlink(missing_ok=True)
+            config = load_config()
+            try:
+                tmp_store = open_store(tmp_path)
+                try:
+                    report = index(tmp_store, config, Scope("portfolio", None))
+                    _preserve_findings(tmp_store, config)
+                finally:
+                    tmp_store.conn.close()
+            except Exception as e:
+                tmp_path.unlink(missing_ok=True)
+                print(f"rebuild failed: {e}", file=sys.stderr)
+                return 1
 
-    os.replace(tmp_path, DEFAULT_DB_PATH)
+            os.replace(tmp_path, DEFAULT_DB_PATH)
+    except StoreBusyError as e:
+        print(str(e), file=sys.stderr)
+        return 1
     _print_missing(report.corpora_missing, Scope("portfolio", None))
     _print_failed(report.failed_sources)
     return 0

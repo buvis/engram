@@ -756,7 +756,10 @@ def test_rebuild_index_failure_removes_tmp_db_and_keeps_live_db(
     assert len(indexed_stores) == 1
     assert close_events == [("close", True)]
     # No temp DB under any name (deleted, not renamed); live DB untouched.
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["engram.db"]
+    # (The rebuild lock file is expected and excluded here.)
+    assert sorted(
+        p.name for p in tmp_path.iterdir() if not p.name.endswith(".lock")
+    ) == ["engram.db"]
     assert live_db.read_text() == "live data"
 
 
@@ -785,7 +788,10 @@ def test_rebuild_index_failure_during_open_store_removes_tmp_db(
     captured = capsys.readouterr()
     assert exit_code == 1
     assert f"rebuild failed: {message}" in captured.err
-    assert sorted(p.name for p in tmp_path.iterdir()) == ["engram.db"]
+    # (The rebuild lock file is expected and excluded here.)
+    assert sorted(
+        p.name for p in tmp_path.iterdir() if not p.name.endswith(".lock")
+    ) == ["engram.db"]
     assert live_db.read_text() == "live data"
 
 
