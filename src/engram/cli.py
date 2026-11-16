@@ -286,30 +286,33 @@ def _preserve_findings(tmp_store: Store, config: EngramConfig) -> None:
             tmp_store.replace_chunks_for_source(FINDINGS_CORPUS, path, items)
 
 
+def _run_rebuild() -> int:
+    tmp_path = Path(str(DEFAULT_DB_PATH) + ".rebuild-tmp")
+    tmp_path.unlink(missing_ok=True)
+    config = load_config()
+    try:
+        tmp_store = open_store(tmp_path)
+        try:
+            report = index(tmp_store, config, Scope("portfolio", None))
+            _preserve_findings(tmp_store, config)
+        finally:
+            tmp_store.conn.close()
+    except Exception as e:
+        tmp_path.unlink(missing_ok=True)
+        print(f"rebuild failed: {e}", file=sys.stderr)
+        return 1
+
+    os.replace(tmp_path, DEFAULT_DB_PATH)
+    _print_missing(report.corpora_missing, Scope("portfolio", None))
+    _print_failed(report.failed_sources)
+    return 0
+
+
 def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
     if args.rebuild:
         if args.scope is not None or args.corpus is not None:
             parser.error("--rebuild cannot be combined with --scope or --corpus")
-
-        tmp_path = Path(str(DEFAULT_DB_PATH) + ".rebuild-tmp")
-        tmp_path.unlink(missing_ok=True)
-        config = load_config()
-        try:
-            tmp_store = open_store(tmp_path)
-            try:
-                report = index(tmp_store, config, Scope("portfolio", None))
-                _preserve_findings(tmp_store, config)
-            finally:
-                tmp_store.conn.close()
-        except Exception as e:
-            tmp_path.unlink(missing_ok=True)
-            print(f"rebuild failed: {e}", file=sys.stderr)
-            return 1
-
-        os.replace(tmp_path, DEFAULT_DB_PATH)
-        _print_missing(report.corpora_missing, Scope("portfolio", None))
-        _print_failed(report.failed_sources)
-        return 0
+        return _run_rebuild()
 
     if args.reembed_code:
         if args.scope is not None or args.corpus is not None:
