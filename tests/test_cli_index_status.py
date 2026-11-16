@@ -703,6 +703,45 @@ def test_index_rebuild_removes_leftover_tmp_db_before_building(monkeypatch, tmp_
     assert exit_code == 0
 
 
+def test_rebuild_index_failure_removes_tmp_db_and_keeps_live_db(
+    monkeypatch,
+    tmp_path,
+    capsys,
+):
+    live_db = tmp_path / "engram.db"
+    tmp_db = tmp_path / "engram.db.rebuild-tmp"
+    events = []
+    opened_paths = []
+    indexed_stores = []
+
+    def fake_open_store(path, *args, **kwargs):
+        # Real open_store creates the DB file on disk; the partial temp DB
+        # must exist when index() fails so cleanup is really observable.
+        opened_paths.append(str(path))
+        tmp_db.write_text("partial data")
+        return _FakeRebuildStore(events)
+
+    def fake_index(store, *args, **kwargs):
+        indexed_stores.append(store)
+        raise RuntimeError("embedding failed")
+
+    monkeypatch.setattr("engram.cli.DEFAULT_DB_PATH", live_db)
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", fake_open_store)
+    monkeypatch.setattr("engram.cli.index", fake_index)
+
+    exit_code = main(["index", "--rebuild"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "rebuild failed: embedding failed" in captured.err
+    assert opened_paths == [str(tmp_db)]
+    assert len(indexed_stores) == 1
+    assert not tmp_db.exists()
+    assert events == ["close"]
+    assert not live_db.exists()
+
+
 # --- default scope (no --scope flag) distinguishes missing repos.csv from unregistered repo ---
 
 
