@@ -7,7 +7,8 @@ from _pack_helpers import (
 )
 
 from engram.indexer import IndexReport
-from engram.pack import _FRESHNESS_LINE, _task_prose_entries, build
+from engram.pack import _FRESHNESS_LINE, _exclude, _task_prose_entries, build
+from engram.query import Pointer
 from engram.store import ChunkWithVector, open_store
 
 # --- regression: the Task-prose branch, which the contract tests never exercised ---
@@ -553,3 +554,76 @@ def test_memory_query_is_skipped_entirely_when_no_prd_path_is_resolved(
     _task_prose_entries(store, config, "cyc1", None, None, 200)
 
     assert query_calls == []
+
+
+# --- regression: self-match exclusion compares canonical paths, not raw strings ---
+
+
+def _hit(path, line_start, line_end, rank=1):
+    return Pointer(
+        rank=rank,
+        score=0.9,
+        path=str(path),
+        line_start=line_start,
+        line_end=line_end,
+        heading=f"h{rank}",
+        corpus="code",
+        repo="repoA",
+    )
+
+
+def _symlinked_root(tmp_path):
+    """A real source dir plus a symlinked registry root reaching the same files."""
+    real_root = tmp_path / "real"
+    real_root.mkdir()
+    for name in ("changed.py", "other.py", "changed_helper.py"):
+        (real_root / name).write_text("x = 1\n")
+    link_root = tmp_path / "link"
+    link_root.symlink_to(real_root, target_is_directory=True)
+    return real_root, link_root
+
+
+def test_exclude_drops_hit_whose_path_is_symlink_of_changed_span(tmp_path):
+    real_root, link_root = _symlinked_root(tmp_path)
+    linked_changed = link_root / "changed.py"
+    assert str(linked_changed) != str(real_root / "changed.py")
+
+    # hit through the symlinked root, span on the real path
+    span = (str(real_root / "changed.py"), 15, 25)
+    assert _exclude([_hit(linked_changed, 10, 20)], {span}) == []
+
+    # and the other way round: hit on the real path, span through the symlink
+    linked_span = (str(link_root / "other.py"), 40, 50)
+    assert _exclude([_hit(real_root / "other.py", 45, 60)], {linked_span}) == []
+
+    # several hits and spans: only the canonical self-matches go
+    kept = _hit(real_root / "changed_helper.py", 10, 20, rank=3)
+    hits = [
+        _hit(linked_changed, 18, 30, rank=1),
+        kept,
+        _hit(real_root / "other.py", 30, 45, rank=2),
+    ]
+    assert _exclude(hits, {span, linked_span}) == [kept]
+
+
+def test_exclude_keeps_hit_whose_path_is_not_a_symlink_of_changed_span(tmp_path):
+    real_root, link_root = _symlinked_root(tmp_path)
+    span = (str(real_root / "changed.py"), 15, 25)
+
+    # a different symlink, to an unrelated file that shares the basename
+    unrelated_dir = tmp_path / "elsewhere"
+    unrelated_dir.mkdir()
+    (unrelated_dir / "changed.py").write_text("y = 2\n")
+    other_link = tmp_path / "changed.py"
+    other_link.symlink_to(unrelated_dir / "changed.py")
+    via_other_link = _hit(other_link, 10, 20, rank=1)
+
+    # same symlinked root, a path that only shares a prefix with the span's file
+    prefix_near_miss = _hit(link_root / "changed_helper.py", 15, 25, rank=2)
+
+    # canonical match on the path, but the lines do not overlap the span
+    disjoint_lines = _hit(link_root / "changed.py", 100, 110, rank=3)
+
+    hits = [via_other_link, prefix_near_miss, disjoint_lines]
+    assert _exclude(hits, {span}) == hits
+    assert _exclude([], {span}) == []
