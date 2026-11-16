@@ -160,7 +160,9 @@ def test_resolve_repo_for_path_matches_symlinked_registry_path(
     def fake_run(cmd, **kwargs):
         git_cwds.append(Path(kwargs["cwd"]).resolve())
         if symlinked_side == "toplevel" and "--show-toplevel" in cmd:
-            return subprocess.CompletedProcess(cmd, 0, stdout=f"{link}\n", stderr="")
+            return subprocess.CompletedProcess(
+                cmd, 0, stdout=f"{link}\n{toplevel / '.git'}\n", stderr=""
+            )
         return original_run(cmd, **kwargs)
 
     monkeypatch.setattr("engram.harvest.subprocess.run", fake_run)
