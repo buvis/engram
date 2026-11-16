@@ -6,7 +6,13 @@ import engram.indexer as indexer
 from engram import symbols
 from engram.client import EmbeddingEntry, EngramConfig, Vector
 from engram.corpora import CorpusFile, hash_source
-from engram.store import Chunk, ChunkWithVector, Scope, open_store
+from engram.store import (
+    Chunk,
+    ChunkWithVector,
+    Scope,
+    StoreModelMismatchError,
+    open_store,
+)
 
 
 def _chunk(
@@ -208,6 +214,7 @@ _MODEL = "test-model"
 _EMBEDDED = [0.0, 0.0, 1.0, 1.0]
 _VECTORS_A = [[0.5, -1.0, 2.0, 0.25], [-4.0, 0.125, 8.0, 3.0]]
 _VECTORS_B = [[16.0, 0.75, -0.5, 2.0], [1.5, -32.0, 0.25, -8.0]]
+_VECTORS_C = _VECTORS_B + [[-0.25, 64.0, 4.0, -1.5]]
 _PORTFOLIO = Scope("portfolio", None)
 
 
@@ -262,21 +269,36 @@ def _module_context(path, repo, content_hash, marker):
     )
 
 
-def _seed_pre_00013(store, tmp_path, repo, name, vectors):
+def _seed_pre_00013(
+    store, tmp_path, repo, name, vectors, names=("alpha", "beta"), model_id=_MODEL
+):
     # Only symbol chunks under the current hash: what a pre-00013 index wrote.
     path = _source(tmp_path, repo, name, f"# {repo} {name}\n")
     content_hash = hash_source(path)
     prefix = f"{repo}_{path.stem}"
     old = [
         _symbol(path, repo, content_hash, f"{prefix}_{sym}", ordinal, 10 * ordinal + 3)
-        for ordinal, sym in enumerate(("alpha", "beta"))
+        for ordinal, sym in enumerate(names)
     ]
-    stored = [_item(c, v, _MODEL, 4) for c, v in zip(old, vectors, strict=True)]
+    stored = [_item(c, v, model_id, 4) for c, v in zip(old, vectors, strict=True)]
     store.replace_chunks_for_source("code", str(path), stored)
     # The current chunker adds module context at ordinal 0 and shifts the symbols.
     fresh = [_module_context(path, repo, content_hash, f"{repo}-{name}-context-marker")]
     fresh += [replace(c, chunk_ordinal=c.chunk_ordinal + 1) for c in old]
     return path, content_hash, stored, fresh
+
+
+def _seed_backfilled(store, tmp_path, repo, name, vectors):
+    # Module context plus one symbol: already what the current chunker emits.
+    path = _source(tmp_path, repo, name, f"# {repo} {name}\n")
+    content_hash = hash_source(path)
+    chunks = [
+        _module_context(path, repo, content_hash, f"{repo}-{name}-context-marker"),
+        _symbol(path, repo, content_hash, f"{repo}_{path.stem}_alpha", 1, 3),
+    ]
+    stored = [_item(c, v, _MODEL, 4) for c, v in zip(chunks, vectors, strict=True)]
+    store.replace_chunks_for_source("code", str(path), stored)
+    return path, stored, chunks
 
 
 def _fake_enumerate(monkeypatch, files):
@@ -331,9 +353,8 @@ def test_backfill_adds_module_context_and_reuses_symbol_vectors(tmp_path, monkey
     assert len(embed_calls) == 1
     texts, model_id = embed_calls[0]
     assert model_id == _MODEL
-    assert len(texts) == 1
-    assert "repoA-mod.py-context-marker" in texts[0]
-    assert not any("repoA_mod_alpha" in t or "repoA_mod_beta" in t for t in texts)
+    # Full embedding text: heading, repo-relative path, then body.
+    assert texts == [fresh[0].text_for_embedding]
     stored = store.code_chunks_with_vectors(str(path))
     assert [item.chunk for item in stored] == fresh
     assert [item.vector.values for item in stored] == [_EMBEDDED] + _VECTORS_A
@@ -366,9 +387,7 @@ def test_backfill_indexes_source_cached_as_empty_and_clears_mark(tmp_path, monke
     report = indexer.backfill_code(store, _config(tmp_path), _PORTFOLIO)
 
     texts = _texts(embed_calls)
-    assert len(texts) == 2
-    assert any("gamma-context-marker" in t for t in texts)
-    assert any("gamma-marker" in t for t in texts)
+    assert sorted(texts) == sorted(c.text_for_embedding for c in fresh)
     stored = store.code_chunks_with_vectors(str(parsed))
     assert [item.chunk for item in stored] == fresh
     assert all(item.vector.values == _EMBEDDED for item in stored)
@@ -377,32 +396,54 @@ def test_backfill_indexes_source_cached_as_empty_and_clears_mark(tmp_path, monke
     assert store.known_empty_sources_by_corpus(_PORTFOLIO, "code") == {
         ("code", "repoA", str(blank), h_blank)
     }
-    assert report.chunks_embedded == 2
-    assert report.vectors_reused == 0
-    assert report.empty_cleared == 1
-    assert report.failed_sources == []
+    # The blank source still chunks to nothing, so it is not rechunked.
+    assert report == indexer.BackfillReport(
+        sources_rechunked=1,
+        chunks_embedded=2,
+        vectors_reused=0,
+        empty_cleared=1,
+        failed_sources=[],
+    )
 
 
 def test_backfill_second_run_embeds_nothing(tmp_path, monkeypatch):
     store = open_store(tmp_path / "engram.db")
     a, _, _, fresh_a = _seed_pre_00013(store, tmp_path, "repoA", "one.py", _VECTORS_A)
-    b, _, _, fresh_b = _seed_pre_00013(store, tmp_path, "repoA", "two.py", _VECTORS_B)
-    _fake_enumerate(monkeypatch, [CorpusFile("code", "repoA", a), CorpusFile("code", "repoA", b)])
-    _fake_chunker(monkeypatch, {str(a): fresh_a, str(b): fresh_b})
+    # Pre-00013 with three symbols: more rows than a backfilled two-symbol source.
+    wide, _, _, fresh_wide = _seed_pre_00013(
+        store, tmp_path, "repoA", "wide.py", _VECTORS_C, ("alpha", "beta", "gamma")
+    )
+    # Two rows that already match the current chunker, module context included.
+    done, done_stored, done_fresh = _seed_backfilled(
+        store, tmp_path, "repoA", "done.py", _VECTORS_B
+    )
+    paths = (a, wide, done)
+    _fake_enumerate(monkeypatch, [CorpusFile("code", "repoA", p) for p in paths])
+    _fake_chunker(
+        monkeypatch, {str(a): fresh_a, str(wide): fresh_wide, str(done): done_fresh}
+    )
     embed_calls = _recording_embed(monkeypatch)
 
     first = indexer.backfill_code(store, _config(tmp_path), _PORTFOLIO)
-    assert first.sources_rechunked == 2
-    assert first.chunks_embedded == 2
-    after_first = {p: store.code_chunks_with_vectors(str(p)) for p in (a, b)}
+    assert first == indexer.BackfillReport(
+        sources_rechunked=2,
+        chunks_embedded=2,
+        vectors_reused=5,
+        empty_cleared=0,
+        failed_sources=[],
+    )
+    expected = [fresh_a[0].text_for_embedding, fresh_wide[0].text_for_embedding]
+    assert sorted(_texts(embed_calls)) == sorted(expected)
+    assert store.code_chunks_with_vectors(str(done)) == done_stored
+    after_first = {p: store.code_chunks_with_vectors(str(p)) for p in paths}
+    assert [item.chunk for item in after_first[wide]] == fresh_wide
     embed_calls.clear()
 
     second = indexer.backfill_code(store, _config(tmp_path), _PORTFOLIO)
 
     assert embed_calls == []
     assert second == _zero_report()
-    assert {p: store.code_chunks_with_vectors(str(p)) for p in (a, b)} == after_first
-    assert [item.chunk for item in after_first[b]] == fresh_b
+    assert {p: store.code_chunks_with_vectors(str(p)) for p in paths} == after_first
 
 
 def test_backfill_skips_new_and_changed_sources(tmp_path, monkeypatch):
@@ -450,19 +491,23 @@ def test_backfill_chunker_failure_keeps_existing_rows(tmp_path, monkeypatch):
     bad, _, bad_stored, bad_fresh = _seed_pre_00013(store, tmp_path, "repoA", "bad.py", _VECTORS_A)
     good, _, _, good_fresh = _seed_pre_00013(store, tmp_path, "repoA", "good.py", _VECTORS_B)
     missing = tmp_path / "repoA" / "gone.py"
-    _fake_enumerate(
-        monkeypatch, [CorpusFile("code", "repoA", p) for p in (bad, missing, good)]
-    )
-    _fake_chunker(
-        monkeypatch, {str(bad): bad_fresh, str(good): good_fresh}, failing={str(bad)}
-    )
+    blank = _source(tmp_path, "repoA", "blank.py", "\n")
+    h_blank = hash_source(blank)
+    store.mark_empty_source("code", "repoA", str(blank), h_blank)
+    files = [CorpusFile("code", "repoA", p) for p in (bad, missing, blank, good)]
+    _fake_enumerate(monkeypatch, files)
+    failing = {str(bad), str(blank)}
+    _fake_chunker(monkeypatch, {str(bad): bad_fresh, str(good): good_fresh}, failing)
     embed_calls = _recording_embed(monkeypatch)
 
     report = indexer.backfill_code(store, _config(tmp_path), _PORTFOLIO)
 
-    # Both the chunker exception and the unreadable file are surfaced.
-    assert sorted(report.failed_sources) == sorted([str(bad), str(missing)])
+    # Chunker exceptions (known and empty-marked) and the unreadable file surface.
+    assert sorted(report.failed_sources) == sorted([str(bad), str(missing), str(blank)])
     assert store.code_chunks_with_vectors(str(bad)) == bad_stored
+    assert store.known_empty_sources_by_corpus(_PORTFOLIO, "code") == {
+        ("code", "repoA", str(blank), h_blank)
+    }
     texts = _texts(embed_calls)
     assert len(texts) == 1
     assert "repoA-good.py-context-marker" in texts[0]
@@ -502,3 +547,121 @@ def test_backfill_repo_scope_leaves_other_repos_untouched(tmp_path, monkeypatch)
     assert store.code_chunks_with_vectors(str(b)) == stored_b
     assert report.sources_rechunked == 1
     assert report.vectors_reused == 2
+
+
+def test_backfill_reuses_vectors_by_symbol_content_not_position(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+    path, h, stored, _ = _seed_pre_00013(store, tmp_path, "repoA", "mod.py", _VECTORS_A)
+    alpha, beta = (item.chunk for item in stored)
+    gamma = _symbol(path, "repoA", h, "repoA_mod_gamma", 2, 30)
+    # The current chunker reorders and moves the symbols and adds a new one.
+    fresh = [
+        _module_context(path, "repoA", h, "reorder-context-marker"),
+        replace(beta, chunk_ordinal=1, line_start=5, line_end=6),
+        gamma,
+        replace(alpha, chunk_ordinal=3, line_start=40, line_end=41),
+    ]
+    _fake_enumerate(monkeypatch, [CorpusFile("code", "repoA", path)])
+    _fake_chunker(monkeypatch, {str(path): fresh})
+    embed_calls = _recording_embed(monkeypatch)
+
+    report = indexer.backfill_code(store, _config(tmp_path), _PORTFOLIO)
+
+    assert len(embed_calls) == 1
+    expected = [fresh[0].text_for_embedding, gamma.text_for_embedding]
+    assert sorted(_texts(embed_calls)) == sorted(expected)
+    result = store.code_chunks_with_vectors(str(path))
+    assert [item.chunk for item in result] == fresh
+    # Each reused vector follows its own symbol, wherever the symbol moved.
+    assert [item.vector.values for item in result] == [
+        _EMBEDDED,
+        _VECTORS_A[1],
+        _EMBEDDED,
+        _VECTORS_A[0],
+    ]
+    assert report == indexer.BackfillReport(
+        sources_rechunked=1,
+        chunks_embedded=2,
+        vectors_reused=2,
+        empty_cleared=0,
+        failed_sources=[],
+    )
+
+
+def test_backfill_refuses_store_indexed_with_another_model(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+    path, _, stored, fresh = _seed_pre_00013(
+        store, tmp_path, "repoA", "mod.py", _VECTORS_A, model_id="other-model"
+    )
+    _fake_enumerate(monkeypatch, [CorpusFile("code", "repoA", path)])
+    chunk_calls = _fake_chunker(monkeypatch, {str(path): fresh})
+    embed_calls = _recording_embed(monkeypatch)
+
+    with pytest.raises(StoreModelMismatchError):
+        indexer.backfill_code(store, _config(tmp_path), _PORTFOLIO)
+
+    # The mismatch is caught before any chunking or embedding work.
+    assert chunk_calls == []
+    assert embed_calls == []
+    assert store.code_chunks_with_vectors(str(path)) == stored
+
+
+def test_backfill_embeds_with_the_pinned_model(tmp_path, monkeypatch):
+    store = open_store(tmp_path / "engram.db")
+    path, _, _, fresh = _seed_pre_00013(
+        store, tmp_path, "repoA", "mod.py", _VECTORS_A, model_id="pinned-model"
+    )
+    # Pinned entry is neither the first nor the last in the shortlist.
+    config = EngramConfig(
+        embeddings=[
+            EmbeddingEntry(id=model, endpoint="http://127.0.0.1:8081/v1")
+            for model in ("first-model", "pinned-model", "last-model")
+        ],
+        pinned_id="pinned-model",
+        config_path=tmp_path / "config.toml",
+    )
+    _fake_enumerate(monkeypatch, [CorpusFile("code", "repoA", path)])
+    _fake_chunker(monkeypatch, {str(path): fresh})
+    embed_calls = _recording_embed(monkeypatch)
+
+    report = indexer.backfill_code(store, config, _PORTFOLIO)
+
+    assert embed_calls[0][1] == "pinned-model"
+    assert [model_id for _, model_id in embed_calls] == ["pinned-model"]
+    assert [item.chunk for item in store.code_chunks_with_vectors(str(path))] == fresh
+    assert report.chunks_embedded == 1
+    assert report.vectors_reused == 2
+
+
+def test_backfill_marks_known_source_empty_when_chunker_now_returns_nothing(
+    tmp_path, monkeypatch
+):
+    store = open_store(tmp_path / "engram.db")
+    path, h, _, _ = _seed_pre_00013(store, tmp_path, "repoA", "gutted.py", _VECTORS_A)
+    kept, kept_stored, kept_fresh = _seed_backfilled(
+        store, tmp_path, "repoA", "kept.py", _VECTORS_B
+    )
+    files = [CorpusFile("code", "repoA", p) for p in (path, kept)]
+    _fake_enumerate(monkeypatch, files)
+    _fake_chunker(monkeypatch, {str(path): [], str(kept): kept_fresh})
+    embed_calls = _recording_embed(monkeypatch)
+
+    report = indexer.backfill_code(store, _config(tmp_path), _PORTFOLIO)
+
+    assert _texts(embed_calls) == []
+    # Rows are cleared and the source is recorded as known-empty under its hash.
+    assert store.code_chunks_with_vectors(str(path)) == []
+    assert store.known_empty_sources_by_corpus(_PORTFOLIO, "code") == {
+        ("code", "repoA", str(path), h)
+    }
+    assert store.known_sources(_PORTFOLIO, "code") == {
+        ("repoA", str(kept), kept_fresh[0].content_hash)
+    }
+    assert store.code_chunks_with_vectors(str(kept)) == kept_stored
+    assert report == indexer.BackfillReport(
+        sources_rechunked=1,
+        chunks_embedded=0,
+        vectors_reused=0,
+        empty_cleared=0,
+        failed_sources=[],
+    )
