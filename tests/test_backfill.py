@@ -1,9 +1,11 @@
 from dataclasses import replace
 
 import pytest
+from _cli_helpers import _refuse
 
 import engram.indexer as indexer
 from engram import symbols
+from engram.cli import main
 from engram.client import EmbeddingEntry, EngramConfig, Vector
 from engram.corpora import CorpusFile, hash_source
 from engram.store import (
@@ -665,3 +667,85 @@ def test_backfill_marks_known_source_empty_when_chunker_now_returns_nothing(
         empty_cleared=0,
         failed_sources=[],
     )
+
+
+# --- CLI: engram index --backfill-code ---
+
+
+@pytest.mark.parametrize("conflict", [["--corpus", "code"], ["--rebuild"], ["--reembed-code"]])
+def test_cli_backfill_rejects_corpus_rebuild_and_reembed(
+    tmp_path, monkeypatch, capsys, conflict
+):
+    # Keep every write path off the production DB, even if a branch misroutes.
+    monkeypatch.setattr("engram.cli.DEFAULT_DB_PATH", tmp_path / "engram.db")
+    monkeypatch.setattr("engram.cli.open_store", _refuse)
+    monkeypatch.setattr("engram.cli.load_config", _refuse)
+    monkeypatch.setattr("engram.cli.reembed_code", _refuse)
+    monkeypatch.setattr("engram.cli.index", _refuse)
+
+    with pytest.raises(SystemExit) as exc_info:
+        main(["index", "--backfill-code", *conflict])
+
+    assert exc_info.value.code != 0
+    # A conflict rejection, not argparse failing to recognise the flag.
+    assert "unrecognized arguments" not in capsys.readouterr().err
+    assert not (tmp_path / "engram.db").exists()
+
+
+def _seed_one_pre_00013(store, tmp_path, monkeypatch):
+    path, _, _, fresh = _seed_pre_00013(store, tmp_path, "repoA", "mod.py", _VECTORS_A)
+    _fake_enumerate(monkeypatch, [CorpusFile("code", "repoA", path)])
+    _fake_chunker(monkeypatch, {str(path): fresh})
+    # One source rechunked: its new module context embedded, every symbol reused.
+    return {path: fresh}, (1, 1, len(_VECTORS_A), 0), []
+
+
+def _seed_two_repos_with_failure(store, tmp_path, monkeypatch):
+    wide, _, _, fresh_wide = _seed_pre_00013(
+        store, tmp_path, "repoA", "wide.py", _VECTORS_C, ("alpha", "beta", "gamma")
+    )
+    parsed = _source(tmp_path, "repoB", "grammar.py", "def gamma(): pass\n")
+    h = hash_source(parsed)
+    store.mark_empty_source("code", "repoB", str(parsed), h)
+    fresh_parsed = [
+        _module_context(parsed, "repoB", h, "gamma-context-marker"),
+        _symbol(parsed, "repoB", h, "gamma", 1, 1),
+    ]
+    missing = tmp_path / "repoA" / "gone.py"
+    files = [("repoA", wide), ("repoB", parsed), ("repoA", missing)]
+    _fake_enumerate(monkeypatch, [CorpusFile("code", r, p) for r, p in files])
+    _fake_chunker(monkeypatch, {str(wide): fresh_wide, str(parsed): fresh_parsed})
+    # wide: module context embedded, its symbols reused; parsed: every chunk
+    # embedded and its empty mark cleared; the unreadable file fails.
+    counts = (2, 1 + len(fresh_parsed), len(_VECTORS_C), 1)
+    return {wide: fresh_wide, parsed: fresh_parsed}, counts, [str(missing)]
+
+
+@pytest.mark.parametrize("seed", [_seed_one_pre_00013, _seed_two_repos_with_failure])
+def test_cli_backfill_prints_summary(tmp_path, monkeypatch, capsys, seed):
+    db = tmp_path / "engram.db"
+    store = open_store(db)
+    expected_rows, counts, failed = seed(store, tmp_path, monkeypatch)
+    store.conn.close()
+    embed_calls = _recording_embed(monkeypatch)
+    monkeypatch.setattr("engram.cli.DEFAULT_DB_PATH", db)
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: _config(tmp_path))
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: open_store(db))
+
+    exit_code = main(["index", "--backfill-code", "--scope", "portfolio"])
+
+    captured = capsys.readouterr()
+    rechunked, embedded, reused, cleared = counts
+    assert captured.out.splitlines() == [
+        f"backfilled {rechunked} code sources: {embedded} chunks embedded, "
+        f"{reused} vectors reused, {cleared} empty marks cleared"
+    ]
+    assert captured.err.splitlines() == [
+        f"failed (existing rows kept): {path}" for path in failed
+    ]
+    assert exit_code == 0
+    assert len(_texts(embed_calls)) == embedded
+    # The backfill landed in the tmp_path store the CLI opened.
+    check = open_store(db)
+    for path, fresh in expected_rows.items():
+        assert [item.chunk for item in check.code_chunks_with_vectors(str(path))] == fresh
