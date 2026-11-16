@@ -154,8 +154,8 @@ No dependencies inside this PRD (PRD 00014 must be done first; the frontmatter e
 **Tasks**:
 - [ ] Add `index_root` to `build()` in `src/engram/pack.py` per the Feature;
   add `test_pack_in_worktree_excludes_changed_spans_indexed_under_main_checkout`
-  in `tests/test_pack_regressions.py` (depends on: Phase 0) - Acceptance:
-  `.venv/bin/python -m pytest -q tests/test_pack_regressions.py -k main_checkout`
+  in `tests/test_pack_worktree.py` (depends on: Phase 0) - Acceptance:
+  `.venv/bin/python -m pytest -q tests/test_pack_worktree.py -k main_checkout`
   passes and fails on the pre-change code.
 
 **Exit Criteria**: Exclusion test passes.
