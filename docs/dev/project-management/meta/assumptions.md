@@ -38,3 +38,15 @@
 - `--backfill-code`'s effect (re-chunks indexed code files, unchanged files gain module-context chunks, unchanged chunks keep their stored vectors) is described from the task brief and the surrounding README paragraph; `src/engram/indexer.py` was not read since it was not in this task's file allowlist.
 - The README Usage example uses a concrete `--scope portfolio`, matching the style of the other examples in that block.
 - The new CHANGELOG bullet sits next to the related existing **index** Module-context entry, not at the end of the Added section.
+
+## 5: [D1] src/engram/indexer.py (review cycle 1 rework)
+
+- `replace_source_chunks_and_empty_mark` returns `None` and lets any exception propagate unwrapped.
+- `content_hash` is ignored when `items` is non-empty (the mark is deleted, not rewritten).
+- A deferred `BEGIN` (as in the existing `replace_chunks_for_source`) is enough; `BEGIN IMMEDIATE` is not required for the tested isolation.
+- `vectors_reused` counts each chunk that reused a stored vector, so a crash-window source counts `sources_rechunked` 1 and `empty_cleared` 1.
+- A source whose stored rows and chunker output are both empty is "nothing to change", even under a mark recorded at a different hash (unreachable from `backfill_code`).
+- Items whose `chunk.path` differs from the `path` argument are stored at their own path, while the rows deleted are those of the `path` argument.
+- `replace_chunks_for_source`, `known_sources` and `known_empty_sources_by_corpus` treat `"docs"` exactly as `"code"`.
+- Interruption is simulated by substituting `Store.conn`; an implementation writing through another connection fails the tests loudly.
+- `unmark_empty_source` keeps its own tests but now has no production caller (the PRD named it as a deliverable, so it was kept).
