@@ -313,7 +313,7 @@ def test_write_lock_closes_its_file_descriptor_when_busy(lock_path):
 # --- CLI: harvest and rebuild never run at the same time ---
 
 
-@pytest.fixture(params=["engram.db", "other-store.db"])
+@pytest.fixture(params=["engram.db", "other-store.db", "engram.sqlite", "store.v2.db"])
 def cli_db_path(request, tmp_path, monkeypatch):
     db_path = tmp_path / "share" / request.param
     db_path.parent.mkdir(parents=True)
@@ -323,6 +323,10 @@ def cli_db_path(request, tmp_path, monkeypatch):
 
 def _cli_lock_path(db_path):
     return Path(str(db_path) + ".lock")
+
+
+def _lock_files(directory):
+    return {p for p in directory.iterdir() if ".lock" in p.name}
 
 
 def _run_cli(argv):
@@ -338,6 +342,7 @@ def _patch_harvest_deps(monkeypatch, lock_path):
 
     def fake_open_store(*args, **kwargs):
         calls.append(("open_store", args, kwargs))
+        calls.append(("lock_held_during_open_store", _probe_is_locked(lock_path)))
         return opened
 
     def fake_harvest(store_arg, config_arg, paths):
@@ -386,10 +391,44 @@ def test_harvest_runs_under_the_lock_when_only_a_near_miss_lock_is_held(
     captured = capsys.readouterr()
     assert code == 0
     assert "busy" not in captured.err
-    assert [c[0] for c in calls] == ["open_store", "harvest", "lock_held_during_harvest"]
-    assert calls[1] == ("harvest", opened, config, paths)
-    assert calls[2] == ("lock_held_during_harvest", True)
+    assert [c[0] for c in calls] == [
+        "open_store",
+        "lock_held_during_open_store",
+        "harvest",
+        "lock_held_during_harvest",
+    ]
+    assert calls[1] == ("lock_held_during_open_store", True)
+    assert calls[2] == ("harvest", opened, config, paths)
+    assert calls[3] == ("lock_held_during_harvest", True)
     assert not _probe_is_locked(lock_path)
+    assert _lock_files(cli_db_path.parent) == {lock_path, near_miss}
+
+
+@pytest.mark.parametrize("failing_step", ["load_config", "open_store", "harvest"])
+def test_harvest_step_error_propagates_without_busy_and_releases_the_lock(
+    cli_db_path, monkeypatch, capsys, failing_step
+):
+    lock_path = _cli_lock_path(cli_db_path)
+    _patch_harvest_deps(monkeypatch, lock_path)
+    boom = ValueError(f"{failing_step} exploded")
+
+    def explode(*args, **kwargs):
+        raise boom
+
+    monkeypatch.setattr(cli, failing_step, explode)
+
+    raised, code = None, None
+    try:
+        code = cli._run_harvest(argparse.Namespace(paths=["/repo/a/notes.md"]))
+    except ValueError as exc:
+        raised = exc
+
+    captured = capsys.readouterr()
+    # The real error surfaces (raised, or reported with a failing exit code).
+    assert raised is boom or (code not in (0, None) and str(boom) in captured.err)
+    assert "busy" not in captured.err.lower()
+    assert captured.out == ""
+    assert not _probe_is_locked(lock_path), "harvest leaked the lock after an error"
 
 
 def _patch_rebuild_deps(monkeypatch, lock_path):
@@ -429,6 +468,7 @@ def test_rebuild_exits_1_while_harvest_holds_lock(
     captured = capsys.readouterr()
     assert code == 1
     assert _busy_message(lock_path) in captured.err
+    assert captured.out == ""
     assert calls == [], f"rebuild ran while the lock was held: {calls}"
     if stale_tmp is None:
         assert not tmp_db.exists()
@@ -442,18 +482,105 @@ def test_rebuild_holds_the_lock_and_releases_it_on_failure_with_near_miss_held(
 ):
     lock_path = _cli_lock_path(cli_db_path)
     tmp_db = Path(str(cli_db_path) + ".rebuild-tmp")
+    near_miss = Path(str(cli_db_path) + ".lock2")
     calls = _patch_rebuild_deps(monkeypatch, lock_path)
 
-    with store.write_lock(Path(str(cli_db_path) + ".lock2")):
+    with store.write_lock(near_miss):
         code = _run_cli(["index", "--rebuild"])
 
     captured = capsys.readouterr()
     assert code == 1
     assert "rebuild failed: temp store exploded" in captured.err
     assert "busy" not in captured.err
+    assert captured.out == ""
     assert len(calls) == 1
     name, args, kwargs, lock_held = calls[0]
     assert name == "open_store"
     assert tmp_db in [Path(a) for a in args] + [Path(v) for v in kwargs.values()]
     assert lock_held, "rebuild opened the temp store without holding the lock"
     assert not _probe_is_locked(lock_path)
+    assert _lock_files(cli_db_path.parent) == {lock_path, near_miss}
+
+
+def _patch_rebuild_success_deps(monkeypatch, lock_path, replace_error=None):
+    calls = []
+    real_replace = os.replace
+
+    def fake_open_store(*args, **kwargs):
+        path = Path((list(args) + list(kwargs.values()))[0])
+        calls.append(("open_store", path, _probe_is_locked(lock_path)))
+        path.write_text("rebuilt db bytes")
+        return SimpleNamespace(conn=SimpleNamespace(close=lambda: None))
+
+    def fake_index(*args, **kwargs):
+        calls.append(("index", _probe_is_locked(lock_path)))
+        return SimpleNamespace(corpora_missing=[], failed_sources=[])
+
+    def fake_preserve_findings(*args, **kwargs):
+        calls.append(("_preserve_findings", _probe_is_locked(lock_path)))
+
+    def fake_replace(src, dst, *args, **kwargs):
+        calls.append(("os.replace", Path(src), Path(dst), _probe_is_locked(lock_path)))
+        if replace_error is not None:
+            raise replace_error
+        return real_replace(src, dst, *args, **kwargs)
+
+    monkeypatch.setattr(cli, "load_config", lambda: object())
+    monkeypatch.setattr(cli, "open_store", fake_open_store)
+    monkeypatch.setattr(cli, "index", fake_index)
+    monkeypatch.setattr(cli, "_preserve_findings", fake_preserve_findings)
+    monkeypatch.setattr(os, "replace", fake_replace)
+    return calls
+
+
+def test_rebuild_holds_the_lock_from_temp_store_through_replace_then_releases_it(
+    cli_db_path, monkeypatch, capsys
+):
+    lock_path = _cli_lock_path(cli_db_path)
+    tmp_db = Path(str(cli_db_path) + ".rebuild-tmp")
+    cli_db_path.write_text("live db bytes")
+    calls = _patch_rebuild_success_deps(monkeypatch, lock_path)
+
+    code = _run_cli(["index", "--rebuild"])
+
+    captured = capsys.readouterr()
+    assert code == 0
+    assert calls == [
+        ("open_store", tmp_db, True),
+        ("index", True),
+        ("_preserve_findings", True),
+        ("os.replace", tmp_db, cli_db_path, True),
+    ]
+    assert cli_db_path.read_text() == "rebuilt db bytes"
+    assert not tmp_db.exists()
+    assert "busy" not in captured.err
+    assert captured.out == ""
+    assert not _probe_is_locked(lock_path), "rebuild leaked the lock after success"
+    assert _lock_files(cli_db_path.parent) == {lock_path}
+
+
+def test_rebuild_replace_error_is_not_reported_as_success_and_releases_the_lock(
+    cli_db_path, monkeypatch, capsys
+):
+    lock_path = _cli_lock_path(cli_db_path)
+    tmp_db = Path(str(cli_db_path) + ".rebuild-tmp")
+    cli_db_path.write_text("live db bytes")
+    boom = OSError(errno.EXDEV, "replace exploded")
+    calls = _patch_rebuild_success_deps(monkeypatch, lock_path, replace_error=boom)
+
+    raised, code = None, None
+    try:
+        code = _run_cli(["index", "--rebuild"])
+    except OSError as exc:
+        raised = exc
+
+    captured = capsys.readouterr()
+    # The real error surfaces (raised, or reported with a failing exit code).
+    assert raised is boom or (
+        code not in (0, None) and "replace exploded" in captured.err
+    )
+    assert calls[-1] == ("os.replace", tmp_db, cli_db_path, True)
+    assert "busy" not in captured.err
+    assert captured.out == ""
+    assert cli_db_path.read_text() == "live db bytes"
+    assert not _probe_is_locked(lock_path), "rebuild leaked the lock after an error"
