@@ -57,11 +57,20 @@ commit "docs(meta): trim capsule to current facts".
 
 ## Active Work
 
+### Batch 202611161217
+
+- [x] 00014-engram-findings-pack-correctness-v1 (2 cycles)
+
+Observations: one medium deferred item remains (the PRD's acceptance
+command `pytest -q tests/test_diffmap.py -k c_quoted` now deselects all 20
+tests because the C-quoted tests moved to `tests/test_diffmap_decoding.py`
+during the cycle-1 file-size split) — recorded in the batch deferred JSON.
+
 State 2026-11-16 (autopilot batch 202611161217):
 
-- `00014-engram-findings-pack-correctness-v1` is in `wip/`, building now via
-  `/autopilot:run-autopilot`: 7 verified defects in harvest, rebuild and pack,
-  plus a harvest/rebuild advisory lock. `design: skip`, `default_model: opus`.
+- `00014-engram-findings-pack-correctness-v1` is in `done/`: 7 verified
+  defects in harvest, rebuild and pack fixed, plus a harvest/rebuild advisory
+  lock. 14/14 tasks, 2 review cycles.
 - Backlog, next in build order:
   - `00015-engram-module-context-backfill-v1`: `engram index --backfill-code`.
     Building it does not run it; the production run needs a backup and the
@@ -69,7 +78,7 @@ State 2026-11-16 (autopilot batch 202611161217):
   - `00016-engram-worktree-repo-resolution-v1`: linked worktrees resolve to
     their main checkout's registry entry (fixes `engram pack` in autopilot
     worktrees). Its `eligibility` waits for 00014 in `done/`.
-- 13 PRDs done (00001-00013). Installed CLI matches master as of 2026-11-16
+- 14 PRDs done (00001-00014). Installed CLI matches master as of 2026-11-16
   (`engram nudge --help` works).
 - agent-plugins PRD 00067 (engram plugin: skill, mcp.json, per-host nudge
   hooks) is building in agent-plugins. Intake 00066 there (orchestrator
