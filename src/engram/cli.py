@@ -20,7 +20,7 @@ from engram.client import (
 )
 from engram.corpora import GITA_REPOS_CSV, enumerate_corpora
 from engram.findings import FINDINGS_CORPUS
-from engram.harvest import _resolve_repo_for_path, harvest
+from engram.harvest import _resolve_repo_for_path, harvest, registry_root
 from engram.indexer import backfill_code, index, reembed_code
 from engram.mcp_server import format_pointer_lines
 from engram.memory import MEMORY_SUBDIR, check_directory, memory_dir, redact
@@ -612,6 +612,7 @@ def _run_pack(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int:
             prd_path=prd_path,
             capsule_path=capsule_path,
             out_dir=out_dir,
+            index_root=registry_root(repo_name, GITA_REPOS_CSV),
         )
     except StoreModelMismatchError as e:
         print(

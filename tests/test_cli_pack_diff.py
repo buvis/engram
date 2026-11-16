@@ -47,6 +47,7 @@ def _capturing_pack_build(calls, report):
         prd_path=None,
         capsule_path=None,
         out_dir=Path("docs/dev/tmp"),
+        index_root=None,
     ):
         calls.append(
             {
