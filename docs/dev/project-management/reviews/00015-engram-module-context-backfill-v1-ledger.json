@@ -86,5 +86,61 @@
     "issue": "PRD step 6 reuses a vector by the same `(heading, body)`. The code keys on `text_for_embedding`, which is heading plus repo-relative path plus body. The path is identical for every chunk of one source, so behavior is equivalent. It is a literal deviation from the contract and could be noted.",
     "file": "src/engram/indexer.py:348",
     "reason": "verified equivalent: `_rechunk_source` is called per source, so the repo-relative path component is constant across every chunk in one call; keying on text_for_embedding therefore partitions identically to (heading, body). Both reviewers state the behavior matches."
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`empty_cleared` is incremented for every known-empty source that is rechunked (`cleared += int(was_empty)`, src/engram/indexer.py:201). It also counts the unlikely case where the source had stored rows plus a mark and the chunker now returns nothing, because the mark is then rewritten rather than cleared. The report overstates \"empty marks cleared\" in that case. Only the count is wrong, so a fix is optional.",
+    "file": "src/engram/indexer.py:201",
+    "reason": "single-voice; a report-counter nit the finding's own text calls optional"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Vector reuse is keyed on `Chunk.text_for_embedding` (heading, repo-relative path and body), not the spec's `(heading, body)`. A stored vector is not reused if the repo name or path prefix differs, and the stricter key is arguably more correct.",
+    "file": "src/engram/indexer.py:230",
+    "reason": "single-voice; same keying question cycle 1 settled as verified-equivalent, re-raised blind; the finding's own text states behavior matches the spec"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "Spec step 7 says known-empty sources use `store.upsert_chunks` followed by `store.unmark_empty_source`. The code instead uses a new public `Store.replace_source_chunks_and_empty_mark`, which is not in the spec's \"New symbols\" list.",
+    "file": "src/engram/store.py:385",
+    "reason": "single-voice; the undeclared symbol exists because cycle 1's orange finding required spec step 8's atomicity, which two separate calls cannot give"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`_rechunk_source` reuses stored rows and vectors even for sources under an empty mark. A comment explains this as crash recovery. The spec does not describe it, and it only changes behavior in an inconsistent-store state.",
+    "file": "src/engram/indexer.py:222",
+    "reason": "single-voice; this is cycle 1 finding R1's accepted fix, invisible to the blind lens by construction"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "`symbols.chunk` returns `[]` without raising when `detect_language_from_path` yields None. A known source whose language is no longer detected would have its chunks deleted and be marked empty, with no failure reported.",
+    "file": "src/engram/symbols.py:101",
+    "reason": "single-voice; pre-existing chunker behavior shared with plain index, outside this PRD's scope, and the finding calls it spec-literal and unlikely"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The acceptance check `rg -c \"A backfill is a separate, explicit operation\" README.md` prints nothing and exits 1 when there are zero matches, rather than printing 0. The sentence is gone, so the intent is met.",
+    "file": "README.md:177",
+    "reason": "single-voice; a note about the PRD's own acceptance command, not about the shipped code; the finding confirms the intent is met"
+  },
+  {
+    "cycle": 2,
+    "disposition": "discarded",
+    "severity": "low",
+    "issue": "The assumption ledger says `unmark_empty_source` has no production caller, but the new `replace_source_chunks_and_empty_mark` calls it. Update the bullet to describe its use inside the atomic transaction.",
+    "file": "docs/dev/project-management/meta/assumptions.md:52",
+    "reason": "single-voice; stale line in an autopilot process artifact the build gate rewrites per PRD, not a PRD deliverable"
   }
 ]
