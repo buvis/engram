@@ -61,8 +61,8 @@ commit "docs(meta): trim capsule to current facts".
 
 - [x] 00014-engram-findings-pack-correctness-v1 (2 cycles)
 - [x] 00015-engram-module-context-backfill-v1 (2 cycles)
-- [ ] 00016-engram-worktree-repo-resolution-v1 (backlog; `eligibility` waits
-  for 00014, which is now in `done/`)
+- [ ] 00016-engram-worktree-repo-resolution-v1 (wip; in progress, lane
+  classified fast-track but routed full as uncardable)
 
 Observations: one medium deferred item remains (the PRD's acceptance
 command `pytest -q tests/test_diffmap.py -k c_quoted` now deselects all 20
