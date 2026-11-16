@@ -87,6 +87,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - **cli**: `engram index --rebuild` no longer leaves a multi-GB
   `engram.db.rebuild-tmp` file behind when the rebuild fails; the temp store
   connection is closed and the temp file removed on any failure.
+- **cli**: `engram pack`/`engram query --scope repo`/`engram index --scope
+  repo`/`engram harvest`/repo-scoped `engram mcp` now resolve a linked git
+  worktree to its main checkout's registered repo instead of failing with
+  "not inside a registered repo".
 - **cli**: `engram index --rebuild` and `engram harvest` now take an
   advisory write lock, so a rebuild and a harvest can never run at the same
   time and silently corrupt or lose each other's writes.

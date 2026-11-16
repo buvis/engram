@@ -111,7 +111,8 @@ uv tool install .
 
 Repos are discovered through [gita](https://github.com/nosarthur/gita)'s
 `~/.config/gita/repos.csv`. A repo that is not registered there is invisible to
-engram.
+engram. A linked git worktree of a registered repo uses that repo's
+registration.
 
 ## Usage
 
