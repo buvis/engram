@@ -38,7 +38,13 @@ def _resolve_repo_for_path(path: Path, repos_csv: Path = GITA_REPOS_CSV) -> str 
     cwd = path.parent
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
+            [
+                "git",
+                "rev-parse",
+                "--path-format=absolute",
+                "--show-toplevel",
+                "--git-common-dir",
+            ],
             cwd=cwd,
             capture_output=True,
             text=True,
@@ -55,15 +61,32 @@ def _resolve_repo_for_path(path: Path, repos_csv: Path = GITA_REPOS_CSV) -> str 
             return "claude-home"
         return None
 
-    toplevel = Path(result.stdout.strip()).resolve()
+    toplevel_out, common_dir_out = result.stdout.strip().splitlines()
+    toplevel = Path(toplevel_out).resolve()
+    common_dir = Path(common_dir_out).resolve()
+    # A linked worktree of a non-bare repo shares <main>/.git; map it to <main>.
+    main_checkout = common_dir.parent if common_dir.name == ".git" else None
     try:
         rows = corpora.read_repos_csv(repos_csv)
     except OSError:
         return None
 
-    for repo_path, name in rows:
-        if Path(repo_path).resolve() == toplevel:
-            return name
+    resolved_rows = [(Path(repo_path).resolve(), name) for repo_path, name in rows]
+    for root in (toplevel, main_checkout):
+        for repo_root, name in resolved_rows:
+            if root is not None and repo_root == root:
+                return name
+    return None
+
+
+def registry_root(name: str, repos_csv: Path = GITA_REPOS_CSV) -> Path | None:
+    try:
+        rows = corpora.read_repos_csv(repos_csv)
+    except OSError:
+        return None
+    for repo_path, row_name in rows:
+        if row_name == name:
+            return Path(repo_path)
     return None
 
 
