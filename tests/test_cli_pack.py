@@ -1,9 +1,11 @@
 import re
+import subprocess
 from pathlib import Path
 
 import pytest
 from _cli_helpers import _init_git_repo, _refuse
 from engram.cli import main
+from engram.harvest import registry_root
 from engram.indexer import IndexReport
 from engram.pack import PackReport
 from engram.store import StoreModelMismatchError
@@ -46,6 +48,7 @@ def _capturing_pack_build(calls, report):
         prd_path=None,
         capsule_path=None,
         out_dir=Path("docs/dev/tmp"),
+        index_root=None,
     ):
         calls.append(
             {
@@ -57,9 +60,31 @@ def _capturing_pack_build(calls, report):
                 "prd_path": prd_path,
                 "capsule_path": capsule_path,
                 "out_dir": out_dir,
+                "index_root": index_root,
             },
         )
         return report
+
+    return fake_build
+
+
+def _fake_build_recording_ids_and_diffs(ids_seen, read_contents, toplevel):
+    def fake_build(
+        store,
+        config,
+        repo,
+        repo_root,
+        id_,
+        diff_path,
+        source_ref=None,
+        prd_path=None,
+        capsule_path=None,
+        out_dir=Path("docs/dev/tmp"),
+        index_root=None,
+    ):
+        ids_seen.append(id_)
+        read_contents.append(Path(diff_path).read_text())
+        return _make_pack_report(toplevel / "docs/dev/tmp" / f"engram-pack-{id_}.md")
 
     return fake_build
 
@@ -184,6 +209,7 @@ def test_pack_cycle_reads_staged_diff_from_repo_root_when_invoked_from_a_subdire
         prd_path=None,
         capsule_path=None,
         out_dir=Path("docs/dev/tmp"),
+        index_root=None,
     ):
         read_contents.append(Path(diff_path).read_text())
         return _make_pack_report(toplevel / "docs/dev/tmp/engram-pack-cyc1.md")
@@ -344,24 +370,10 @@ def test_pack_cycle_traversal_attempt_is_slugged_and_stays_under_repo_tmp_dir(
 
     ids_seen = []
     read_contents = []
-
-    def fake_build(
-        store,
-        config,
-        repo,
-        repo_root,
-        id_,
-        diff_path,
-        source_ref=None,
-        prd_path=None,
-        capsule_path=None,
-        out_dir=Path("docs/dev/tmp"),
-    ):
-        ids_seen.append(id_)
-        read_contents.append(Path(diff_path).read_text())
-        return _make_pack_report(toplevel / "docs/dev/tmp" / f"engram-pack-{id_}.md")
-
-    monkeypatch.setattr("engram.cli.build", fake_build)
+    monkeypatch.setattr(
+        "engram.cli.build",
+        _fake_build_recording_ids_and_diffs(ids_seen, read_contents, toplevel),
+    )
 
     exit_code = main(["pack", "--cycle", raw_cycle_id])
 
@@ -595,3 +607,110 @@ def test_pack_store_model_mismatch_returns_nonzero_and_mentions_rebuild(
     captured = capsys.readouterr()
     assert exit_code != 0
     assert "--rebuild" in captured.err
+
+
+# --- pack: linked worktree passes the registry root as index_root ---
+
+
+_GIT = [
+    "git",
+    "-c",
+    "user.name=engram-test",
+    "-c",
+    "user.email=engram-test@example.invalid",
+    "-c",
+    "commit.gpgsign=false",
+]
+
+
+def _main_checkout_with_linked_worktree(tmp_path, name):
+    main_dir = tmp_path / "checkouts" / name
+    main_dir.mkdir(parents=True)
+    main_root = _init_git_repo(main_dir)
+    subprocess.run(
+        [*_GIT, "commit", "-q", "--allow-empty", "-m", "init"],
+        cwd=main_root,
+        check=True,
+    )
+    # Not under the main checkout's path, so no path-prefix match can
+    # stand in for real worktree resolution.
+    worktree_dir = tmp_path / "worktrees" / f"{name}-wt"
+    subprocess.run(
+        [*_GIT, "worktree", "add", "-q", str(worktree_dir)],
+        cwd=main_root,
+        check=True,
+    )
+    result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        cwd=worktree_dir,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return main_root, Path(result.stdout.strip())
+
+
+def _run_pack_capturing_build(monkeypatch, worktree_root):
+    _stage_diff(worktree_root)
+    monkeypatch.chdir(worktree_root)
+    monkeypatch.setattr("engram.cli.load_config", lambda *a, **k: object())
+    monkeypatch.setattr("engram.cli.open_store", lambda *a, **k: object())
+    calls = []
+    report = _make_pack_report(worktree_root / "docs/dev/tmp/engram-pack-cyc1.md")
+    monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
+    exit_code = main(["pack", "--cycle", "cyc1"])
+    return exit_code, calls
+
+
+@pytest.mark.parametrize("repo_name", ["repoA", "beta-tools"])
+def test_cli_pack_succeeds_in_linked_worktree(monkeypatch, tmp_path, repo_name):
+    main_root, worktree_root = _main_checkout_with_linked_worktree(
+        tmp_path,
+        repo_name,
+    )
+    decoy = tmp_path / "decoy"
+    repos_csv = tmp_path / "repos.csv"
+    # Only the main checkout is registered; an unrelated row and a near-miss
+    # name (shared prefix) come first so neither first-row nor prefix
+    # matching yields the main checkout's path.
+    repos_csv.write_text(
+        "/some/other/repo,other-repo\n"
+        f"{decoy},{repo_name}-fork\n"
+        f"{main_root},{repo_name}\n",
+    )
+    monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", repos_csv)
+
+    exit_code, calls = _run_pack_capturing_build(monkeypatch, worktree_root)
+
+    assert exit_code == 0
+    assert len(calls) == 1
+    call = calls[0]
+    assert call["repo"] == repo_name
+    assert call["repo_root"].resolve() == worktree_root.resolve()
+    assert call["index_root"] is not None
+    assert Path(call["index_root"]).resolve() == main_root.resolve()
+    assert Path(call["index_root"]).resolve() != worktree_root.resolve()
+    assert Path(call["index_root"]).resolve() != decoy.resolve()
+
+
+def test_cli_pack_linked_worktree_of_unregistered_checkout_passes_registry_lookup_result(
+    monkeypatch,
+    tmp_path,
+):
+    _, worktree_root = _main_checkout_with_linked_worktree(tmp_path, "ghost-repo")
+    repos_csv = tmp_path / "repos.csv"
+    # The main checkout is absent; only a near-miss name with another path.
+    repos_csv.write_text(
+        f"/some/other/repo,other-repo\n{tmp_path / 'decoy'},ghost-repo-fork\n",
+    )
+    monkeypatch.setattr("engram.cli.GITA_REPOS_CSV", repos_csv)
+    monkeypatch.setattr("engram.cli._resolve_repo_name", lambda: "ghost-repo")
+
+    exit_code, calls = _run_pack_capturing_build(monkeypatch, worktree_root)
+
+    assert exit_code == 0
+    assert len(calls) == 1
+    assert calls[0]["repo"] == "ghost-repo"
+    assert calls[0]["repo_root"].resolve() == worktree_root.resolve()
+    assert calls[0]["index_root"] == registry_root("ghost-repo", repos_csv)
+    assert calls[0]["index_root"] is None
