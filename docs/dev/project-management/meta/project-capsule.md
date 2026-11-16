@@ -59,10 +59,15 @@ commit "docs(meta): trim capsule to current facts".
 
 State 2026-11-16:
 
-- Backlog: `00014-engram-findings-pack-correctness-v1` (7 verified defects in
-  harvest, rebuild and pack; includes a harvest/rebuild advisory lock).
-  `00015` module-context backfill is being specified next. Run both through
-  `/autopilot:run-autopilot`.
+- Backlog, in build order (run through `/autopilot:run-autopilot`):
+  - `00014-engram-findings-pack-correctness-v1`: 7 verified defects in
+    harvest, rebuild and pack, plus a harvest/rebuild advisory lock.
+  - `00015-engram-module-context-backfill-v1`: `engram index --backfill-code`.
+    Building it does not run it; the production run needs a backup and the
+    user's OK.
+  - `00016-engram-worktree-repo-resolution-v1`: linked worktrees resolve to
+    their main checkout's registry entry (fixes `engram pack` in autopilot
+    worktrees). Its `eligibility` waits for 00014 in `done/`.
 - 13 PRDs done (00001-00013). Installed CLI matches master as of 2026-11-16
   (`engram nudge --help` works).
 - agent-plugins PRD 00067 (engram plugin: skill, mcp.json, per-host nudge
@@ -70,9 +75,6 @@ State 2026-11-16:
   injection of engram context) is open.
 - Intakes 00008 (Qwen3 reranker/embedding) and 00009 (fusion OR/tie-break)
   stay deferred in `intake/new/` until evidence justifies a spec.
-- Not yet specified: `engram pack` exits 1 in git worktrees ("not inside a
-  registered repo"). About 50 agent-skills autopilot reviews ran without a
-  pack for this reason.
 
 ## Evaluation
 
