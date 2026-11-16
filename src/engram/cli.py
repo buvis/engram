@@ -296,20 +296,16 @@ def _run_index(args: argparse.Namespace, parser: argparse.ArgumentParser) -> int
         config = load_config()
         try:
             tmp_store = open_store(tmp_path)
-            report = index(tmp_store, config, Scope("portfolio", None))
+            try:
+                report = index(tmp_store, config, Scope("portfolio", None))
+                _preserve_findings(tmp_store, config)
+            finally:
+                tmp_store.conn.close()
         except Exception as e:
-            print(f"rebuild failed: {e}", file=sys.stderr)
-            return 1
-
-        try:
-            _preserve_findings(tmp_store, config)
-        except Exception as e:
-            tmp_store.conn.close()
             tmp_path.unlink(missing_ok=True)
             print(f"rebuild failed: {e}", file=sys.stderr)
             return 1
 
-        tmp_store.conn.close()
         os.replace(tmp_path, DEFAULT_DB_PATH)
         _print_missing(report.corpora_missing, Scope("portfolio", None))
         _print_failed(report.failed_sources)
