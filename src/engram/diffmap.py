@@ -125,8 +125,7 @@ def _unquote_c_path(path: str) -> str:
     """Decode git's C-quoted form ("caf\\303\\251.py"); leave unquoted paths as-is.
 
     Deliberately not `codecs.escape_decode(inner.encode())[0].decode()`: that
-    function is undocumented (absent from the `codecs` module docs) and
-    deprecated for removal in a future Python version.
+    function is undocumented (absent from the `codecs` module docs).
     """
     quoted = _C_QUOTED_RE.fullmatch(path)
     if quoted is None:
