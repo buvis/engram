@@ -64,14 +64,20 @@ def _symbol_query_text(symbol: Symbol, repo_root: Path, source_ref: str | None) 
 
 
 def _exclude(hits: list[Pointer], spans: set[tuple[str, int, int]]) -> list[Pointer]:
+    # Compare canonical paths so a hit reached through a symlinked root still
+    # matches the changed span it duplicates.
+    canonical_spans = [
+        (os.path.realpath(span_path), span_start, span_end)
+        for span_path, span_start, span_end in spans
+    ]
     return [
         hit
         for hit in hits
         if not any(
-            hit.path == span_path
+            os.path.realpath(hit.path) == span_path
             and hit.line_start <= span_end
             and span_start <= hit.line_end
-            for span_path, span_start, span_end in spans
+            for span_path, span_start, span_end in canonical_spans
         )
     ]
 
