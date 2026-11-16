@@ -218,25 +218,21 @@ def _rechunk_source(
 ) -> tuple[int, int] | None:
     """Store a (repo, path, hash) code source's chunks, reusing unchanged vectors.
 
-    Returns (embedded, reused) counts, or None when the stored chunks already match.
+    Returns (embedded, reused) counts, or None when there is nothing to change.
+    Stored rows are reused even under an empty mark: a run interrupted between
+    the row write and the mark write leaves both behind.
     """
     repo, path, h = source
-    stored = [] if was_empty else store.code_chunks_with_vectors(path)
-    if [item.chunk for item in stored] == chunks:
+    stored = store.code_chunks_with_vectors(path)
+    if [item.chunk for item in stored] == chunks and not (was_empty and chunks):
         return None
-    if not chunks:
-        store.replace_chunks_for_source("code", path, [])
-        store.mark_empty_source("code", repo, path, h)
-        return 0, 0
 
     vectors = {item.chunk.text_for_embedding: item.vector for item in stored}
     missing = [c.text_for_embedding for c in chunks if c.text_for_embedding not in vectors]
     if missing:
         vectors = {**vectors, **dict(zip(missing, embed(missing, entry), strict=True))}
     items = [ChunkWithVector(chunk=c, vector=vectors[c.text_for_embedding]) for c in chunks]
-    store.replace_chunks_for_source("code", path, items)
-    if was_empty:
-        store.unmark_empty_source("code", repo, path)
+    store.replace_source_chunks_and_empty_mark("code", repo, path, h, items)
     return len(missing), len(chunks) - len(missing)
 
 

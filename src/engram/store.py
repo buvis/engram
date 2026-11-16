@@ -382,6 +382,38 @@ class Store:
         else:
             conn.commit()
 
+    def replace_source_chunks_and_empty_mark(
+        self,
+        corpus: str,
+        repo: str,
+        path: str,
+        content_hash: str,
+        items: list[ChunkWithVector],
+    ) -> None:
+        """Replace one source's chunks and its empty mark in a single commit.
+
+        Items decide the mark: none sets it to content_hash, any clears it. Rows
+        and mark never become visible apart, so an interrupted run cannot leave a
+        source with both chunks and an empty mark.
+        """
+        conn = self.conn
+        conn.execute("BEGIN")
+        try:
+            conn.execute(
+                "DELETE FROM chunks WHERE corpus = ? AND path = ?",
+                (corpus, path),
+            )
+            if items:
+                self._insert_checked(items)
+                self.unmark_empty_source(corpus, repo, path)
+            else:
+                self.mark_empty_source(corpus, repo, path, content_hash)
+        except Exception:
+            conn.rollback()
+            raise
+        else:
+            conn.commit()
+
     def chunks_for_corpus(self, corpus: str) -> list[Chunk]:
         rows = self.conn.execute(
             "SELECT corpus, repo, doc_type, path, heading, body, line_start, "
