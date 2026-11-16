@@ -2,7 +2,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from _harvest_helpers import _init_git_repo, _write_repos_csv
+from _cli_helpers import _init_git_repo, _write_repos_csv
 from engram.harvest import _resolve_repo_for_path
 
 # --- _resolve_repo_for_path: repo resolution from git toplevel + gita registry ---

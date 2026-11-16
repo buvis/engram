@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from _harvest_helpers import _init_git_repo, _write_repos_csv
+from _cli_helpers import _init_git_repo, _write_repos_csv
 from engram import corpora, findings
 from engram.cli import main as cli_main
 from engram.client import (

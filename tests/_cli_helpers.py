@@ -16,3 +16,8 @@ def _init_git_repo(path):
         text=True,
     )
     return Path(result.stdout.strip())
+
+
+def _write_repos_csv(csv_path, entries):
+    lines = [f"{repo_path},{name}" for repo_path, name in entries]
+    csv_path.write_text("\n".join(lines) + "\n")
