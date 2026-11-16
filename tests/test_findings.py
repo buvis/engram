@@ -1,4 +1,5 @@
 import dataclasses
+import json
 from pathlib import Path
 
 import pytest
@@ -144,6 +145,48 @@ def test_parse_raises_when_reviewers_value_is_whitespace_only(tmp_path):
 
     with pytest.raises(ValueError):
         parse(path)
+
+
+@pytest.mark.parametrize(
+    "reviewers",
+    [[""], [" "], [], ["alice", ""], [1], 1, {"a": "b"}],
+)
+def test_parse_rejects_blank_or_non_string_reviewers(tmp_path, reviewers):
+    path, _lines = _write_review(
+        tmp_path,
+        [
+            "",
+            "Verdict: 9 findings",
+            "Tests: 142 passed, 0 failed, 0 skipped",
+        ],
+        reviewers=json.dumps(reviewers),
+    )
+
+    with pytest.raises(ValueError, match="^frontmatter must contain reviewers$"):
+        parse(path)
+
+
+@pytest.mark.parametrize(
+    "reviewers_yaml",
+    ["alice,bob", json.dumps(["alice", "bob"])],
+)
+def test_parse_accepts_string_or_list_of_names(tmp_path, reviewers_yaml):
+    path, _lines = _write_review(
+        tmp_path,
+        [
+            "",
+            "Verdict: 9 findings",
+            "Tests: 142 passed, 0 failed, 0 skipped",
+        ],
+        reviewers=reviewers_yaml,
+    )
+
+    records = parse(path)
+
+    assert [r.body for r in records] == [
+        "Verdict: 9 findings",
+        "Tests: 142 passed, 0 failed, 0 skipped",
+    ]
 
 
 # --- total-parse-failure: verdict/tests completeness ---
