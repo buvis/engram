@@ -1,6 +1,7 @@
 """Engram CLI entry point."""
 
 import argparse
+import hashlib
 import os
 import re
 import subprocess
@@ -487,7 +488,11 @@ def _resolve_pack_diff(
             file=sys.stderr,
         )
         return None
-    id_ = re.sub(r"[^A-Za-z0-9_-]", "-", range_str)
+    range_hash = hashlib.sha1(
+        range_str.encode(),
+        usedforsecurity=False,
+    ).hexdigest()[:8]
+    id_ = f"{re.sub(r'[^A-Za-z0-9_-]', '-', range_str)}-{range_hash}"
     source_ref = head or "HEAD"
     result = subprocess.run(
         ["git", "-C", str(repo_root), "diff", range_str, "--"],
