@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 
 import pytest
-from engram import findings
+from engram import corpora, findings
 from engram.cli import main as cli_main
 from engram.client import (
     EmbeddingEntry,
@@ -164,6 +164,92 @@ def test_resolve_repo_for_path_maps_claude_project_management_to_claude_home(
     result = _resolve_repo_for_path(file_path, repos_csv=repos_csv)
 
     assert result == "claude-home"
+
+
+@pytest.mark.parametrize(
+    "symlinked_side,registered,expected",
+    [
+        ("registry", "target", "linked-repo"),
+        ("toplevel", "target", "real-repo"),
+        ("registry", "near_miss", None),
+        ("registry", "empty", None),
+    ],
+)
+def test_resolve_repo_for_path_matches_symlinked_registry_path(
+    tmp_path,
+    monkeypatch,
+    symlinked_side,
+    registered,
+    expected,
+):
+    (tmp_path / "repo").mkdir()
+    toplevel = _init_git_repo(tmp_path / "repo")
+    sibling = tmp_path / "repo-sibling"
+    sibling.mkdir()
+    link = tmp_path / "links" / "repo"
+    link.parent.mkdir()
+    link.symlink_to(toplevel, target_is_directory=True)
+    sibling_link = tmp_path / "links" / "repo-sibling"
+    sibling_link.symlink_to(sibling, target_is_directory=True)
+    file_path = toplevel / "review.md"
+    file_path.write_text("content")
+    near_misses = [(sibling_link, "sibling-repo"), (link.parent, "links-repo")]
+    target = link if symlinked_side == "registry" else toplevel
+    rows = {
+        "target": [near_misses[0], (target, expected), near_misses[1]],
+        "near_miss": near_misses,
+        "empty": [],
+    }[registered]
+    repos_csv = tmp_path / "repos.csv"
+    _write_repos_csv(repos_csv, rows)
+    git_cwds = []
+    original_run = subprocess.run
+
+    def fake_run(cmd, **kwargs):
+        git_cwds.append(Path(kwargs["cwd"]).resolve())
+        if symlinked_side == "toplevel" and "--show-toplevel" in cmd:
+            return subprocess.CompletedProcess(cmd, 0, stdout=f"{link}\n", stderr="")
+        return original_run(cmd, **kwargs)
+
+    monkeypatch.setattr("engram.harvest.subprocess.run", fake_run)
+
+    result = _resolve_repo_for_path(file_path, repos_csv=repos_csv)
+
+    assert result == expected
+    if expected is not None:
+        assert file_path.parent.resolve() in git_cwds
+
+
+@pytest.mark.parametrize(
+    "suffix,registered_name,expected",
+    [
+        ("/", "slash-repo", "slash-repo"),
+        ("//", "double-slash-repo", "double-slash-repo"),
+        ("-other/", "near-miss-repo", None),
+    ],
+)
+def test_resolve_repo_for_path_matches_trailing_slash_registry_path(
+    tmp_path,
+    suffix,
+    registered_name,
+    expected,
+):
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    toplevel = _init_git_repo(repo_dir)
+    file_path = toplevel / "review.md"
+    file_path.write_text("content")
+    repos_csv = tmp_path / "repos.csv"
+    rows = [
+        (f"{toplevel.parent}/", "parent-repo"),
+        (f"{toplevel}{suffix}", registered_name),
+        (f"{toplevel}-sibling/", "sibling-repo"),
+    ]
+    _write_repos_csv(repos_csv, rows)
+
+    result = _resolve_repo_for_path(file_path, repos_csv=repos_csv)
+
+    assert result == expected
 
 
 # --- harvest: idempotent re-harvest and amended-file replace ---
@@ -554,6 +640,54 @@ def test_harvest_os_error_during_repo_resolution_on_one_path_does_not_abort_the_
     assert broken_result.outcome == "no_repo"
     assert good_result.outcome == "upserted"
     assert good_result.records_count > 0
+
+
+@pytest.mark.parametrize("read_error", [PermissionError, OSError])
+def test_harvest_unreadable_registry_yields_no_repo_without_aborting_batch(
+    tmp_path,
+    monkeypatch,
+    read_error,
+):
+    store = open_store(tmp_path / "engram.db")
+    config = _config(tmp_path)
+    monkeypatch.setattr("engram.findings.embed", _make_embed())
+    paths = []
+    for name in ("repoA", "repoB", "repoC"):
+        (tmp_path / name).mkdir()
+        review_path = _init_git_repo(tmp_path / name) / "review.md"
+        _write_review_file(review_path, body_marker=f"{name}-marker-token")
+        paths.append(review_path)
+    repos_csv = tmp_path / "repos.csv"
+    _write_repos_csv(repos_csv, [(p.parent, p.parent.name) for p in paths])
+    monkeypatch.setattr("engram.harvest.GITA_REPOS_CSV", repos_csv)
+    unreadable_dir = paths[1].parent
+    git_cwds = []
+    original_run = subprocess.run
+    original_read = corpora.read_repos_csv
+
+    def tracking_run(cmd, **kwargs):
+        git_cwds.append(Path(kwargs["cwd"]).resolve())
+        return original_run(cmd, **kwargs)
+
+    def unreadable_for_repo_b(csv_path):
+        if git_cwds and git_cwds[-1] == unreadable_dir:
+            raise read_error("simulated unreadable registry")
+        return original_read(csv_path)
+
+    monkeypatch.setattr("engram.harvest.subprocess.run", tracking_run)
+    monkeypatch.setattr("engram.corpora.read_repos_csv", unreadable_for_repo_b)
+
+    report = harvest(store, config, paths)
+
+    assert [r.outcome for r in report.results] == ["upserted", "no_repo", "upserted"]
+    assert report.results[0].records_count > 0
+    assert report.results[1].records_count == 0
+    assert report.results[2].records_count > 0
+    assert report.any_failed is True
+    assert unreadable_dir in git_cwds
+    chunks = store.chunks_for_corpus(FINDINGS_CORPUS)
+    assert {c.repo for c in chunks} == {"repoA", "repoC"}
+    assert all("repoB-marker-token" not in c.body for c in chunks)
 
 
 # --- HarvestReport.any_failed ---
