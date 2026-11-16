@@ -1,3 +1,4 @@
+import hashlib
 import re
 import subprocess
 from pathlib import Path
@@ -516,9 +517,35 @@ def test_pack_diff_keeps_raw_source_ref_while_slugging_special_characters_in_id(
     assert call["source_ref"] == "bugfix/bar"
 
 
+_LONG_RANGE_PREFIX = "release/2026-11-candidate-build..feature/very-long-branch"
+
+
+@pytest.mark.parametrize(
+    ("first_range", "second_range"),
+    [
+        ("a/b..c", "a-b..c"),
+        (f"{_LONG_RANGE_PREFIX}/tail", f"{_LONG_RANGE_PREFIX}-tail"),
+        ("main...feature/x", "main...feature-x"),
+        ("a~1..c", "a/1..c"),
+        ("HEAD^..main", "HEAD/..main"),
+        ("a:b..c", "a/b..c"),
+        ("a@b..c", "a/b..c"),
+    ],
+    ids=[
+        "slash-vs-dash",
+        "long-differs-at-end",
+        "three-dot",
+        "tilde",
+        "caret",
+        "colon",
+        "at-sign",
+    ],
+)
 def test_pack_diff_ids_differ_for_ranges_that_sanitize_alike(
     monkeypatch,
     tmp_path,
+    first_range,
+    second_range,
 ):
     repo_dir = tmp_path / "repo"
     repo_dir.mkdir()
@@ -533,28 +560,24 @@ def test_pack_diff_ids_differ_for_ranges_that_sanitize_alike(
     report = _make_pack_report(toplevel / "docs/dev/tmp/engram-pack-x.md")
     monkeypatch.setattr("engram.cli.build", _capturing_pack_build(calls, report))
 
-    # Both ranges sanitize to "a-b--c"; each run gets its own diff body.
-    runs = [("a/b..c", "diff from slash range\n"), ("a-b..c", "diff from dash range\n")]
-    for range_str, stdout in runs:
-        _, fake_run = _make_fake_git_diff_run(stdout, returncode=0)
+    slug = re.sub(r"[^A-Za-z0-9_-]", "-", first_range)
+    assert slug == re.sub(r"[^A-Za-z0-9_-]", "-", second_range)
+    tmp_dir = toplevel / "docs/dev/tmp"
+    for range_str in (first_range, second_range):
+        _, fake_run = _make_fake_git_diff_run(f"diff for {range_str}\n")
         monkeypatch.setattr("engram.cli.subprocess.run", fake_run)
         assert main(["pack", "--diff", range_str]) == 0
 
     assert len(calls) == 2
-    slash_call, dash_call = calls
-    assert slash_call["id_"] == "a-b--c-1da1fe5c"
-    assert dash_call["id_"] == "a-b--c-0c3213a4"
-    assert slash_call["id_"] != dash_call["id_"]
-    assert slash_call["diff_path"] != dash_call["diff_path"]
-    # The second run must not have overwritten the first run's scratch diff.
-    tmp_dir = toplevel / "docs/dev/tmp"
-    assert (tmp_dir / "engram-pack-diff-a-b--c-1da1fe5c.diff").read_text() == (
-        "diff from slash range\n"
-    )
-    assert (tmp_dir / "engram-pack-diff-a-b--c-0c3213a4.diff").read_text() == (
-        "diff from dash range\n"
-    )
-    assert not (tmp_dir / "engram-pack-diff-a-b--c.diff").exists()
+    for call, range_str in zip(calls, (first_range, second_range), strict=True):
+        expected_id = f"{slug}-{hashlib.sha1(range_str.encode()).hexdigest()[:8]}"
+        assert call["id_"] == expected_id
+        # Each run keeps its own scratch diff; neither overwrote the other.
+        diff_file = tmp_dir / f"engram-pack-diff-{expected_id}.diff"
+        assert call["diff_path"].resolve() == diff_file.resolve()
+        assert diff_file.read_text() == f"diff for {range_str}\n"
+    assert calls[0]["id_"] != calls[1]["id_"]
+    assert not (tmp_dir / f"engram-pack-diff-{slug}.diff").exists()
 
 
 # --- pack: --diff failures never call build ---
