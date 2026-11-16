@@ -1,3 +1,4 @@
+import inspect
 import os
 import subprocess
 from pathlib import Path
@@ -572,6 +573,12 @@ def _make_repo_with_worktree(root, name):
 def test_resolve_repo_for_path_maps_linked_worktree_to_main_checkout(tmp_path):
     main_one, _, file_one = _make_repo_with_worktree(tmp_path, "proj")
     main_two, _, file_two = _make_repo_with_worktree(tmp_path, "proj-two")
+    elsewhere_wt = tmp_path / "elsewhere" / "feature-x"
+    nested_wt = main_one / ".worktrees" / "x"
+    for worktree in (elsewhere_wt, nested_wt):
+        worktree.parent.mkdir(parents=True, exist_ok=True)
+        _git(main_one, "worktree", "add", "-q", "--detach", str(worktree))
+        (worktree / "review.md").write_text("review\n")
     link_two = tmp_path / "link-two"
     link_two.symlink_to(main_two)
     repos_csv = tmp_path / "repos.csv"
@@ -588,6 +595,8 @@ def test_resolve_repo_for_path_maps_linked_worktree_to_main_checkout(tmp_path):
 
     assert _resolve_repo_for_path(file_one, repos_csv) == "proj-main"
     assert _resolve_repo_for_path(file_two, repos_csv) == "proj-two-main"
+    assert _resolve_repo_for_path(elsewhere_wt / "review.md", repos_csv) == "proj-main"
+    assert _resolve_repo_for_path(nested_wt / "review.md", repos_csv) == "proj-main"
 
 
 def test_resolve_repo_for_path_registered_worktree_keeps_its_own_name(tmp_path):
@@ -609,6 +618,12 @@ def test_resolve_repo_for_path_worktree_of_unregistered_repo_returns_none(tmp_pa
     _git(bare_dir, "worktree", "add", "-q", "--detach", str(bare_worktree))
     bare_file = bare_worktree / "review.md"
     bare_file.write_text("review\n")
+    plain_roots = []
+    for name in ("proj", "proj-wt"):
+        (tmp_path / "plain" / name).mkdir(parents=True)
+        plain_roots.append(_init_git_repo(tmp_path / "plain" / name))
+        (plain_roots[-1] / "review.md").write_text("review\n")
+    plain_main, plain_wt_named = plain_roots
     empty_csv = tmp_path / "empty.csv"
     empty_csv.write_text("")
     decoy_csv = tmp_path / "repos.csv"
@@ -621,12 +636,15 @@ def test_resolve_repo_for_path_worktree_of_unregistered_repo_returns_none(tmp_pa
             (tmp_path / "other" / "proj-wt", "worktree-basename-decoy"),
             (tmp_path / "store", "bare-parent-decoy"),
             (bare_dir, "bare-dir-decoy"),
+            (plain_main, "plain-proj"),
         ],
     )
 
     assert _resolve_repo_for_path(worktree_file, empty_csv) is None
     assert _resolve_repo_for_path(worktree_file, decoy_csv) is None
     assert _resolve_repo_for_path(bare_file, decoy_csv) is None
+    assert _resolve_repo_for_path(plain_main / "review.md", decoy_csv) == "plain-proj"
+    assert _resolve_repo_for_path(plain_wt_named / "review.md", decoy_csv) is None
 
 
 def test_registry_root_returns_path_for_name(tmp_path):
@@ -637,8 +655,9 @@ def test_registry_root_returns_path_for_name(tmp_path):
         repos_csv,
         [
             (tmp_path / "a" / "proj-main", "proj-main"),
-            (tmp_path / "b" / "proj", "proj"),
-            (tmp_path / "c" / "my-proj", "my-proj"),
+            (tmp_path / "x" / "my-proj", "my-proj"),
+            (tmp_path / "u" / "Proj", "Proj"),
+            (tmp_path / "b" / "checkout", "proj"),
             (tmp_path / "d" / "proj", "proj"),
         ],
     )
@@ -647,12 +666,16 @@ def test_registry_root_returns_path_for_name(tmp_path):
 
     proj_root = registry_root("proj", repos_csv)
     assert isinstance(proj_root, Path)
-    assert proj_root == tmp_path / "b" / "proj"
-    assert registry_root("my-proj", repos_csv) == tmp_path / "c" / "my-proj"
+    assert proj_root == tmp_path / "b" / "checkout"
+    assert registry_root("my-proj", repos_csv) == tmp_path / "x" / "my-proj"
+    assert registry_root("Proj", repos_csv) == tmp_path / "u" / "Proj"
+    assert registry_root("PROJ", repos_csv) is None
     assert registry_root("pro", repos_csv) is None
     assert registry_root("proj", empty_csv) is None
     assert registry_root("proj", tmp_path / "missing.csv") is None
     assert registry_root("proj", tmp_path) is None
+    default = inspect.signature(registry_root).parameters["repos_csv"].default
+    assert default == corpora.GITA_REPOS_CSV
 
 
 # --- HarvestReport.any_failed ---
