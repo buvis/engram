@@ -786,22 +786,24 @@ def test_dedup_is_per_file_not_global_across_two_grammarless_files(tmp_path):
 
 # --- changed_symbols(): deduping the file-level fallback does not swallow real function symbols ---
 
+_MOD5_SOURCE = (
+    "import os\n"
+    "import sys\n"
+    "\n"
+    "\n"
+    "def foo():\n"
+    "    return 1\n"
+    "\n"
+    "\n"
+    "def bar():\n"
+    "    return 2\n"
+)
+
 
 def test_function_and_module_level_edits_in_same_file_yield_functions_plus_one_file_symbol(
     tmp_path,
 ):
-    (tmp_path / "mod5.py").write_text(
-        "import os\n"
-        "import sys\n"
-        "\n"
-        "\n"
-        "def foo():\n"
-        "    return 1\n"
-        "\n"
-        "\n"
-        "def bar():\n"
-        "    return 2\n",
-    )
+    (tmp_path / "mod5.py").write_text(_MOD5_SOURCE)
     diff_path = _write_diff(
         tmp_path,
         [
