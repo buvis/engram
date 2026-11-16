@@ -615,7 +615,16 @@ def test_resolve_repo_for_path_worktree_of_unregistered_repo_returns_none(tmp_pa
     bare_dir = tmp_path / "store" / "proj.git"
     _git(tmp_path, "clone", "--bare", "-q", str(main), str(bare_dir))
     bare_worktree = tmp_path / "bare-wt"
-    _git(bare_dir, "worktree", "add", "-q", "--detach", str(bare_worktree))
+    _git(
+        bare_dir,
+        "-c",
+        "safe.bareRepository=all",
+        "worktree",
+        "add",
+        "-q",
+        "--detach",
+        str(bare_worktree),
+    )
     bare_file = bare_worktree / "review.md"
     bare_file.write_text("review\n")
     plain_roots = []
