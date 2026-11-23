@@ -34,5 +34,260 @@
     {"domain": "security", "severity": "LOW", "paths": ["src/engram/store.py", "src/engram/cli.py", "src/engram/findings.py", "src/engram/memory.py", "src/engram/transcripts.py", "src/engram/client.py", "src/engram/diffmap.py"], "status": "verified", "title": "Hostile on-disk state gives tracebacks, the lock file follows symlinks, and one bad review file drops a whole harvest batch", "lanes": ["trudy"]},
     {"domain": "security", "severity": "LOW", "paths": ["src/engram/client.py"], "status": "mocked", "title": "The endpoint check and the HTTP client disagree on the host, and non-HTTP schemes pass", "lanes": ["trudy"]},
     {"domain": "performance", "severity": "LOW", "paths": ["src/engram/store.py"], "status": "verified", "title": "The store file costs about 4.3 MB per (repo, corpus) pair, however few chunks it holds", "lanes": ["peggy"]}
-  ]
+  ],
+  "triage": {
+    "date": "2026-11-23",
+    "status": "complete",
+    "authority": "user standing AGENTS.md review adjudication",
+    "report": "docs/dev/project-management/audit-results/agoge-triage-2026-11-23.md",
+    "implementation": "queued, not performed",
+    "decisions": [
+      {
+        "number": 1,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00017-verify-embedding-model-identity-v1.md"
+        ],
+        "note": "Accept option 1: use the served model listing; retain per-call validation."
+      },
+      {
+        "number": 2,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00018-index-chunks-by-source-v1.md"
+        ],
+        "note": "Accept option 1: add the corpus/path index without rebuilding vectors."
+      },
+      {
+        "number": 3,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00020-bound-indexing-to-repositories-v1.md"
+        ],
+        "note": "Accept option 1: NUL-delimited Git paths; retain unmerged-stage deduplication."
+      },
+      {
+        "number": 4,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00021-unify-worktree-source-identity-v1.md"
+        ],
+        "note": "Accept option 1: map worktree-relative file paths to the registered checkout; document indexed line positions."
+      },
+      {
+        "number": 5,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00027-correct-operating-documentation-v1.md"
+        ],
+        "note": "Accept option 1: document intentional detached reuse; no automatic shutdown or watchdog."
+      },
+      {
+        "number": 6,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00019-validate-repository-registry-v1.md"
+        ],
+        "note": "Accept option 1 with legacy-memory slug preservation and safe re-indexing of alias code/prose."
+      },
+      {
+        "number": 7,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00021-unify-worktree-source-identity-v1.md"
+        ],
+        "note": "Accept canonical identity for future harvests; remove only proven identical legacy aliases and retain differing history."
+      },
+      {
+        "number": 8,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00022-exclude-worktree-self-matches-v1.md"
+        ],
+        "note": "Accept name/kind identity across distinct checkouts with a reported conservative fallback for ambiguous files."
+      },
+      {
+        "number": 9,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00019-validate-repository-registry-v1.md"
+        ],
+        "note": "Accept option 1: refuse an empty registry before pruning or rebuild replacement. The report title overstates loss: findings survive."
+      },
+      {
+        "number": 10,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00023-protect-store-write-lifecycle-v1.md"
+        ],
+        "note": "Accept explicit discard recovery only, with a retained database backup; default remains loss-averse."
+      },
+      {
+        "number": 11,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00020-bound-indexing-to-repositories-v1.md"
+        ],
+        "note": "Accept option 1 across enumerators and direct pack inputs; explicit diff input remains permitted."
+      },
+      {
+        "number": 12,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00024-sanitize-retrieved-context-v1.md"
+        ],
+        "note": "Accept output redaction and private creation modes, extended to full PEM blocks and quoted credential assignments. Raw existing stores remain."
+      },
+      {
+        "number": 13,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00022-exclude-worktree-self-matches-v1.md"
+        ],
+        "note": "Accept option 1: canonicalize each distinct path once."
+      },
+      {
+        "number": 14,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00020-bound-indexing-to-repositories-v1.md"
+        ],
+        "note": "Accept option 1 before code and prose enumeration; retain scope-safe pruning."
+      },
+      {
+        "number": 15,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00023-protect-store-write-lifecycle-v1.md"
+        ],
+        "note": "Accept finally cleanup under the acquired lock; do not touch another writer's temp."
+      },
+      {
+        "number": 16,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00019-validate-repository-registry-v1.md"
+        ],
+        "note": "Accept registry validation with path-specific diagnostics and per-file harvest failures."
+      },
+      {
+        "number": 17,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00023-protect-store-write-lifecycle-v1.md"
+        ],
+        "note": "Choose option 2: hold the lock through writes. A fail-fast precheck alone has a race."
+      },
+      {
+        "number": 18,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00023-protect-store-write-lifecycle-v1.md"
+        ],
+        "note": "Accept atomic schema/vector initialization or clean busy refusal; retain a two-process regression."
+      },
+      {
+        "number": 19,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00017-verify-embedding-model-identity-v1.md"
+        ],
+        "note": "Accept with model-identity work as mocked error-path coverage; no promotion to live-server verification."
+      },
+      {
+        "number": 20,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00027-correct-operating-documentation-v1.md"
+        ],
+        "note": "Accept option 1: document model and per-version grammar downloads."
+      },
+      {
+        "number": 21,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00027-correct-operating-documentation-v1.md"
+        ],
+        "note": "Accept option 2: merge unreleased categories and correct the pin; do not invent a release/tag."
+      },
+      {
+        "number": 22,
+        "decision": "deferred",
+        "prds": [],
+        "note": "Defer probe caching. Identity correctness comes first; revisit only after model/restart tests and a current workload measurement."
+      },
+      {
+        "number": 23,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00019-validate-repository-registry-v1.md"
+        ],
+        "note": "Accept one validated registry snapshot per harvest, shared with the registry fix."
+      },
+      {
+        "number": 24,
+        "decision": "deferred",
+        "prds": [],
+        "note": "Defer unchanged-harvest caching. First measure whether the actual caller resubmits unchanged files; parser-version invalidation would add state."
+      },
+      {
+        "number": 25,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00021-unify-worktree-source-identity-v1.md"
+        ],
+        "note": "Accept option 1: require membership in Git's own worktree list."
+      },
+      {
+        "number": 26,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00024-sanitize-retrieved-context-v1.md"
+        ],
+        "note": "Accept control filtering and data framing. This does not guarantee prompt-injection prevention."
+      },
+      {
+        "number": 27,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00026-reject-imports-in-migrated-memory-v1.md"
+        ],
+        "note": "Accept conservative migration validation; the downstream import effect remains unverified."
+      },
+      {
+        "number": 28,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00019-validate-repository-registry-v1.md"
+        ],
+        "note": "Accept absolute-row validation in the registry reader."
+      },
+      {
+        "number": 29,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00022-exclude-worktree-self-matches-v1.md",
+          "docs/dev/project-management/prds/backlog/00023-protect-store-write-lifecycle-v1.md",
+          "docs/dev/project-management/prds/backlog/00025-isolate-malformed-input-failures-v1.md"
+        ],
+        "note": "Split by boundary: lock/rebuild issues to 00023; diff physical lines to 00022; parser/config errors to 00025. Narrow transcript claim: ordinary invalid JSON already continues per record."
+      },
+      {
+        "number": 30,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00017-verify-embedding-model-identity-v1.md"
+        ],
+        "note": "Accept syntax hardening from a mocked probe. Allow HTTP and HTTPS loopback, reject userinfo/unknown schemes, and validate redirects too."
+      },
+      {
+        "number": 31,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00027-correct-operating-documentation-v1.md"
+        ],
+        "note": "Accept documentation; retain current vector partitions. Reconsider layout only with disk pressure and measured search/rebuild tradeoffs."
+      }
+    ]
+  }
 }

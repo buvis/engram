@@ -146,5 +146,138 @@
       "lanes": ["peggy"],
       "symbols": ["chunks_vec"]
     }
-  ]
+  ],
+  "triage": {
+    "date": "2026-11-23",
+    "status": "complete",
+    "authority": "user standing AGENTS.md review adjudication",
+    "report": "docs/dev/project-management/audit-results/agoge-triage-2026-11-23.md",
+    "implementation": "queued, not performed",
+    "decisions": [
+      {
+        "number": 1,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00027-correct-operating-documentation-v1.md"
+        ],
+        "note": "Merge into latest #5; document the intentionally persistent server."
+      },
+      {
+        "number": 2,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00027-correct-operating-documentation-v1.md"
+        ],
+        "note": "Choose documented backfill repair rather than a new automatic migration. The current backfill re-chunks unchanged sources and compares stored chunks; no fresh product run was made."
+      },
+      {
+        "number": 3,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00024-sanitize-retrieved-context-v1.md"
+        ],
+        "note": "Merge into latest #12, with assignment redaction included so this older finding is fully covered."
+      },
+      {
+        "number": 4,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00019-validate-repository-registry-v1.md"
+        ],
+        "note": "Partly superseded by PRD 00016's resolved-root comparison. The remaining producer/lookup mismatch is latest #6 and belongs to 00019."
+      },
+      {
+        "number": 5,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00017-verify-embedding-model-identity-v1.md"
+        ],
+        "note": "Accept status model identity and nonzero mismatch result under 00017."
+      },
+      {
+        "number": 6,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00027-correct-operating-documentation-v1.md"
+        ],
+        "note": "Merge into latest #20."
+      },
+      {
+        "number": 7,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00027-correct-operating-documentation-v1.md"
+        ],
+        "note": "The claim that rebuild is the only backfill route is superseded by completed PRD 00015. Retain the synthetic rebuild cost as documentation, not a new performance budget."
+      },
+      {
+        "number": 8,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00024-sanitize-retrieved-context-v1.md"
+        ],
+        "note": "Accept fenced excerpts with budget accounting under 00024."
+      },
+      {
+        "number": 9,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00017-verify-embedding-model-identity-v1.md"
+        ],
+        "note": "Accept the pre-embed stored-model check under 00017."
+      },
+      {
+        "number": 10,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00027-correct-operating-documentation-v1.md"
+        ],
+        "note": "Accept explicit language coverage documentation. Expanding the allowlist or changing to a denylist is outside this correction."
+      },
+      {
+        "number": 11,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00027-correct-operating-documentation-v1.md"
+        ],
+        "note": "Accept the corrected corpus table under 00027."
+      },
+      {
+        "number": 12,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00025-isolate-malformed-input-failures-v1.md"
+        ],
+        "note": "Accept labeled optional-directory diagnostics under 00025."
+      },
+      {
+        "number": 13,
+        "decision": "deferred",
+        "prds": [],
+        "note": "Merge into latest #22's deferral; preserve identity and recycling checks before any optimization."
+      },
+      {
+        "number": 14,
+        "decision": "deferred",
+        "prds": [],
+        "note": "Defer index changes for lookup misses. Historical wall time was 3-8 ms; revisit if a measured user workload makes this material."
+      },
+      {
+        "number": 15,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00027-correct-operating-documentation-v1.md"
+        ],
+        "note": "Merge into latest #21; later packet supplies the missing command evidence."
+      },
+      {
+        "number": 16,
+        "decision": "accepted",
+        "prds": [
+          "docs/dev/project-management/prds/backlog/00027-correct-operating-documentation-v1.md"
+        ],
+        "note": "Merge into latest #31; retain partitions and document the measured allocation cost."
+      }
+    ]
+  }
 }
