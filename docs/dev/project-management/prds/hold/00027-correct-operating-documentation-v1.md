@@ -8,6 +8,10 @@ model_tier_rationale: multiple user-facing explanations must accurately describe
 Source: 2026-11-16 #5, 2026-11-16 #20, 2026-11-16 #21, 2026-11-16 #31, 2026-11-15 run 2 #1, 2026-11-15 run 2 #2, 2026-11-15 run 2 #6, 2026-11-15 run 2 #7, 2026-11-15 run 2 #10, 2026-11-15 run 2 #11, 2026-11-15 run 2 #15, 2026-11-15 run 2 #16. Original packets: docs/dev/project-management/audit-results/agoge-2026-11-16.md and docs/dev/project-management/audit-results/agoge-2026-11-15-2.md.
 Decision: docs/dev/project-management/audit-results/agoge-triage-2026-11-23.md. This is a bounded QA correction, not a replacement of the completed feature PRDs.
 
+Status: HOLD, source evidence for the Gems port. Do not execute in standalone Engram.
+Target owner: buvis/gems, port plan docs/dev/project-management/discovery/00161-engram-port-plan.md.
+The source paths, tests and Python/config assumptions below describe standalone Engram. Adapt them to the target architecture and port contract before creating executable Gems PRDs.
+
 ## Overview
 
 ### Problem Statement

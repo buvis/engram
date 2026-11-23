@@ -8,6 +8,10 @@ model_tier_rationale: cross-checkout identity and history preservation require d
 Source: 2026-11-16 #4, 2026-11-16 #7, 2026-11-16 #25. Original packets: docs/dev/project-management/audit-results/agoge-2026-11-16.md and docs/dev/project-management/audit-results/agoge-2026-11-15-2.md.
 Decision: docs/dev/project-management/audit-results/agoge-triage-2026-11-23.md. This is a bounded QA correction, not a replacement of the completed feature PRDs.
 
+Status: HOLD, source evidence for the Gems port. Do not execute in standalone Engram.
+Target owner: buvis/gems, port plan docs/dev/project-management/discovery/00161-engram-port-plan.md.
+The source paths, tests and Python/config assumptions below describe standalone Engram. Adapt them to the target architecture and port contract before creating executable Gems PRDs.
+
 ## Overview
 
 ### Problem Statement
