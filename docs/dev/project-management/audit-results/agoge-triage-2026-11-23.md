@@ -1,6 +1,6 @@
 # Agoge disposition: 2026-11-23
 
-Status: QA disposition complete; PRDs 00017-00027 held as source evidence for the Gems port. Do not run them in standalone Engram.
+Status: QA disposition complete; ownership transferred to buvis/gems PRDs 00163-00173 on 2026-11-24. Standalone Engram has no copies of these PRDs.
 
 Authority: the user's standing AGENTS.md instructions authorize routine review adjudication, reversible documentation and backlog work. These are agent decisions under that authority, not individual human approvals and not a scripted --decisions test run. Agoge resume dispatches no lanes and repeats no product probes. The older skill's ask-first and cluster-approval steps are superseded by the user's standing authorization.
 
@@ -11,7 +11,7 @@ Measured source: HEAD 0003560ff29f732bcd048e505e11c7fc12c12c69, observed 2026-11
 ## Result
 
 - 47 source packets dispositioned: 43 accepted or accepted-and-merged, 4 deferred packet entries. Duplicate packet numbers remain traceable below.
-- 11 source specifications retained in docs/dev/project-management/prds/hold/, 00017 through 00027. Both HIGH findings are in the first two specifications.
+- 11 specifications transferred to buvis/gems docs/dev/project-management/prds/hold/, 00163 through 00173. Both HIGH findings are in the first two specifications.
 - Three distinct optimization deferrals remain: preflight caching, unchanged harvest caching, and name-miss lookup optimization. Preflight caching occurs in both reports.
 - Vector partition layout, module-context language expansion and automatic server shutdown remain unchanged by design; their documentation is queued.
 - The first 2026-11-15 report aborted with zero findings. Its observations are superseded by the two completed reports; it has no independent unresolved packet.
@@ -22,17 +22,17 @@ Do not run these specifications through standalone Engram autoclaude. The record
 
 | PRD | Work | Prerequisites |
 |---|---|---|
-| [00017](../prds/hold/00017-verify-embedding-model-identity-v1.md) | Verify the served embedding model before use | None |
-| [00018](../prds/hold/00018-index-chunks-by-source-v1.md) | Index chunk lookups by corpus and path | None |
-| [00019](../prds/hold/00019-validate-repository-registry-v1.md) | Validate repository registration before indexing | None |
-| [00020](../prds/hold/00020-bound-indexing-to-repositories-v1.md) | Index tracked paths without reading outside repositories | 00019 |
-| [00021](../prds/hold/00021-unify-worktree-source-identity-v1.md) | Use one source identity across linked worktrees | 00019 |
-| [00022](../prds/hold/00022-exclude-worktree-self-matches-v1.md) | Exclude changed code from worktree packs after line shifts | 00019 |
-| [00023](../prds/hold/00023-protect-store-write-lifecycle-v1.md) | Protect rebuilds and concurrent store writes | None |
-| [00024](../prds/hold/00024-sanitize-retrieved-context-v1.md) | Sanitize retrieved context before publication | None |
-| [00025](../prds/hold/00025-isolate-malformed-input-failures-v1.md) | Isolate malformed input failures and clarify diagnostics | 00019, 00017 |
-| [00026](../prds/hold/00026-reject-imports-in-migrated-memory-v1.md) | Reject import paths in migrated memory metadata | None |
-| [00027](../prds/hold/00027-correct-operating-documentation-v1.md) | Correct operating and upgrade documentation | None |
+| [00017](../../../../../gems/docs/dev/project-management/prds/hold/00163-engram-verify-embedding-model-identity-v1.md) | Verify the served embedding model before use | None |
+| [00018](../../../../../gems/docs/dev/project-management/prds/hold/00164-engram-index-chunks-by-source-v1.md) | Index chunk lookups by corpus and path | None |
+| [00019](../../../../../gems/docs/dev/project-management/prds/hold/00165-engram-validate-repository-registry-v1.md) | Validate repository registration before indexing | None |
+| [00020](../../../../../gems/docs/dev/project-management/prds/hold/00166-engram-bound-indexing-to-repositories-v1.md) | Index tracked paths without reading outside repositories | 00019 |
+| [00021](../../../../../gems/docs/dev/project-management/prds/hold/00167-engram-unify-worktree-source-identity-v1.md) | Use one source identity across linked worktrees | 00019 |
+| [00022](../../../../../gems/docs/dev/project-management/prds/hold/00168-engram-exclude-worktree-self-matches-v1.md) | Exclude changed code from worktree packs after line shifts | 00019 |
+| [00023](../../../../../gems/docs/dev/project-management/prds/hold/00169-engram-protect-store-write-lifecycle-v1.md) | Protect rebuilds and concurrent store writes | None |
+| [00024](../../../../../gems/docs/dev/project-management/prds/hold/00170-engram-sanitize-retrieved-context-v1.md) | Sanitize retrieved context before publication | None |
+| [00025](../../../../../gems/docs/dev/project-management/prds/hold/00171-engram-isolate-malformed-input-failures-v1.md) | Isolate malformed input failures and clarify diagnostics | 00019, 00017 |
+| [00026](../../../../../gems/docs/dev/project-management/prds/hold/00172-engram-reject-imports-in-migrated-memory-v1.md) | Reject import paths in migrated memory metadata | None |
+| [00027](../../../../../gems/docs/dev/project-management/prds/hold/00173-engram-correct-operating-documentation-v1.md) | Correct operating and upgrade documentation | None |
 
 Priority: identity correctness and the source index first, then registry and containment, then worktree correctness and store lifecycle. Output redaction and migration guards belong in this batch, not a cosmetic follow-up. Do not run the new recovery option against the user's store during implementation.
 
@@ -53,37 +53,37 @@ Source: [original packets](agoge-2026-11-16.md). Accepted means retained for tar
 
 | Packet | Disposition | PRD | Decision and evidence limits |
 |---|---|---|---|
-| 1 | accepted | [00017](../prds/hold/00017-verify-embedding-model-identity-v1.md) | Accept option 1: use the served model listing; retain per-call validation. |
-| 2 | accepted | [00018](../prds/hold/00018-index-chunks-by-source-v1.md) | Accept option 1: add the corpus/path index without rebuilding vectors. |
-| 3 | accepted | [00020](../prds/hold/00020-bound-indexing-to-repositories-v1.md) | Accept option 1: NUL-delimited Git paths; retain unmerged-stage deduplication. |
-| 4 | accepted | [00021](../prds/hold/00021-unify-worktree-source-identity-v1.md) | Accept option 1: map worktree-relative file paths to the registered checkout; document indexed line positions. |
-| 5 | accepted | [00027](../prds/hold/00027-correct-operating-documentation-v1.md) | Accept option 1: document intentional detached reuse; no automatic shutdown or watchdog. |
-| 6 | accepted | [00019](../prds/hold/00019-validate-repository-registry-v1.md) | Accept option 1 with legacy-memory slug preservation and safe re-indexing of alias code/prose. |
-| 7 | accepted | [00021](../prds/hold/00021-unify-worktree-source-identity-v1.md) | Accept canonical identity for future harvests; remove only proven identical legacy aliases and retain differing history. |
-| 8 | accepted | [00022](../prds/hold/00022-exclude-worktree-self-matches-v1.md) | Accept name/kind identity across distinct checkouts with a reported conservative fallback for ambiguous files. |
-| 9 | accepted | [00019](../prds/hold/00019-validate-repository-registry-v1.md) | Accept option 1: refuse an empty registry before pruning or rebuild replacement. The report title overstates loss: findings survive. |
-| 10 | accepted | [00023](../prds/hold/00023-protect-store-write-lifecycle-v1.md) | Accept explicit discard recovery only, with a retained database backup; default remains loss-averse. |
-| 11 | accepted | [00020](../prds/hold/00020-bound-indexing-to-repositories-v1.md) | Accept option 1 across enumerators and direct pack inputs; explicit diff input remains permitted. |
-| 12 | accepted | [00024](../prds/hold/00024-sanitize-retrieved-context-v1.md) | Accept output redaction and private creation modes, extended to full PEM blocks and quoted credential assignments. Raw existing stores remain. |
-| 13 | accepted | [00022](../prds/hold/00022-exclude-worktree-self-matches-v1.md) | Accept option 1: canonicalize each distinct path once. |
-| 14 | accepted | [00020](../prds/hold/00020-bound-indexing-to-repositories-v1.md) | Accept option 1 before code and prose enumeration; retain scope-safe pruning. |
-| 15 | accepted | [00023](../prds/hold/00023-protect-store-write-lifecycle-v1.md) | Accept finally cleanup under the acquired lock; do not touch another writer's temp. |
-| 16 | accepted | [00019](../prds/hold/00019-validate-repository-registry-v1.md) | Accept registry validation with path-specific diagnostics and per-file harvest failures. |
-| 17 | accepted | [00023](../prds/hold/00023-protect-store-write-lifecycle-v1.md) | Choose option 2: hold the lock through writes. A fail-fast precheck alone has a race. |
-| 18 | accepted | [00023](../prds/hold/00023-protect-store-write-lifecycle-v1.md) | Accept atomic schema/vector initialization or clean busy refusal; retain a two-process regression. |
-| 19 | accepted | [00017](../prds/hold/00017-verify-embedding-model-identity-v1.md) | Accept with model-identity work as mocked error-path coverage; no promotion to live-server verification. |
-| 20 | accepted | [00027](../prds/hold/00027-correct-operating-documentation-v1.md) | Accept option 1: document model and per-version grammar downloads. |
-| 21 | accepted | [00027](../prds/hold/00027-correct-operating-documentation-v1.md) | Accept option 2: merge unreleased categories and correct the pin; do not invent a release/tag. |
+| 1 | accepted | [00017](../../../../../gems/docs/dev/project-management/prds/hold/00163-engram-verify-embedding-model-identity-v1.md) | Accept option 1: use the served model listing; retain per-call validation. |
+| 2 | accepted | [00018](../../../../../gems/docs/dev/project-management/prds/hold/00164-engram-index-chunks-by-source-v1.md) | Accept option 1: add the corpus/path index without rebuilding vectors. |
+| 3 | accepted | [00020](../../../../../gems/docs/dev/project-management/prds/hold/00166-engram-bound-indexing-to-repositories-v1.md) | Accept option 1: NUL-delimited Git paths; retain unmerged-stage deduplication. |
+| 4 | accepted | [00021](../../../../../gems/docs/dev/project-management/prds/hold/00167-engram-unify-worktree-source-identity-v1.md) | Accept option 1: map worktree-relative file paths to the registered checkout; document indexed line positions. |
+| 5 | accepted | [00027](../../../../../gems/docs/dev/project-management/prds/hold/00173-engram-correct-operating-documentation-v1.md) | Accept option 1: document intentional detached reuse; no automatic shutdown or watchdog. |
+| 6 | accepted | [00019](../../../../../gems/docs/dev/project-management/prds/hold/00165-engram-validate-repository-registry-v1.md) | Accept option 1 with legacy-memory slug preservation and safe re-indexing of alias code/prose. |
+| 7 | accepted | [00021](../../../../../gems/docs/dev/project-management/prds/hold/00167-engram-unify-worktree-source-identity-v1.md) | Accept canonical identity for future harvests; remove only proven identical legacy aliases and retain differing history. |
+| 8 | accepted | [00022](../../../../../gems/docs/dev/project-management/prds/hold/00168-engram-exclude-worktree-self-matches-v1.md) | Accept name/kind identity across distinct checkouts with a reported conservative fallback for ambiguous files. |
+| 9 | accepted | [00019](../../../../../gems/docs/dev/project-management/prds/hold/00165-engram-validate-repository-registry-v1.md) | Accept option 1: refuse an empty registry before pruning or rebuild replacement. The report title overstates loss: findings survive. |
+| 10 | accepted | [00023](../../../../../gems/docs/dev/project-management/prds/hold/00169-engram-protect-store-write-lifecycle-v1.md) | Accept explicit discard recovery only, with a retained database backup; default remains loss-averse. |
+| 11 | accepted | [00020](../../../../../gems/docs/dev/project-management/prds/hold/00166-engram-bound-indexing-to-repositories-v1.md) | Accept option 1 across enumerators and direct pack inputs; explicit diff input remains permitted. |
+| 12 | accepted | [00024](../../../../../gems/docs/dev/project-management/prds/hold/00170-engram-sanitize-retrieved-context-v1.md) | Accept output redaction and private creation modes, extended to full PEM blocks and quoted credential assignments. Raw existing stores remain. |
+| 13 | accepted | [00022](../../../../../gems/docs/dev/project-management/prds/hold/00168-engram-exclude-worktree-self-matches-v1.md) | Accept option 1: canonicalize each distinct path once. |
+| 14 | accepted | [00020](../../../../../gems/docs/dev/project-management/prds/hold/00166-engram-bound-indexing-to-repositories-v1.md) | Accept option 1 before code and prose enumeration; retain scope-safe pruning. |
+| 15 | accepted | [00023](../../../../../gems/docs/dev/project-management/prds/hold/00169-engram-protect-store-write-lifecycle-v1.md) | Accept finally cleanup under the acquired lock; do not touch another writer's temp. |
+| 16 | accepted | [00019](../../../../../gems/docs/dev/project-management/prds/hold/00165-engram-validate-repository-registry-v1.md) | Accept registry validation with path-specific diagnostics and per-file harvest failures. |
+| 17 | accepted | [00023](../../../../../gems/docs/dev/project-management/prds/hold/00169-engram-protect-store-write-lifecycle-v1.md) | Choose option 2: hold the lock through writes. A fail-fast precheck alone has a race. |
+| 18 | accepted | [00023](../../../../../gems/docs/dev/project-management/prds/hold/00169-engram-protect-store-write-lifecycle-v1.md) | Accept atomic schema/vector initialization or clean busy refusal; retain a two-process regression. |
+| 19 | accepted | [00017](../../../../../gems/docs/dev/project-management/prds/hold/00163-engram-verify-embedding-model-identity-v1.md) | Accept with model-identity work as mocked error-path coverage; no promotion to live-server verification. |
+| 20 | accepted | [00027](../../../../../gems/docs/dev/project-management/prds/hold/00173-engram-correct-operating-documentation-v1.md) | Accept option 1: document model and per-version grammar downloads. |
+| 21 | accepted | [00027](../../../../../gems/docs/dev/project-management/prds/hold/00173-engram-correct-operating-documentation-v1.md) | Accept option 2: merge unreleased categories and correct the pin; do not invent a release/tag. |
 | 22 | deferred | Retained here | Defer probe caching. Identity correctness comes first; revisit only after model/restart tests and a current workload measurement. |
-| 23 | accepted | [00019](../prds/hold/00019-validate-repository-registry-v1.md) | Accept one validated registry snapshot per harvest, shared with the registry fix. |
+| 23 | accepted | [00019](../../../../../gems/docs/dev/project-management/prds/hold/00165-engram-validate-repository-registry-v1.md) | Accept one validated registry snapshot per harvest, shared with the registry fix. |
 | 24 | deferred | Retained here | Defer unchanged-harvest caching. First measure whether the actual caller resubmits unchanged files; parser-version invalidation would add state. |
-| 25 | accepted | [00021](../prds/hold/00021-unify-worktree-source-identity-v1.md) | Accept option 1: require membership in Git's own worktree list. |
-| 26 | accepted | [00024](../prds/hold/00024-sanitize-retrieved-context-v1.md) | Accept control filtering and data framing. This does not guarantee prompt-injection prevention. |
-| 27 | accepted | [00026](../prds/hold/00026-reject-imports-in-migrated-memory-v1.md) | Accept conservative migration validation; the downstream import effect remains unverified. |
-| 28 | accepted | [00019](../prds/hold/00019-validate-repository-registry-v1.md) | Accept absolute-row validation in the registry reader. |
-| 29 | accepted | [00022](../prds/hold/00022-exclude-worktree-self-matches-v1.md), [00023](../prds/hold/00023-protect-store-write-lifecycle-v1.md), [00025](../prds/hold/00025-isolate-malformed-input-failures-v1.md) | Split by boundary: lock/rebuild issues to 00023; diff physical lines to 00022; parser/config errors to 00025. Narrow transcript claim: ordinary invalid JSON already continues per record. |
-| 30 | accepted | [00017](../prds/hold/00017-verify-embedding-model-identity-v1.md) | Accept syntax hardening from a mocked probe. Allow HTTP and HTTPS loopback, reject userinfo/unknown schemes, and validate redirects too. |
-| 31 | accepted | [00027](../prds/hold/00027-correct-operating-documentation-v1.md) | Accept documentation; retain current vector partitions. Reconsider layout only with disk pressure and measured search/rebuild tradeoffs. |
+| 25 | accepted | [00021](../../../../../gems/docs/dev/project-management/prds/hold/00167-engram-unify-worktree-source-identity-v1.md) | Accept option 1: require membership in Git's own worktree list. |
+| 26 | accepted | [00024](../../../../../gems/docs/dev/project-management/prds/hold/00170-engram-sanitize-retrieved-context-v1.md) | Accept control filtering and data framing. This does not guarantee prompt-injection prevention. |
+| 27 | accepted | [00026](../../../../../gems/docs/dev/project-management/prds/hold/00172-engram-reject-imports-in-migrated-memory-v1.md) | Accept conservative migration validation; the downstream import effect remains unverified. |
+| 28 | accepted | [00019](../../../../../gems/docs/dev/project-management/prds/hold/00165-engram-validate-repository-registry-v1.md) | Accept absolute-row validation in the registry reader. |
+| 29 | accepted | [00022](../../../../../gems/docs/dev/project-management/prds/hold/00168-engram-exclude-worktree-self-matches-v1.md), [00023](../../../../../gems/docs/dev/project-management/prds/hold/00169-engram-protect-store-write-lifecycle-v1.md), [00025](../../../../../gems/docs/dev/project-management/prds/hold/00171-engram-isolate-malformed-input-failures-v1.md) | Split by boundary: lock/rebuild issues to 00023; diff physical lines to 00022; parser/config errors to 00025. Narrow transcript claim: ordinary invalid JSON already continues per record. |
+| 30 | accepted | [00017](../../../../../gems/docs/dev/project-management/prds/hold/00163-engram-verify-embedding-model-identity-v1.md) | Accept syntax hardening from a mocked probe. Allow HTTP and HTTPS loopback, reject userinfo/unknown schemes, and validate redirects too. |
+| 31 | accepted | [00027](../../../../../gems/docs/dev/project-management/prds/hold/00173-engram-correct-operating-documentation-v1.md) | Accept documentation; retain current vector partitions. Reconsider layout only with disk pressure and measured search/rebuild tradeoffs. |
 
 ## Previous report: 2026-11-15 run 2
 
@@ -91,22 +91,22 @@ Source: [original packets](agoge-2026-11-15-2.md). Merged entries point to the s
 
 | Packet | Disposition | PRD | Decision and evidence limits |
 |---|---|---|---|
-| 1 | accepted | [00027](../prds/hold/00027-correct-operating-documentation-v1.md) | Merge into latest #5; document the intentionally persistent server. |
-| 2 | accepted | [00027](../prds/hold/00027-correct-operating-documentation-v1.md) | Choose documented backfill repair rather than a new automatic migration. The current backfill re-chunks unchanged sources and compares stored chunks; no fresh product run was made. |
-| 3 | accepted | [00024](../prds/hold/00024-sanitize-retrieved-context-v1.md) | Merge into latest #12, with assignment redaction included so this older finding is fully covered. |
-| 4 | accepted | [00019](../prds/hold/00019-validate-repository-registry-v1.md) | Partly superseded by PRD 00016's resolved-root comparison. The remaining producer/lookup mismatch is latest #6 and belongs to 00019. |
-| 5 | accepted | [00017](../prds/hold/00017-verify-embedding-model-identity-v1.md) | Accept status model identity and nonzero mismatch result under 00017. |
-| 6 | accepted | [00027](../prds/hold/00027-correct-operating-documentation-v1.md) | Merge into latest #20. |
-| 7 | accepted | [00027](../prds/hold/00027-correct-operating-documentation-v1.md) | The claim that rebuild is the only backfill route is superseded by completed PRD 00015. Retain the synthetic rebuild cost as documentation, not a new performance budget. |
-| 8 | accepted | [00024](../prds/hold/00024-sanitize-retrieved-context-v1.md) | Accept fenced excerpts with budget accounting under 00024. |
-| 9 | accepted | [00017](../prds/hold/00017-verify-embedding-model-identity-v1.md) | Accept the pre-embed stored-model check under 00017. |
-| 10 | accepted | [00027](../prds/hold/00027-correct-operating-documentation-v1.md) | Accept explicit language coverage documentation. Expanding the allowlist or changing to a denylist is outside this correction. |
-| 11 | accepted | [00027](../prds/hold/00027-correct-operating-documentation-v1.md) | Accept the corrected corpus table under 00027. |
-| 12 | accepted | [00025](../prds/hold/00025-isolate-malformed-input-failures-v1.md) | Accept labeled optional-directory diagnostics under 00025. |
+| 1 | accepted | [00027](../../../../../gems/docs/dev/project-management/prds/hold/00173-engram-correct-operating-documentation-v1.md) | Merge into latest #5; document the intentionally persistent server. |
+| 2 | accepted | [00027](../../../../../gems/docs/dev/project-management/prds/hold/00173-engram-correct-operating-documentation-v1.md) | Choose documented backfill repair rather than a new automatic migration. The current backfill re-chunks unchanged sources and compares stored chunks; no fresh product run was made. |
+| 3 | accepted | [00024](../../../../../gems/docs/dev/project-management/prds/hold/00170-engram-sanitize-retrieved-context-v1.md) | Merge into latest #12, with assignment redaction included so this older finding is fully covered. |
+| 4 | accepted | [00019](../../../../../gems/docs/dev/project-management/prds/hold/00165-engram-validate-repository-registry-v1.md) | Partly superseded by PRD 00016's resolved-root comparison. The remaining producer/lookup mismatch is latest #6 and belongs to 00019. |
+| 5 | accepted | [00017](../../../../../gems/docs/dev/project-management/prds/hold/00163-engram-verify-embedding-model-identity-v1.md) | Accept status model identity and nonzero mismatch result under 00017. |
+| 6 | accepted | [00027](../../../../../gems/docs/dev/project-management/prds/hold/00173-engram-correct-operating-documentation-v1.md) | Merge into latest #20. |
+| 7 | accepted | [00027](../../../../../gems/docs/dev/project-management/prds/hold/00173-engram-correct-operating-documentation-v1.md) | The claim that rebuild is the only backfill route is superseded by completed PRD 00015. Retain the synthetic rebuild cost as documentation, not a new performance budget. |
+| 8 | accepted | [00024](../../../../../gems/docs/dev/project-management/prds/hold/00170-engram-sanitize-retrieved-context-v1.md) | Accept fenced excerpts with budget accounting under 00024. |
+| 9 | accepted | [00017](../../../../../gems/docs/dev/project-management/prds/hold/00163-engram-verify-embedding-model-identity-v1.md) | Accept the pre-embed stored-model check under 00017. |
+| 10 | accepted | [00027](../../../../../gems/docs/dev/project-management/prds/hold/00173-engram-correct-operating-documentation-v1.md) | Accept explicit language coverage documentation. Expanding the allowlist or changing to a denylist is outside this correction. |
+| 11 | accepted | [00027](../../../../../gems/docs/dev/project-management/prds/hold/00173-engram-correct-operating-documentation-v1.md) | Accept the corrected corpus table under 00027. |
+| 12 | accepted | [00025](../../../../../gems/docs/dev/project-management/prds/hold/00171-engram-isolate-malformed-input-failures-v1.md) | Accept labeled optional-directory diagnostics under 00025. |
 | 13 | deferred | Retained here | Merge into latest #22's deferral; preserve identity and recycling checks before any optimization. |
 | 14 | deferred | Retained here | Defer index changes for lookup misses. Historical wall time was 3-8 ms; revisit if a measured user workload makes this material. |
-| 15 | accepted | [00027](../prds/hold/00027-correct-operating-documentation-v1.md) | Merge into latest #21; later packet supplies the missing command evidence. |
-| 16 | accepted | [00027](../prds/hold/00027-correct-operating-documentation-v1.md) | Merge into latest #31; retain partitions and document the measured allocation cost. |
+| 15 | accepted | [00027](../../../../../gems/docs/dev/project-management/prds/hold/00173-engram-correct-operating-documentation-v1.md) | Merge into latest #21; later packet supplies the missing command evidence. |
+| 16 | accepted | [00027](../../../../../gems/docs/dev/project-management/prds/hold/00173-engram-correct-operating-documentation-v1.md) | Merge into latest #31; retain partitions and document the measured allocation cost. |
 
 ## Evidence checked in this session
 
@@ -153,3 +153,11 @@ The original recommendation to drain another Engram backlog was wrong. The user 
 Moved 00017-00027 from docs/dev/project-management/prds/backlog/ to docs/dev/project-management/prds/hold/ and retained their evidence, decisions and dependency links. The destination handoff is buvis/gems docs/dev/project-management/discovery/00161-engram-qa-handoff.md, linked from its port plan. The target currently has no src/tools/engram or tests/tools/engram, so copying these source-specific PRDs directly into the Gems backlog would also be wrong.
 
 The port's byte-identical compatibility promise conflicts with some proposed QA fixes. The handoff requires explicit regression exceptions and consumer checks before target PRD creation; it does not silently replace parity baselines or add standalone prerequisites. Original QA labels and all deferrals remain unchanged.
+
+## Ownership transfer: 2026-11-24
+
+The user requested moving the PRDs into Gems now. All 11 specifications now live only in buvis/gems docs/dev/project-management/prds/hold/ as 00163-00173. Source IDs in the historical tables remain provenance labels; links now resolve to their Gems owners. The sidecars identify buvis/gems as the PRD repository. No standalone execution is pending.
+
+Target paths, tests, YAML settings, command boundaries and platform requirements are adapted. Target files remain expected prerequisites, not observed files: re-ground the file map after the port lands before releasing a held PRD. The source-index schema correction additionally waits for the original cutover database checks.
+
+The original QA evidence is preserved verbatim in all 11 transferred PRDs. The standalone changelog cleanup is retained as historical evidence only; target documentation covers Gems installation and configuration instead. All other deferrals remain in this report.
