@@ -47,7 +47,7 @@
         "number": 1,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00163-engram-verify-embedding-model-identity-v1.md"
+          "docs/dev/project-management/prds/hold/00185-engram-verify-embedding-model-identity-v1.md"
         ],
         "note": "Accept option 1: use the served model listing; retain per-call validation."
       },
@@ -55,7 +55,7 @@
         "number": 2,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00164-engram-index-chunks-by-source-v1.md"
+          "docs/dev/project-management/prds/hold/00186-engram-index-chunks-by-source-v1.md"
         ],
         "note": "Accept option 1: add the corpus/path index without rebuilding vectors."
       },
@@ -63,7 +63,7 @@
         "number": 3,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00166-engram-bound-indexing-to-repositories-v1.md"
+          "docs/dev/project-management/prds/hold/00188-engram-bound-indexing-to-repositories-v1.md"
         ],
         "note": "Accept option 1: NUL-delimited Git paths; retain unmerged-stage deduplication."
       },
@@ -71,7 +71,7 @@
         "number": 4,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00167-engram-unify-worktree-source-identity-v1.md"
+          "docs/dev/project-management/prds/hold/00189-engram-unify-worktree-source-identity-v1.md"
         ],
         "note": "Accept option 1: map worktree-relative file paths to the registered checkout; document indexed line positions."
       },
@@ -79,7 +79,7 @@
         "number": 5,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00173-engram-correct-operating-documentation-v1.md"
+          "docs/dev/project-management/prds/hold/00195-engram-correct-operating-documentation-v1.md"
         ],
         "note": "Accept option 1: document intentional detached reuse; no automatic shutdown or watchdog."
       },
@@ -87,7 +87,7 @@
         "number": 6,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00165-engram-validate-repository-registry-v1.md"
+          "docs/dev/project-management/prds/hold/00187-engram-validate-repository-registry-v1.md"
         ],
         "note": "Accept option 1 with legacy-memory slug preservation and safe re-indexing of alias code/prose."
       },
@@ -95,7 +95,7 @@
         "number": 7,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00167-engram-unify-worktree-source-identity-v1.md"
+          "docs/dev/project-management/prds/hold/00189-engram-unify-worktree-source-identity-v1.md"
         ],
         "note": "Accept canonical identity for future harvests; remove only proven identical legacy aliases and retain differing history."
       },
@@ -103,7 +103,7 @@
         "number": 8,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00168-engram-exclude-worktree-self-matches-v1.md"
+          "docs/dev/project-management/prds/hold/00190-engram-exclude-worktree-self-matches-v1.md"
         ],
         "note": "Accept name/kind identity across distinct checkouts with a reported conservative fallback for ambiguous files."
       },
@@ -111,7 +111,7 @@
         "number": 9,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00165-engram-validate-repository-registry-v1.md"
+          "docs/dev/project-management/prds/hold/00187-engram-validate-repository-registry-v1.md"
         ],
         "note": "Accept option 1: refuse an empty registry before pruning or rebuild replacement. The report title overstates loss: findings survive."
       },
@@ -119,7 +119,7 @@
         "number": 10,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00169-engram-protect-store-write-lifecycle-v1.md"
+          "docs/dev/project-management/prds/hold/00191-engram-protect-store-write-lifecycle-v1.md"
         ],
         "note": "Accept explicit discard recovery only, with a retained database backup; default remains loss-averse."
       },
@@ -127,7 +127,7 @@
         "number": 11,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00166-engram-bound-indexing-to-repositories-v1.md"
+          "docs/dev/project-management/prds/hold/00188-engram-bound-indexing-to-repositories-v1.md"
         ],
         "note": "Accept option 1 across enumerators and direct pack inputs; explicit diff input remains permitted."
       },
@@ -135,7 +135,7 @@
         "number": 12,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00170-engram-sanitize-retrieved-context-v1.md"
+          "docs/dev/project-management/prds/hold/00192-engram-sanitize-retrieved-context-v1.md"
         ],
         "note": "Accept output redaction and private creation modes, extended to full PEM blocks and quoted credential assignments. Raw existing stores remain."
       },
@@ -143,7 +143,7 @@
         "number": 13,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00168-engram-exclude-worktree-self-matches-v1.md"
+          "docs/dev/project-management/prds/hold/00190-engram-exclude-worktree-self-matches-v1.md"
         ],
         "note": "Accept option 1: canonicalize each distinct path once."
       },
@@ -151,7 +151,7 @@
         "number": 14,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00166-engram-bound-indexing-to-repositories-v1.md"
+          "docs/dev/project-management/prds/hold/00188-engram-bound-indexing-to-repositories-v1.md"
         ],
         "note": "Accept option 1 before code and prose enumeration; retain scope-safe pruning."
       },
@@ -159,7 +159,7 @@
         "number": 15,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00169-engram-protect-store-write-lifecycle-v1.md"
+          "docs/dev/project-management/prds/hold/00191-engram-protect-store-write-lifecycle-v1.md"
         ],
         "note": "Accept finally cleanup under the acquired lock; do not touch another writer's temp."
       },
@@ -167,7 +167,7 @@
         "number": 16,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00165-engram-validate-repository-registry-v1.md"
+          "docs/dev/project-management/prds/hold/00187-engram-validate-repository-registry-v1.md"
         ],
         "note": "Accept registry validation with path-specific diagnostics and per-file harvest failures."
       },
@@ -175,7 +175,7 @@
         "number": 17,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00169-engram-protect-store-write-lifecycle-v1.md"
+          "docs/dev/project-management/prds/hold/00191-engram-protect-store-write-lifecycle-v1.md"
         ],
         "note": "Choose option 2: hold the lock through writes. A fail-fast precheck alone has a race."
       },
@@ -183,7 +183,7 @@
         "number": 18,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00169-engram-protect-store-write-lifecycle-v1.md"
+          "docs/dev/project-management/prds/hold/00191-engram-protect-store-write-lifecycle-v1.md"
         ],
         "note": "Accept atomic schema/vector initialization or clean busy refusal; retain a two-process regression."
       },
@@ -191,7 +191,7 @@
         "number": 19,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00163-engram-verify-embedding-model-identity-v1.md"
+          "docs/dev/project-management/prds/hold/00185-engram-verify-embedding-model-identity-v1.md"
         ],
         "note": "Accept with model-identity work as mocked error-path coverage; no promotion to live-server verification."
       },
@@ -199,7 +199,7 @@
         "number": 20,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00173-engram-correct-operating-documentation-v1.md"
+          "docs/dev/project-management/prds/hold/00195-engram-correct-operating-documentation-v1.md"
         ],
         "note": "Accept option 1: document model and per-version grammar downloads."
       },
@@ -207,7 +207,7 @@
         "number": 21,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00173-engram-correct-operating-documentation-v1.md"
+          "docs/dev/project-management/prds/hold/00195-engram-correct-operating-documentation-v1.md"
         ],
         "note": "Accept option 2: merge unreleased categories and correct the pin; do not invent a release/tag."
       },
@@ -221,7 +221,7 @@
         "number": 23,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00165-engram-validate-repository-registry-v1.md"
+          "docs/dev/project-management/prds/hold/00187-engram-validate-repository-registry-v1.md"
         ],
         "note": "Accept one validated registry snapshot per harvest, shared with the registry fix."
       },
@@ -235,7 +235,7 @@
         "number": 25,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00167-engram-unify-worktree-source-identity-v1.md"
+          "docs/dev/project-management/prds/hold/00189-engram-unify-worktree-source-identity-v1.md"
         ],
         "note": "Accept option 1: require membership in Git's own worktree list."
       },
@@ -243,7 +243,7 @@
         "number": 26,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00170-engram-sanitize-retrieved-context-v1.md"
+          "docs/dev/project-management/prds/hold/00192-engram-sanitize-retrieved-context-v1.md"
         ],
         "note": "Accept control filtering and data framing. This does not guarantee prompt-injection prevention."
       },
@@ -251,7 +251,7 @@
         "number": 27,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00172-engram-reject-imports-in-migrated-memory-v1.md"
+          "docs/dev/project-management/prds/hold/00194-engram-reject-imports-in-migrated-memory-v1.md"
         ],
         "note": "Accept conservative migration validation; the downstream import effect remains unverified."
       },
@@ -259,7 +259,7 @@
         "number": 28,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00165-engram-validate-repository-registry-v1.md"
+          "docs/dev/project-management/prds/hold/00187-engram-validate-repository-registry-v1.md"
         ],
         "note": "Accept absolute-row validation in the registry reader."
       },
@@ -267,9 +267,9 @@
         "number": 29,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00168-engram-exclude-worktree-self-matches-v1.md",
-          "docs/dev/project-management/prds/hold/00169-engram-protect-store-write-lifecycle-v1.md",
-          "docs/dev/project-management/prds/hold/00171-engram-isolate-malformed-input-failures-v1.md"
+          "docs/dev/project-management/prds/hold/00190-engram-exclude-worktree-self-matches-v1.md",
+          "docs/dev/project-management/prds/hold/00191-engram-protect-store-write-lifecycle-v1.md",
+          "docs/dev/project-management/prds/hold/00193-engram-isolate-malformed-input-failures-v1.md"
         ],
         "note": "Split by boundary: lock/rebuild issues to 00023; diff physical lines to 00022; parser/config errors to 00025. Narrow transcript claim: ordinary invalid JSON already continues per record."
       },
@@ -277,7 +277,7 @@
         "number": 30,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00163-engram-verify-embedding-model-identity-v1.md"
+          "docs/dev/project-management/prds/hold/00185-engram-verify-embedding-model-identity-v1.md"
         ],
         "note": "Accept syntax hardening from a mocked probe. Allow HTTP and HTTPS loopback, reject userinfo/unknown schemes, and validate redirects too."
       },
@@ -285,7 +285,7 @@
         "number": 31,
         "decision": "accepted",
         "prds": [
-          "docs/dev/project-management/prds/hold/00173-engram-correct-operating-documentation-v1.md"
+          "docs/dev/project-management/prds/hold/00195-engram-correct-operating-documentation-v1.md"
         ],
         "note": "Accept documentation; retain current vector partitions. Reconsider layout only with disk pressure and measured search/rebuild tradeoffs."
       }
